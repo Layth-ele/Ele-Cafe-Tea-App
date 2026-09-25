@@ -45,6 +45,9 @@ import {
   readStoreContent, localBusinessLd, buildHomeFaq, faqJsonLd, homeDescription, HOME_TITLE,
   shippingText, shippingRateFor, hoursText, phoneTel, money, RETURN_POLICY_LD, type StoreContent,
 } from './lib/storeContent';
+import {
+  REWARDS_TITLE, REWARDS_DESCRIPTION, REWARDS_EARN, REWARDS_REDEEM, REWARDS_URL, buildRewardsFaq, rewardsIntro,
+} from './lib/rewards';
 import { CAFE_TITLE, CAFE_DESCRIPTION, CAFE_MENU, cafeIntro, buildCafeFaq, cafeMenuLd, type CafeCombo } from './lib/cafeMenu';
 import {
   renderEmail, emailBrandFrom, esc, p, strong, code, button, infoBox, itemsTable, totalsTable, addressBox,
@@ -3652,6 +3655,7 @@ const STATIC_SITEMAP_URLS: Array<{ loc: string; priority: string; changefreq: st
   { loc: '/',                priority: '1.0', changefreq: 'weekly'  },
   { loc: '/products',        priority: '0.9', changefreq: 'daily'   },
   { loc: '/cafe',            priority: '0.9', changefreq: 'weekly'  },
+  { loc: '/rewards',         priority: '0.7', changefreq: 'monthly' },
   { loc: '/gifts',           priority: '0.7', changefreq: 'weekly'  },
   { loc: '/about',           priority: '0.5', changefreq: 'monthly' },
   { loc: '/contact',         priority: '0.5', changefreq: 'monthly' },
@@ -4082,7 +4086,7 @@ function seoContactHtml(store: StoreContent): string {
   if (tel) parts.push(`call <a href="tel:${seoEscHtml(tel)}">${seoEscHtml(store.phone)}</a>`);
   const hours = hoursText(store.hours);
   // Loyalty programme (RewardUp) — linked from every server-rendered page.
-  const rewards = '<p><a href="https://ele-cafe.member.rewardup.io">Ele Rewards</a> — earn points on every visit.</p>';
+  const rewards = `<p><a href="${SEO_SITE_BASE}/rewards">Ele Rewards</a>: our free loyalty program, 10% off when you join.</p>`;
   if (!parts.length && !hours) return rewards;
   return `<p>${parts.join(' or ')}${parts.length ? '.' : ''}${hours ? ` Open ${seoEscHtml(hours)}.` : ''}</p>${rewards}`;
 }
@@ -4745,6 +4749,64 @@ async function fetchActiveTeaSummaries(): Promise<TeaSummary[]> {
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// ── /rewards: Ele Rewards loyalty program (lib/rewards.ts) ─────────────────
+
+function patchHeadForRewards(template: string): string {
+  const url = `${SEO_SITE_BASE}/rewards`;
+  const faq = buildRewardsFaq();
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type':    'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home',        item: SEO_SITE_BASE },
+      { '@type': 'ListItem', position: 2, name: 'Ele Rewards', item: url },
+    ],
+  };
+  const html = patchTemplateHead(template, {
+    title:       REWARDS_TITLE,
+    description: seoClamp(REWARDS_DESCRIPTION),
+    canonical:   url,
+    ogType:      'website',
+    ogImage:     SEO_DEFAULT_OG,
+    extraOgMeta: [],
+    extraJsonLd: [faqJsonLd(faq), breadcrumbLd],
+  });
+  const list = (items: typeof REWARDS_EARN) =>
+    items.map((i) => `<li><strong>${seoEscHtml(i.title)}</strong> — ${seoEscHtml(i.detail)}</li>`).join('\n          ');
+  const faqHtml = faq.map((f) => `<dt>${seoEscHtml(f.q)}</dt><dd>${seoEscHtml(f.a)}</dd>`).join('\n          ');
+  return replaceNoscript(html, `
+    <noscript>
+      <article class="seo-fallback">
+        <header>
+          <p>Ele Café loyalty program</p>
+          <h1>Ele Rewards</h1>
+          <p>${seoEscHtml(rewardsIntro())}</p>
+          <p><a href="${REWARDS_URL}">Join Ele Rewards and get 10% off</a></p>
+        </header>
+        <section>
+          <h2>Ways to earn points</h2>
+          <ul>
+          ${list(REWARDS_EARN)}
+          </ul>
+        </section>
+        <section>
+          <h2>Ways to redeem</h2>
+          <ul>
+          ${list(REWARDS_REDEEM)}
+          </ul>
+        </section>
+        <section>
+          <h2>Ele Rewards FAQ</h2>
+          <dl>
+          ${faqHtml}
+          </dl>
+        </section>
+        <p><a href="${SEO_SITE_BASE}/cafe">Café menu</a> · <a href="${SEO_SITE_BASE}/products">Shop our loose leaf teas</a></p>
+        ${seoContactHtml(SEO_STORE)}
+      </article>
+    </noscript>`);
+}
+
 // ── /cafe: the in-store café menu ───────────────────────────────────────────
 //
 // Copy, drinks and FAQ come from lib/cafeMenu.ts (shared with CafePage);
@@ -5035,6 +5097,15 @@ export const renderSeo = functions.https.onRequest(
       res.set('Content-Type', 'text/html; charset=utf-8');
       res.set('Cache-Control', 'public, max-age=0, s-maxage=60');
       res.status(200).send(template);
+      return;
+    }
+
+    // /rewards — Ele Rewards loyalty program.
+    if (reqPath === '/rewards' || reqPath === '/rewards/') {
+      const html = patchHeadForRewards(template);
+      res.set('Content-Type', 'text/html; charset=utf-8');
+      res.set('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
+      res.status(200).send(html);
       return;
     }
 

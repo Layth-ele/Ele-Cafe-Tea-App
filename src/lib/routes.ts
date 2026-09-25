@@ -19,6 +19,7 @@ export const ROUTES = {
   TEA_PROFILE: (category: string, slug: string) => `/tea-profile/${encodeURIComponent(category)}/${encodeURIComponent(slug)}`,
   PAIRINGS: '/pairings',
   CAFE: '/cafe',
+  REWARDS: '/rewards',
   PAIRING: (slug: string) => `/pairings/${encodeURIComponent(slug)}`,
   COLLECTION: (slug: string) => `/collections/${encodeURIComponent(slug)}`,
   CART: '/cart',

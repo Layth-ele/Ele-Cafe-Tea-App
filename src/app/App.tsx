@@ -16,6 +16,7 @@
  *   /products/:category         → ProductsPage (filtered, e.g. /products/black)
  *   /collections/:slug          → CollectionPage (keyword landing pages, lib/seoCatalog)
  *   /cafe                       → CafePage (in-store café menu, lib/cafeMenu)
+ *   /rewards                    → RewardsPage (Ele Rewards loyalty, lib/rewards)
  *   /tea-profile/:category/:slug → TeaProfilePage
  *   /cart                       → CartPage
  *   /login                      → LoginPage
@@ -94,6 +95,7 @@ const ComboPairingPage = lazy_(() => import('./pages/ComboPairingPage'));
 const PairingsIndexPage = lazy_(() => import('./pages/PairingsIndexPage'));
 const CollectionPage    = lazy_(() => import('./pages/CollectionPage'));
 const CafePage          = lazy_(() => import('./pages/CafePage'));
+const RewardsPage       = lazy_(() => import('./pages/RewardsPage'));
 const CartPage         = lazy_(() => import('./pages/CartPage'));
 const LoginPage        = lazy_(() => import('./pages/LoginPage'));
 const SignupPage       = lazy_(() => import('./pages/SignupPage'));
@@ -251,6 +253,7 @@ function AppShell() {
                 <Route path="/pairings"                     element={<PairingsIndexPage />} />
                 <Route path="/collections/:slug"            element={<CollectionPage />} />
                 <Route path={ROUTES.CAFE}                   element={<CafePage />} />
+                <Route path={ROUTES.REWARDS}                element={<RewardsPage />} />
                 <Route path="/pairings/:slug"               element={<ComboPairingPage />} />
 
                 {/* ── PWA share target (Phase 9.5) ─────────────────

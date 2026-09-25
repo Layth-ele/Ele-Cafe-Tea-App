@@ -1104,3 +1104,69 @@ body:has(.cd-panel[data-open='true']) [data-sonner-toaster][data-y-position='top
   grid-template-columns: repeat(auto-fill, minmax(clamp(150px, 30vw, 240px), 1fr));
 }
 
+
+/* ── /rewards — Ele Rewards (RewardsPage) ───────────────────────────── */
+.rw-cta { margin: var(--sp-6) 0 0; display: flex; justify-content: center; }
+.rw-join {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  text-decoration: none;
+}
+.rw-cta-note {
+  margin: var(--sp-3) auto 0;
+  max-width: 460px;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  text-align: center;
+}
+.rw-grid {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--section-y-sm) var(--gutter) 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+  gap: var(--sp-6);
+  align-items: start;
+}
+.rw-card {
+  padding: clamp(20px, 4vw, 32px);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--gold-deep);
+  border-radius: 18px;
+  background: var(--surface);
+}
+.rw-h2 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(24px, 4vw, 30px);
+  color: var(--midnight);
+  text-align: center;
+  margin: 0 0 var(--sp-4);
+}
+.rw-list { list-style: none; margin: 0; padding: 0; }
+.rw-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+.rw-item:last-child { border-bottom: none; }
+.rw-icon {
+  flex-shrink: 0;
+  width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 14px;
+  background: var(--gold-soft);
+  font-size: 24px;
+  line-height: 1;
+}
+.rw-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rw-title { font-size: var(--text-ui); font-weight: 600; color: var(--midnight); }
+.rw-detail { font-size: var(--text-sm); color: var(--muted); }
+.rw-card-foot { margin: var(--sp-4) 0 0; text-align: center; }

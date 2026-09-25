@@ -34,6 +34,8 @@ const getNavLinks = (t: (key: string) => string) => ([
   { to: ROUTES.CAFE,     label: t('Café Menu'),    chevron: false },
   { to: ROUTES.PAIRINGS, label: t('Tea pairings'), chevron: false },
   { to: ROUTES.GIFTS,    label: t('Gift Builder'), chevron: false },
+  // Side menu only — keeps the desktop top bar uncluttered.
+  { to: ROUTES.REWARDS,  label: t('Ele Rewards'),  chevron: false, drawerOnly: true },
 ]);
 
 // ── Mobile drawer ─────────────────────────────────────────────────────────────
@@ -595,7 +597,7 @@ export function Navbar() {
                     {t('Inventory')}
                   </TransitionLink>
                 )}
-                {!isInventoryAccount && navLinks.map(({ to, label }) => (
+                {!isInventoryAccount && navLinks.filter((l) => !('drawerOnly' in l)).map(({ to, label }) => (
                   <TransitionLink
                     key={to}
                     to={to}

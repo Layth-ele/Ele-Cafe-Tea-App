@@ -80,6 +80,10 @@
         "function": "renderSeo"
       },
       {
+        "source": "/rewards",
+        "function": "renderSeo"
+      },
+      {
         "source": "/pairings/*",
         "function": "renderSeo"
       },

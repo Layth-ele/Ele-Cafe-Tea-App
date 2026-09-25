@@ -131,6 +131,11 @@ function CafePage() {
             {t('See all tea & pastry pairings')} <ArrowRight size={13} aria-hidden="true" />
           </Link>
         </p>
+        <p className="cl-all">
+          <Link to={ROUTES.REWARDS} className="hg-guide-link">
+            {t('Earn points on every cup with Ele Rewards')} <ArrowRight size={13} aria-hidden="true" />
+          </Link>
+        </p>
       </section>
 
       <HomeFaq items={lang === 'fr' ? buildCafeFaq(store, 'fr') : faq} title={t('Café FAQ')} />
