@@ -1325,4 +1325,5 @@ export const STRINGS: Record<string, { fr: string }> = {
   "Each one as a hot tea latte or an iced milk tea.": { fr: "Chacun en latte au thé chaud ou en thé au lait glacé." },
   "Hot latte": { fr: "Latte chaud" },
   "Iced milk tea": { fr: "Thé au lait glacé" },
+  "Ele Rewards": { fr: "Récompenses Ele" },
 };

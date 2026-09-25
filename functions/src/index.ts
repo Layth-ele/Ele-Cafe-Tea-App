@@ -4081,8 +4081,10 @@ function seoContactHtml(store: StoreContent): string {
   const tel = phoneTel(store.phone);
   if (tel) parts.push(`call <a href="tel:${seoEscHtml(tel)}">${seoEscHtml(store.phone)}</a>`);
   const hours = hoursText(store.hours);
-  if (!parts.length && !hours) return '';
-  return `<p>${parts.join(' or ')}${parts.length ? '.' : ''}${hours ? ` Open ${seoEscHtml(hours)}.` : ''}</p>`;
+  // Loyalty programme (RewardUp) — linked from every server-rendered page.
+  const rewards = '<p><a href="https://ele-cafe.member.rewardup.io">Ele Rewards</a> — earn points on every visit.</p>';
+  if (!parts.length && !hours) return rewards;
+  return `<p>${parts.join(' or ')}${parts.length ? '.' : ''}${hours ? ` Open ${seoEscHtml(hours)}.` : ''}</p>${rewards}`;
 }
 
 interface TeaSeoFields {

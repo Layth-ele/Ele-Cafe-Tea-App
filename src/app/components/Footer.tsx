@@ -8,6 +8,8 @@ import { useLang, useT, type TFunc } from '@/i18n/useT';
 import { formatMoneyShort } from '@/lib/money';
 import { useVisibleCategoryIds } from '@/hooks/useVisibleCategoryIds';
 // ── Static data ───────────────────────────────────────────────────────────────
+/** Ele Rewards loyalty page, hosted by RewardUp. */
+const REWARDS_URL = 'https://ele-cafe.member.rewardup.io';
 const ACCOUNT_LINKS = [
   { to: ROUTES.LOGIN,   label: 'Sign In'        },
   { to: ROUTES.SIGNUP,  label: 'Create Account' },
@@ -266,6 +268,8 @@ export function Footer() {
             {INFO_LINKS.map(({ to, label }) => (
               <TransitionLink key={to} to={to} className="footer-link">{t(label)}</TransitionLink>
             ))}
+            {/* Loyalty programme (RewardUp) — a followed link so Google finds it. */}
+            <a href={REWARDS_URL} className="footer-link" target="_blank" rel="noopener noreferrer">{t('Ele Rewards')}</a>
           </div>
         </div>
 
