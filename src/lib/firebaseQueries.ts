@@ -12,6 +12,7 @@ import {
 import type { Product } from '@/types';
 import { validateProduct } from '@/schemas/product.schema';
 import { db } from './firebase';
+import { registerImageVariants } from './imageRegistry';
 
 // ---------------------------------------------------------------------------
 // Mock-product loader — singleton promise so the dynamic import fires once.
@@ -27,6 +28,8 @@ function loadMockProducts() {
 // Throws with the field-level Zod errors instead of silently passing bad data.
 // ---------------------------------------------------------------------------
 function parseProduct(raw: unknown, context: string): Product {
+  const r = raw as { image?: unknown; imageVariants?: unknown } | null;
+  registerImageVariants(r?.image, r?.imageVariants);
   const result = validateProduct(raw);
   if (!result.success) {
     throw new TypeError(

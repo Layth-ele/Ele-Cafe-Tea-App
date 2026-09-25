@@ -38,6 +38,7 @@
  * the `order` integer field. The flat path keeps Firestore rules and
  * queries simple (vs a nested path).
  */
+import { registerImageVariants } from '@/lib/imageRegistry';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { Link2, Pause, Play } from 'lucide-react';
@@ -79,7 +80,11 @@ export function useComboGallery(): {
       q,
       (snap) => {
         const next = snap.docs
-          .map(d => ({ id: d.id, ...d.data() } as ComboItem))
+          .map(d => {
+            const raw = d.data();
+            registerImageVariants(raw.imageUrl, raw.imageVariants);
+            return { id: d.id, ...raw } as ComboItem;
+          })
           // Only render items that are enabled AND have a real uploaded
           // image. Combo items without an imageUrl (shouldn't happen —
           // schema requires it — but defense in depth) are skipped

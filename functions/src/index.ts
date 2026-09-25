@@ -5678,6 +5678,9 @@ export {
   marketingTick,
 } from './marketing';
 
+// Small WebP copies of tea / pairing photos (see imageVariants.ts).
+export { teaImageVariants, pairingImageVariants, imageVariantsSweep } from './imageVariants';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // backfillTeaWeights — Admin callable for one-shot migration
 // ─────────────────────────────────────────────────────────────────────────────

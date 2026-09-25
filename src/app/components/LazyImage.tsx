@@ -53,6 +53,7 @@ import { useEffect, useRef, useState } from 'react';
 import { decode } from 'blurhash';
 import { TeaPlaceholder } from './TeaPlaceholder';
 import type { ResponsiveImage } from '@/lib/imageVariants';
+import { variantSrcSet } from '@/lib/imageRegistry';
 
 import { useT } from '@/i18n/useT';
 interface LazyImageProps {
@@ -143,7 +144,7 @@ export function LazyImage(props: LazyImageProps) {
   const {
     src           = props.responsive?.src ?? '',
     avif          = props.responsive?.avif,
-    webp          = props.responsive?.webp,
+    webp          = props.responsive?.webp ?? variantSrcSet(props.src ?? props.responsive?.src),
     srcSet        = props.responsive?.srcSet,
     alt,
     aspectRatio   = '1/1',
