@@ -36,3 +36,6 @@ serviceAccount.json
 /.pw-*.mjs
 /.tmp-*.cjs
 /.x.mjs
+
+# Emulator debug logs
+*-debug.log
