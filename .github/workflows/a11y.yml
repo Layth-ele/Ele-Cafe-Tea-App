@@ -1,0 +1,188 @@
+name: Accessibility (axe-core)
+
+# Phase 0.5 of the UI/UX roadmap. Runs the Playwright a11y suite
+# against every PR that touches the app shell or a route. Fails the
+# merge on any critical/serious/moderate violation.
+#
+# What this workflow doesn't do (intentionally):
+#   - Skip on doc-only PRs: a comment-only change to a TSX file will
+#     still trigger the suite. CI minutes are cheap; missed regressions
+#     are not.
+#   - Run the auth-bearing projects locally without secrets. CI has
+#     ALLOW_TEST_LOGIN provisioned on the test Firebase project; pull
+#     requests from forks won't have it. Forks see the public-pages
+#     suite only.
+
+on:
+  pull_request:
+    paths:
+      - 'src/**/*.{tsx,ts,css}'
+      - 'src/styles/**'
+      - 'tests/a11y/**'
+      - 'playwright.a11y.config.ts'
+      - 'playwright.setup.ts'
+      - 'package.json'
+      - '.github/workflows/a11y.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'scripts/_run-a11y.mjs'
+      - 'scripts/local-a11y-snapshot.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/a11y.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: a11y-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  a11y:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Job-level env so step `if:` conditions can read these. (A step's
+    # own `env:` block isn't applied until AFTER the if: condition is
+    # evaluated, so referencing `env.PLAYWRIGHT_TEST_LOGIN` inside a
+    # step's if: would always see the empty string. Hoisting to job
+    # level fixes that — the values are still secrets-driven; forks
+    # without the secret get the empty string and the if: skips
+    # cleanly.)
+    env:
+      PLAYWRIGHT_TEST_LOGIN: ${{ secrets.PLAYWRIGHT_TEST_LOGIN }}
+      PLAYWRIGHT_BASE_URL:   ${{ secrets.PLAYWRIGHT_BASE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/pnpm-lock.yaml') }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (cached browsers)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      # Phase 9.7.2 — Safe-area audit. Static check; runs in ~1s.
+      # Fails the build if any new fixed/sticky element touches a
+      # viewport edge without env(safe-area-inset-*) protection
+      # (iPhone notch, iOS home indicator, landscape edges).
+      - name: Safe-area audit (Phase 9.7.2)
+        run: npm run audit:safe-area
+
+      # Phase 9 improvement — Touch-target audit. WCAG 2.5.8 AA
+      # requires 24×24 CSS px on interactive elements. Static scan
+      # of design.css with allow-listed exceptions for decorative
+      # children whose parent button provides the hit area.
+      - name: Touch-target audit (Phase 9 / WCAG 2.5.8)
+        run: npm run audit:touch-targets
+
+      # Public pages only by default — auth-bearing projects need the
+      # test Firebase project and ALLOW_TEST_LOGIN, which are only set
+      # on the protected `test` environment. Pull requests from forks
+      # will run with AUTH_FIXTURE=skip; the chromium project (public)
+      # still runs.
+      - name: Run a11y tests
+        run: npm run test:a11y -- --project=chromium
+        env:
+          CI: true
+          AUTH_FIXTURE: skip
+          # Provide placeholder Firebase env so the build/preview steps
+          # don't fail on missing-env. Firebase calls inside the running
+          # app will fail at runtime, which is fine — axe doesn't need
+          # working Firebase, just rendered DOM.
+          VITE_FIREBASE_API_KEY:     "ci-placeholder"
+          VITE_FIREBASE_AUTH_DOMAIN: "ci.example.com"
+          VITE_FIREBASE_PROJECT_ID:  "ci-placeholder"
+          VITE_FIREBASE_APP_ID:      "ci-placeholder"
+
+      # Run the auth-bearing projects in a separate step that's
+      # gated on having the secret env vars. PRs that DON'T have
+      # them just skip; PRs with them get fuller coverage. The
+      # canonical CI pipeline (the one that gates `main`) runs in
+      # the `test` environment which DOES have them.
+      - name: Run a11y tests (auth-bearing — protected + admin)
+        if: ${{ env.PLAYWRIGHT_TEST_LOGIN != '' }}
+        run: npm run test:a11y -- --project=user-a11y --project=admin-a11y
+        env:
+          CI: true
+          # PLAYWRIGHT_TEST_LOGIN + PLAYWRIGHT_BASE_URL inherited from job env above.
+          VITE_FIREBASE_API_KEY:     ${{ secrets.TEST_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.TEST_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID:  ${{ secrets.TEST_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID:      ${{ secrets.TEST_FIREBASE_APP_ID }}
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-a11y
+          path: playwright-report-a11y/
+          retention-days: 14
+
+  a11y-deploy-gate:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Resolve CHROME_PATH from Playwright
+        run: echo "CHROME_PATH=$(node -e \"const { chromium } = require('playwright'); process.stdout.write(chromium.executablePath())\")" >> "$GITHUB_ENV"
+
+      - name: Build production bundle
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ci-build-only
+          VITE_FIREBASE_AUTH_DOMAIN: ci.firebaseapp.com
+          VITE_FIREBASE_PROJECT_ID: ci-project
+          VITE_FIREBASE_APP_ID: 1:000:web:abc
+          VITE_FIREBASE_STORAGE_BUCKET: ci.appspot.com
+          VITE_FIREBASE_MESSAGING_SENDER_ID: '000'
+          VITE_SITE_BASE: http://127.0.0.1:4173
+
+      - name: Run deploy accessibility gate
+        run: node scripts/_run-a11y.mjs local-a11y-snapshot.mjs
+
+      - name: Upload a11y snapshot report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-snapshot-${{ github.run_id }}
+          path: /tmp/a11y-snapshot.json
+          if-no-files-found: ignore
+          retention-days: 14

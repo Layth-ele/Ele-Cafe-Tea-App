@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+# Runs stylelint (via lint-staged) on any staged .css files before every commit.
+# Fail closed — if stylelint reports an error, the commit is aborted.
+#
+# First-time setup (after unzipping the app):
+#   pnpm install      # runs `husky` via the `prepare` script, installing this hook
+#
+# Bypass (emergency only):
+#   git commit --no-verify -m "..."
+#
+# Wired by `lint-staged` entry in package.json → stylelint --fix on staged .css.
+
+npx lint-staged

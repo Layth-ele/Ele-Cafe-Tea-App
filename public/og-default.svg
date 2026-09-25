@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img"
+     aria-label="Ele Café — Premium Loose Leaf Tea, Vancouver">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"  stop-color="#0f1c26"/>
+      <stop offset="100%" stop-color="#1e3040"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Decorative gold rule top-left -->
+  <line x1="80" y1="80" x2="180" y2="80" stroke="#bfa16c" stroke-width="2"/>
+
+  <!-- Overline -->
+  <text x="80" y="125" font-family="Jost, Helvetica, Arial, sans-serif"
+        font-size="22" letter-spacing="6" fill="#bfa16c"
+        font-weight="600">VANCOUVER · SINCE 2023</text>
+
+  <!-- Wordmark -->
+  <text x="80" y="290" font-family="Cormorant Garamond, Garamond, Georgia, serif"
+        font-size="140" font-weight="300" fill="#fdfaf5"
+        letter-spacing="-2">Ele Café</text>
+
+  <!-- Subhead -->
+  <text x="80" y="365" font-family="Cormorant Garamond, Garamond, Georgia, serif"
+        font-size="46" font-weight="300" fill="#bfa16c"
+        font-style="italic">Premium Loose Leaf Tea</text>
+
+  <!-- Tagline body -->
+  <text x="80" y="435" font-family="Jost, Helvetica, Arial, sans-serif"
+        font-size="24" fill="#eee8dc" opacity="0.85">
+    Ceremonial matcha · Fresh coffee · Shipped across Canada
+  </text>
+
+  <!-- Decorative gold rule bottom-left -->
+  <line x1="80" y1="520" x2="180" y2="520" stroke="#bfa16c" stroke-width="2"/>
+
+  <!-- Address -->
+  <text x="80" y="565" font-family="Jost, Helvetica, Arial, sans-serif"
+        font-size="20" letter-spacing="2" fill="#bfa16c"
+        font-weight="600">895 WEST BROADWAY · ELECAFE.CA</text>
+</svg>

@@ -1,0 +1,55 @@
+name: Token Contrast Gate
+
+# Phase 1.1 of the UI/UX roadmap. Every PR that touches tokens.css
+# is gated on the WCAG AA contrast check. The check parses tokens.css,
+# resolves var(...) refs, alpha-composites transparent badge tokens
+# over --surface, and asserts each foreground/background pair against
+# its WCAG bar. A failing pair blocks merge — the only way to land is
+# to either fix the colors or update the test pair list with a reason.
+#
+# Why a separate workflow:
+#   - Cheaper than running the full a11y suite on every token change
+#   - Faster signal in the PR review loop (~5s vs ~5min)
+#   - Catches regressions before they hit a Playwright snapshot diff
+#
+# What this workflow does NOT replace:
+#   - axe-core in the Playwright a11y suite (catches contrast on
+#     gradient overlays, dynamic content, and any combo we forgot
+#     to put in the script's pair list)
+#   - Lighthouse a11y category in lighthouse-ci.yml (catches the
+#     same plus visual focus-ring contrast)
+
+on:
+  pull_request:
+    paths:
+      - 'src/styles/tokens.css'
+      - 'scripts/contrast-check.mjs'
+      - 'package.json'
+      - '.github/workflows/contrast.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: contrast-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contrast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        # culori is the only thing the script actually needs; full
+        # `npm ci` is overkill but keeps the lockfile honest.
+        run: npm ci
+
+      - name: Run WCAG contrast check
+        run: npm run tokens:contrast

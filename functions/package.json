@@ -1,0 +1,27 @@
+{
+    "name": "ele-cafe-functions",
+    "description": "Ele Café Cloud Functions",
+    "scripts": {
+        "_comment_build": "Build = TypeScript compile + copy email templates into lib/ so they ship with the deploy bundle. The cp -R fallback handles environments where node's built-in fs.cpSync isn't available; on Node 22 (our engine) the simpler shx-style copy works too but cp is universal.",
+        "build": "tsc",
+        "watch": "tsc --watch",
+        "serve": "npm run build && firebase emulators:start --only functions",
+        "shell": "npm run build && firebase functions:shell",
+        "start": "npm run shell",
+        "deploy": "firebase deploy --only functions",
+        "logs": "firebase functions:log"
+    },
+    "engines": {
+        "node": "22"
+    },
+    "main": "lib/index.js",
+    "dependencies": {
+        "firebase-admin": "^13.8.0",
+        "firebase-functions": "^7.4.0"
+    },
+    "devDependencies": {
+        "@types/node": "^22.0.0",
+        "typescript": "^6.0.3"
+    },
+    "private": true
+}

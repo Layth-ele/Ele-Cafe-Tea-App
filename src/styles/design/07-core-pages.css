@@ -1,0 +1,2606 @@
+/* ═══════════════════════════════════════════════════════════════
+   HOME PAGE (Phase 3)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Animated rule — gold scaleX line that draws in on scroll. */
+.hp-anim-rule {
+  margin: 14px auto 0;
+  height: 2px;
+  overflow: hidden;
+}
+.hp-anim-rule-fill {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 1px;
+  transform: scaleX(0);
+  transition: transform 700ms var(--ease-out);
+}
+.hp-anim-rule-fill[data-direction='ltr'] { transform-origin: left center; }
+.hp-anim-rule-fill[data-direction='rtl'] { transform-origin: right center; }
+.hp-anim-rule-fill[data-drawn='true']    { transform: scaleX(1); }
+
+/* SectionHeader — overline above, h2 below, animated rule under. */
+.hp-section-header {
+  text-align: center;
+  margin-bottom: clamp(1.25rem, 3vw, 3rem);
+}
+.hp-section-overline-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.hp-section-underline {
+  height: 1px;
+  overflow: hidden;
+  width: 100%;
+  align-self: stretch;
+}
+.hp-section-underline-fill {
+  height: 100%;
+  background: var(--gold);
+  opacity: 0.5;
+  transform: scaleX(0);
+  transition: transform var(--dur-xslow) var(--ease-out) var(--dur-instant);
+}
+.hp-section-underline-fill[data-direction='ltr'] { transform-origin: left center; }
+.hp-section-underline-fill[data-direction='rtl'] { transform-origin: right center; }
+.hp-section-underline-fill[data-drawn='true']    { transform: scaleX(1); }
+.hp-section-h2 {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  letter-spacing: -0.025em;
+  color: var(--midnight);
+  margin: 0;
+}
+
+/* TeaCard cart-quantity badge — top-right pill on the image. */
+.hp-tc-cart-badge {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  background: var(--midnight);
+  color: var(--on-dark);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg);
+}
+
+/* Sold-out add button — dimmed disabled state. */
+.hp-tc-soldout {
+  opacity: 0.4;
+}
+
+/* Outer page wrap. */
+.hp-page {
+  background: var(--bg);
+}
+
+/* Hero. */
+.hp-hero-container {
+  max-width: 900px;
+}
+.hp-hero-rule {
+  width: 40px;
+  height: 2px;
+  background: var(--gold);
+  margin: 22px auto;
+  border-radius: 1px;
+}
+
+/* Pillars section. */
+.hp-pillars-section {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.hp-pillars-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+.hp-pillar {
+  border-right: 1px solid var(--border);
+}
+.hp-pillar[data-last='true'] {
+  border-right: none;
+}
+.hp-pillar-icon {
+  border: none;
+}
+.hp-pillar-icon-inner {
+  display: flex;
+}
+
+/* Featured grid CTA. */
+.hp-see-all-wrap {
+  text-align: center;
+  margin-top: clamp(2.5rem, 4vw, 3.5rem);
+}
+.hp-see-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Eight Collections section + per-card. */
+.hp-collections-section {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.hp-cat-link {
+  text-decoration: none;
+}
+.hp-cat-card {
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+.hp-cat-overlay {
+  position: absolute;
+  inset: 0;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- multi-stop alpha gradient over per-category accent; theme-invariant overlay */
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.60) 0%, rgba(0, 0, 0, 0.10) 60%, transparent 100%);
+}
+.hp-cat-label {
+  position: absolute;
+  bottom: 12px;
+  left: 14px;
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 300;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- near-cream label over the dark gradient veil; theme-invariant */
+  color: rgba(250, 245, 235, 0.96);
+  letter-spacing: 0.01em;
+}
+
+/* Gift CTA — full-width midnight band. */
+.hp-gift-cta {
+  background: var(--midnight);
+  padding: clamp(4rem, 6vw, 6rem) 1rem;
+  text-align: center;
+}
+/* Phase 7 a11y fix — in dark mode --midnight FLIPS to cream so .btn-dark
+   buttons remain visible. But this section deliberately uses midnight to
+   create a contrasting dark BAND; if it flips, gold eyebrow on cream
+   measures 1.64:1 (catastrophic WCAG AA fail). Pin to a fixed-dark hex
+   in dark mode so the band stays dark and the gold/cream text combos
+   keep their high contrast. Same fixed-dark pattern as .announce strip
+   (which uses a #0f1e2d gradient inline). Caught by local axe snapshot. */
+.dark .hp-gift-cta {
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- fixed-dark surface; intentional theme-invariant value to keep the gold/cream text contrast valid in both themes */
+  background: #0f1c26;
+}
+/* And pin the band's children so they stay readable on the fixed-dark
+   background. --on-dark FLIPS in dark mode (cream → midnight) so a
+   var(--on-dark) child would become invisible-on-dark after the fix
+   above. The --on-admin-95 / --cream-N tokens explicitly DON'T flip
+   for this exact use case (fixed-dark surfaces, see tokens.css §R3). */
+.dark .hp-gift-h2 {
+  color: var(--on-admin-95);
+}
+.dark .hp-gift-btn {
+  background: var(--on-admin-95);
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- pairs with the fixed-dark background; theme-invariant per the fixed-dark surface convention */
+  color: #0f1c26;
+  border-color: var(--on-admin-95);
+}
+.hp-gift-eyebrow {
+  color: var(--gold);
+  margin-bottom: 14px;
+}
+.hp-gift-h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 300;
+  color: var(--on-dark);
+  letter-spacing: -0.025em;
+  margin: 0 0 28px;
+}
+.hp-gift-btn {
+  background: var(--on-dark);
+  color: var(--midnight);
+  border: 1.5px solid var(--on-dark);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Visit Us section. */
+.hp-visit-section {
+  background: var(--bg);
+}
+.hp-visit-container {
+  max-width: 900px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ADMIN OVERVIEW (Phase 3)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* StatCard. */
+.aov-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow var(--dur-base), transform var(--dur-base);
+  cursor: default;
+}
+.aov-stat-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.aov-stat-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-family: var(--font-sans);
+}
+.aov-stat-icon-wrap {
+  flex-shrink: 0;
+}
+.aov-stat-value {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: clamp(1.6rem, 2.5vw, 2rem);
+  letter-spacing: -0.02em;
+  color: var(--midnight);
+  line-height: 1;
+}
+.aov-stat-value[data-accent='gold'] {
+  color: var(--gold-text);
+}
+.aov-stat-sub {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin: 0;
+}
+
+/* Page header. */
+.aov-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.aov-title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.6rem, 2.5vw, 2rem);
+  font-weight: 300;
+  letter-spacing: -0.025em;
+  color: var(--midnight);
+  margin: 0;
+}
+.aov-subtitle {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* Empty-database banner. */
+.aov-empty-banner {
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.aov-empty-emoji { font-size: 22px; }
+.aov-empty-body { flex: 1; }
+.aov-empty-title {
+  font-weight: 600;
+  font-size: var(--text-ui);
+  color: var(--warning);
+  margin: 0 0 2px;
+}
+.aov-empty-msg {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin: 0;
+}
+
+/* Inline alerts banner (pending review / payment sent). */
+.aov-alert {
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+}
+.aov-alert-icon { color: var(--warning); }
+.aov-alert-text { color: var(--warning); }
+
+/* Recent-orders + low-stock card containers — tighten the corners. */
+.aov-card { overflow: hidden; }
+
+/* Empty-state inside the recent-orders / low-stock card. */
+.aov-empty-msg-c {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  text-align: center;
+  padding: 32px 0;
+}
+
+/* Recent orders rows. */
+.aov-order-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.aov-order-id {
+  font-family: monospace;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--gold-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aov-order-meta {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aov-order-total {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.aov-order-status {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+/* Low-stock rows. */
+.aov-stock-name {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.aov-stock-cat {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CART PAGE (Phase 3)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Empty state. */
+.cp-empty {
+  min-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+.cp-empty-inner {
+  text-align: center;
+  max-width: 340px;
+  padding: 0 var(--gutter);
+}
+.cp-empty-icon {
+  margin: 0 auto 16px;
+}
+.cp-empty-title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.6rem, 3vw, 2rem);
+  font-weight: 300;
+  color: var(--midnight);
+  margin: 0 0 10px;
+}
+.cp-empty-msg {
+  font-size: var(--text-ui);
+  color: var(--muted);
+  margin-bottom: 24px;
+  line-height: 1.7;
+}
+
+/* Page wrap. */
+.cp-page {
+  background: var(--bg);
+  min-height: 100dvh;
+}
+.cp-container {
+  padding: 0 var(--gutter);
+}
+.cp-page-hero {
+  margin-left: calc(-1 * var(--gutter));
+  margin-right: calc(-1 * var(--gutter));
+  margin-top: 0;
+}
+
+/* Free-shipping progress bar. */
+.cp-progress-wrap {
+  padding: 0 0 1.5rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+}
+.cp-progress-inner {
+  max-width: 380px;
+  margin: 0 auto;
+}
+.cp-progress-msg {
+  text-align: center;
+  margin-bottom: 8px;
+}
+.cp-progress-qualified {
+  color: var(--success);
+  font-weight: 500;
+}
+.cp-progress-amount {
+  color: var(--text);
+}
+.cp-progress-track {
+  height: 3px;
+  background: var(--surface-3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.cp-progress-bar {
+  height: 100%;
+  background: var(--midnight);
+  border-radius: 2px;
+  transition: width var(--dur-slow) ease;
+}
+.cp-progress-bar[data-qualified='true'] {
+  background: var(--success);
+}
+
+/* Items list. */
+.cp-items { margin-bottom: 32px; }
+.cp-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+.cp-item-thumb {
+  width: 72px;
+  flex-shrink: 0;
+}
+.cp-item-info {
+  flex: 1;
+  min-width: 0;
+}
+.cp-item-cat {
+  margin-bottom: 3px;
+  display: block;
+  text-transform: capitalize;
+}
+.cp-item-name {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 400;
+  color: var(--text);
+  margin-bottom: 3px;
+  letter-spacing: -0.01em;
+}
+.cp-item-price {
+  color: var(--gold-text);
+  margin-bottom: 10px;
+}
+.cp-item-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.cp-item-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+.cp-item-qty {
+  min-width: 32px;
+  text-align: center;
+  font-size: var(--text-ui);
+  font-weight: 600;
+  color: var(--text);
+}
+.cp-item-total-wrap {
+  text-align: right;
+  flex-shrink: 0;
+}
+.cp-item-total {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 300;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Summary + CTA. */
+.cp-summary-wrap { margin-bottom: 48px; }
+.cp-summary-actions {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cp-checkout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.cp-continue-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ADMIN PRODUCTS — image uploader, form sections, flags, serving
+   suggestions, translate-everything banner, page banner, table rows
+   (Phase 3)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ImageUploader. */
+.ap-iu-label {
+  display: block;
+  margin-bottom: 5px;
+  margin-top: var(--sp-4);
+}
+.ap-iu-preview {
+  width: 8rem;
+  border: 1px solid var(--border);
+}
+.ap-iu-icon {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+/* FormSection wrapper (Basic Info / Pricing & Stock / Tea Details / Flags). */
+.ap-form-section {
+  margin-bottom: 0;
+}
+.ap-form-section-head {
+  padding: 6px 0 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.ap-form-section-label {
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ap-form-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+/* ProductForm root. */
+.ap-form-root {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Two-column and three-column responsive grids inside FormSection. */
+.ap-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.ap-grid-3 {
+  display: grid;
+  /* Fills the row with however many fields it has (2 or 3). */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 12px;
+}
+/* Phones: stack paired fields full width so inputs stay readable. */
+@media (max-width: 560px) {
+  .ap-grid-2 { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Inline "Translate name & description only" banner inside Basic Info. */
+.ap-translate-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.ap-translate-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ap-translate-icon {
+  color: var(--muted);
+}
+.ap-translate-text {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+
+/* Flags row — checkbox-pill triplet (Featured / Organic / GST). */
+.ap-flags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ap-flag-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  user-select: none;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  transition: background-color var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+}
+.ap-flag-pill[data-checked='true'] {
+  border-color: var(--midnight);
+  background: var(--midnight);
+  color: var(--on-dark);
+}
+.ap-flag-cb {
+  display: none;
+}
+.ap-gst-warn {
+  font-size: var(--text-xs);
+  color: var(--warning);
+  background: var(--warning-bg);
+  padding: 8px 12px;
+  border-radius: 7px;
+  margin-top: 4px;
+}
+
+/* Serving suggestions list — header + add button + per-row toggle. */
+.ap-serv-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.ap-serv-label {
+  display: block;
+  margin-bottom: 5px;
+}
+.ap-serv-add {
+  font-size: var(--text-xs);
+  padding: 3px 10px;
+  height: auto;
+}
+.ap-serv-hint {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.ap-serv-empty {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-style: italic;
+}
+.ap-serv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ap-serv-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  opacity: 0.6;
+}
+.ap-serv-row[data-on='true'] {
+  background: var(--success-bg);
+  border-color: var(--success);
+  opacity: 1;
+}
+
+/* Toggle track + thumb. The thumb's position is driven by the
+   parent's data-on, so a single CSS rule can animate it. */
+.ap-serv-toggle {
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+  background: var(--border);
+  transition: background var(--dur-fast);
+}
+.ap-serv-toggle[data-on='true'] {
+  background: var(--success);
+}
+.ap-serv-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- white thumb on always-coloured toggle track; theme-invariant */
+  background: #fff;
+  transition: left var(--dur-fast);
+}
+.ap-serv-toggle[data-on='true'] .ap-serv-thumb {
+  left: 18px;
+}
+.ap-serv-row-label {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text);
+}
+.ap-serv-row-status {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ap-serv-row-status[data-on='true'] {
+  color: var(--success);
+}
+.ap-serv-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--danger);
+  padding: 2px;
+  font-size: var(--text-md);
+  line-height: 1;
+}
+
+/* "Translate everything" gold banner at the form's bottom. */
+.ap-translate-all-banner {
+  margin-top: 20px;
+  padding: 18px 20px;
+  background: var(--gold-tint);
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- gold accent border at 35% alpha; theme-invariant decorative */
+  border: 1px solid rgba(212, 170, 104, 0.35);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.ap-translate-all-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ap-translate-all-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- gold accent fill at 18% alpha; theme-invariant decorative */
+  background: rgba(212, 170, 104, 0.18);
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- matching ring border */
+  border: 1px solid rgba(212, 170, 104, 0.30);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ap-translate-all-icon-svg {
+  color: var(--gold-deep);
+}
+.ap-translate-all-eyebrow {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+  margin: 0 0 3px;
+}
+.ap-translate-all-desc {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  margin: 0;
+  line-height: 1.4;
+}
+.ap-translate-all-btn {
+  flex-shrink: 0;
+}
+
+/* Page-level banner (Teas Catalog / Products / inline stats). */
+.ap-page-banner {
+  background: var(--gold-tint);
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- gold accent border at 30% alpha; theme-invariant */
+  border: 1px solid rgba(212, 170, 104, 0.30);
+  border-radius: 14px;
+  padding: clamp(20px, 3vw, 28px);
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- gold tinted shadow stack; theme-invariant */
+  box-shadow: 0 4px 20px rgba(212, 170, 104, 0.08), 0 1px 3px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.ap-page-banner-info {
+  min-width: 0;
+}
+.ap-page-banner-eyebrow {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+  margin: 0 0 6px;
+}
+.ap-page-banner-h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  color: var(--midnight);
+  margin: 0 0 10px;
+  line-height: 1.15;
+}
+.ap-page-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+}
+.ap-page-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+.ap-page-stat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold-deep);
+  flex-shrink: 0;
+}
+.ap-page-stat-num {
+  color: var(--midnight);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ap-page-banner-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Table rows — thumbnail + stock status colour by level. */
+.ap-row-thumb {
+  width: 2.5rem;
+  flex-shrink: 0;
+}
+/* Turn 6: removed .ap-row-stock and its data-level color variants.
+   The products table no longer shows a numeric stock count — it
+   shows the inventory-projected availability via the .ial-status-badge
+   class (defined in the audit log section). One palette across all
+   admin pages. */
+.ap-flag-gst {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+.ap-list-empty {
+  text-align: center;
+  padding: 48px 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GIFTS PAGE (Phase 3)
+   ═══════════════════════════════════════════════════════════════ */
+
+.gp-page {
+  background: var(--bg);
+  min-height: 100dvh;
+}
+
+/* Step / Trust helpers. */
+.gp-step {
+  padding: 20px 18px;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+.gp-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--gold-soft);
+  color: var(--gold-text);
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: var(--text-base);
+  margin-bottom: 12px;
+}
+.gp-step-title {
+  font-family: var(--font-sans);
+  font-size: var(--text-ui);
+  font-weight: 600;
+  color: var(--midnight);
+  margin: 0 0 6px;
+}
+.gp-step-body {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  margin: 0;
+  line-height: 1.5;
+}
+.gp-trust-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--gold-soft);
+  color: var(--gold-text);
+  margin-bottom: 10px;
+}
+.gp-trust-label {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--midnight);
+  margin: 0 0 4px;
+}
+.gp-trust-body {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Hero. */
+.gp-hero {
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  background:
+    radial-gradient(ellipse at top, rgba(184, 146, 74, 0.05), transparent 60%),
+    var(--bg);
+  padding: var(--section-y-sm) var(--gutter);
+}
+.gp-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  background: var(--gold-soft);
+  color: var(--gold-text);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  font-family: var(--font-sans);
+  margin-bottom: 18px;
+}
+.gp-hero-h1 {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  color: var(--midnight);
+  letter-spacing: -0.025em;
+  margin: 0 0 16px;
+  line-height: 1.1;
+}
+.gp-hero-em {
+  font-style: italic;
+  color: var(--gold-text);
+}
+.gp-hero-sub {
+  font-family: var(--font-sans);
+  font-size: clamp(15px, 2vw, 17px);
+  color: var(--text-2);
+  max-width: 580px;
+  margin: 0 auto 28px;
+  line-height: 1.6;
+}
+.gp-admin-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  font-family: var(--font-sans);
+}
+/* Phase 18 — visible-to-everyone notice when the gift builder is
+   admin-disabled. Sits between the hero copy and the disabled CTA
+   so the customer immediately understands why the button looks
+   inert. Same shape as gp-admin-banner but tone-shifted gold to
+   read as "info" not "admin meta". */
+.gp-unavailable-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  margin-bottom: 18px;
+  border-radius: var(--radius-full);
+  background: var(--gold-soft);
+  border: 1px solid var(--accent-30);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--gold-deep);
+}
+.gp-unavailable-notice svg {
+  color: var(--gold-deep);
+}
+
+/* ── Sign-in prompt (Phase 19) ───────────────────────────────────────
+   Shown when an unauthenticated visitor clicks any gift-builder CTA.
+   The previous behavior was silent failure (modal opened, then the
+   modal's own sign-out auto-close immediately killed it). Now the
+   guest sees a clear two-path prompt: sign in if they have an
+   account, or create one if they don't. Both routes carry
+   returnUrl=/gifts so the user lands right back here.
+   ─────────────────────────────────────────────────────────────────── */
+.gp-signin-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 14, 18, 0.65);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(env(safe-area-inset-top, 0), 16px)
+           max(env(safe-area-inset-right, 0), 16px)
+           max(env(safe-area-inset-bottom, 0), 16px)
+           max(env(safe-area-inset-left, 0), 16px);
+  z-index: var(--z-modal-panel);
+  animation: fadeIn var(--dur-normal) ease both;
+}
+.gp-signin-panel {
+  width: 100%;
+  max-width: 460px;
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 32px 28px 24px;
+  text-align: center;
+  box-shadow: 0 24px 80px rgba(9, 14, 18, 0.35);
+  font-family: var(--font-sans);
+  /* Phase 20 — use a flex-friendly entrance animation. Earlier we
+     used `app-modal-panel-in` which has `transform: translate(-50%, -50%)`
+     baked in (designed for `position: absolute` modals); applied to
+     our flex-centered panel that translated the panel off-screen by
+     50% of its own width, cutting the left side of the content on
+     mobile. This keyframe uses translateY + scale only, leaving
+     horizontal alignment to flex. */
+  animation: gp-signin-panel-in var(--dur-normal) cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+@keyframes gp-signin-panel-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gp-signin-panel { animation: none; }
+}
+.gp-signin-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--gold-soft);
+  color: var(--gold-deep);
+  margin-bottom: 18px;
+}
+.gp-signin-title {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--midnight);
+  margin: 0 0 10px;
+  letter-spacing: -0.01em;
+}
+.gp-signin-body {
+  font-size: var(--text-ui);
+  line-height: 1.55;
+  color: var(--text-2);
+  margin: 0 0 24px;
+}
+.gp-signin-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.gp-signin-primary,
+.gp-signin-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+.gp-signin-cancel {
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: color var(--dur-fast);
+}
+.gp-signin-cancel:hover { color: var(--text-2); }
+.gp-signin-cancel:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+@media (min-width: 540px) {
+  /* On wider screens, place the two CTAs side-by-side so they read
+     as parallel options rather than a stack. */
+  .gp-signin-actions { flex-direction: row; }
+}
+.gp-hero-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 32px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-ui);
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  transition: transform var(--dur-fast), box-shadow var(--dur-normal), background var(--dur-normal);
+  background: var(--surface-3);
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.gp-hero-btn[data-enabled='true'] {
+  background: var(--gold);
+  color: var(--accent-text);
+  cursor: pointer;
+  opacity: 1;
+  box-shadow: var(--shadow-gold);
+}
+.gp-hero-btn[data-enabled='true']:hover {
+  transform: translateY(-1px);
+}
+.gp-hero-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.gp-hero-foot {
+  margin-top: 18px;
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+/* Bundle preview row. */
+.gp-bundle-section {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--section-y-sm) var(--gutter);
+}
+.gp-bundle-h2 {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  color: var(--midnight);
+  text-align: center;
+  letter-spacing: -0.01em;
+  margin: 0 0 8px;
+}
+.gp-bundle-sub {
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  margin-bottom: 32px;
+}
+.gp-bundle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+.gp-bundle-card {
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-xs);
+  transition: border-color var(--dur-normal), box-shadow var(--dur-normal), transform var(--dur-fast), opacity var(--dur-normal);
+  font-family: var(--font-sans);
+  display: flex;
+  flex-direction: column;
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.gp-bundle-card[data-enabled='true'] {
+  cursor: pointer;
+  opacity: 1;
+}
+.gp-bundle-card[data-enabled='true']:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.gp-bundle-card:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.gp-bundle-badge-row {
+  height: 22px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: flex-start;
+}
+.gp-bundle-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: var(--gold);
+  color: var(--accent-text);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.gp-bundle-name {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: 1.25rem;
+  color: var(--midnight);
+  margin: 0 0 8px;
+  letter-spacing: -0.01em;
+}
+.gp-bundle-tag {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+.gp-bundle-price-row {
+  margin-top: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.gp-bundle-price {
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  font-weight: 300;
+  color: var(--gold-text);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.gp-bundle-cur {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+/* How it works. */
+.gp-how-section {
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: var(--section-y-sm) var(--gutter);
+}
+.gp-how-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.gp-how-h2 {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  color: var(--midnight);
+  text-align: center;
+  letter-spacing: -0.01em;
+  margin: 0 0 32px;
+}
+.gp-how-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Trust row. */
+.gp-trust-row {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--section-y-sm) var(--gutter);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+  text-align: center;
+}
+
+/* Bottom CTA. */
+.gp-bottom-cta {
+  text-align: center;
+  padding: clamp(2rem, 4vw, 4rem) 1rem;
+  border-top: 1px solid var(--border);
+}
+.gp-bottom-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  transition: transform var(--dur-fast), background var(--dur-normal);
+  background: var(--surface-3);
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.gp-bottom-btn[data-enabled='true'] {
+  background: var(--midnight);
+  color: var(--on-dark);
+  cursor: pointer;
+  opacity: 1;
+}
+.gp-bottom-btn[data-enabled='true']:hover {
+  transform: translateY(-1px);
+}
+.gp-bottom-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CHECKOUT PAGE (Phase 3)
+   The cp-* prefix already exists on CartPage; checkout uses cp2-*
+   so the stylesheet stays grep-able.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Confirmation modal — small inline tweaks. */
+.cp2-checkmark-icon { color: var(--success); }
+.cp2-strong-text    { color: var(--text); }
+.cp2-confirm-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+/* Step numbers in the confirmation modal — accent colour comes
+   from the inline --cp2-step-color CSS variable, computed per step
+   from the data array (warning/info/gold/success). The 33 hex
+   suffix used to be `${color}33` — color-mix() handles the same
+   ~20% opacity tint generically. */
+.confirm-modal-step-num {
+  border: 1px solid color-mix(in srgb, var(--cp2-step-color, var(--midnight)) 20%, transparent);
+  color: var(--cp2-step-color, var(--midnight));
+}
+
+/* Outer page wrap. */
+.cp2-page {
+  min-height: 100dvh;
+  background: var(--bg);
+  padding: var(--page-top) 0 var(--section-y-sm);
+}
+
+/* Section heading inside the form cards. */
+.cp2-section-h2 {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 400;
+  color: var(--text);
+  margin-bottom: 14px;
+}
+.cp2-section-h2-lg { margin-bottom: 20px; }
+.cp2-pickup-hint {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+/* Pickup vs Delivery tile selector. */
+.cp2-fulfillment-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.cp2-fulfillment-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+  font-family: inherit;
+  color: var(--text);
+}
+.cp2-fulfillment-tile[data-selected='true'] {
+  border-color: var(--midnight);
+  background: var(--surface-2);
+}
+.cp2-fulfillment-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+.cp2-fulfillment-title {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--midnight);
+}
+.cp2-fulfillment-sub {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-weight: 500;
+}
+.cp2-fulfillment-sub[data-free='true'] {
+  color: var(--success);
+}
+
+/* Free-delivery threshold nudge. */
+.cp2-threshold-nudge {
+  margin-top: 12px;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  text-align: center;
+  font-style: italic;
+}
+.cp2-threshold-amt {
+  color: var(--midnight);
+}
+
+/* Address fields row spacing. */
+.cp2-addr-row { margin-top: 14px; }
+
+/* Step 2 — promo code + h3. */
+.cp2-h3 {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+.cp2-h3-howit { margin-bottom: 14px; }
+.cp2-promo-applied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--success-bg);
+  border: 1px solid var(--success);
+}
+.cp2-promo-code {
+  font-family: monospace;
+  font-weight: 700;
+  font-size: var(--text-ui);
+  color: var(--success);
+}
+.cp2-promo-saving {
+  font-size: var(--text-xs);
+  color: var(--success);
+  margin-left: 8px;
+}
+.cp2-promo-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  text-decoration: underline;
+}
+.cp2-promo-input-row {
+  display: flex;
+  gap: 8px;
+}
+.cp2-promo-input {
+  flex: 1;
+  font-family: monospace;
+  letter-spacing: 0.08em;
+}
+.cp2-promo-apply {
+  flex-shrink: 0;
+  padding: 0 16px;
+}
+.cp2-promo-err {
+  font-size: var(--text-xs);
+  color: var(--danger);
+  margin-top: 6px;
+}
+
+/* "How ordering works" step list. */
+.cp2-howit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cp2-howit-row {
+  display: flex;
+  gap: 12px;
+}
+.cp2-howit-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--midnight);
+  color: var(--on-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+}
+.cp2-howit-title {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text);
+}
+.cp2-howit-desc {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  line-height: 1.55;
+  margin-top: 2px;
+}
+
+/* Sticky summary on the right column. */
+.cp2-sticky-summary {
+  position: sticky;
+  top: calc(var(--nav-live-height, 107px) + 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PRODUCTS PAGE (Phase 3)
+   Note: AnimatedRule + AnimatedOverline reuse the .hp-anim-rule*
+   and .hp-section-underline-fill rules from HomePage. The pp-* prefix
+   is only the page-specific chrome.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* AnimatedRule on this page uses a tighter top margin than HomePage. */
+.pp-anim-rule {
+  margin: 12px auto 0;
+}
+
+/* AnimatedOverline wrap. */
+.pp-overline-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+.pp-overline-rule {
+  height: 1px;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Sold-out add button. */
+.pp-tc-soldout {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Outer page wrap. */
+.pp-page {
+  background: var(--bg);
+  min-height: 100dvh;
+}
+
+/* Page header (centered title + count). */
+.pp-page-header {
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  padding: var(--page-top) var(--gutter) var(--sp-6);
+}
+.pp-page-h1 {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  letter-spacing: -0.025em;
+  color: var(--midnight);
+  margin: 0 0 8px;
+  font-size: var(--fs-page-title);
+}
+.pp-page-count {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  margin-top: 10px;
+}
+
+/* Two-column layout (sidebar + main). */
+.pp-layout {
+  display: flex;
+  align-items: flex-start;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+.pp-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  padding-top: 32px;
+  padding-right: 28px;
+  position: sticky;
+  top: calc(var(--nav-live-height, 107px) + 16px);
+  /* dvh tracks iOS Safari's collapsing URL bar so the sidebar
+     never overflows past the visible viewport. */
+  max-height: calc(100dvh - 88px);
+  overflow-y: auto;
+}
+.pp-main {
+  flex: 1;
+  min-width: 0;
+  padding-top: var(--sp-4);
+}
+
+/* Toolbar: search + sort + mobile filter trigger. */
+.pp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.pp-sort-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.pp-sort-label {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.pp-sort-select {
+  font-size: var(--text-xs);
+  height: 36px;
+  padding: 0 32px 0 10px;
+  min-width: 140px;
+  cursor: pointer;
+}
+/* Mobile filter button is hidden on desktop, shown by .products-mobile-filter-btn
+   media query elsewhere; this is the per-instance styling. */
+.pp-mobile-filter-btn {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+/* Active-filter chips row. */
+.pp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.pp-clear-all-btn {
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+
+/* Grid container + grid layouts. */
+.pp-grid-wrap {
+  min-height: 400px;
+}
+.pp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(160px, 45vw), 1fr));
+}
+.pp-grid-skel {
+  gap: clamp(16px, 3vw, 32px) clamp(12px, 2vw, 24px);
+  padding-bottom: 48px;
+}
+.pp-grid-results {
+  gap: clamp(20px, 3vw, 36px) clamp(12px, 2vw, 24px);
+  padding-bottom: 32px;
+}
+/* Phase 23 — Card entrance animation (replaces react-flip-toolkit's
+   FLIP morph). Each card fades in from a 6px translateY offset over
+   the same ~380ms duration the old Flipper used. Native CSS, no
+   library, cannot throw. Reduced-motion users get no animation
+   (rule below). */
+.pp-grid-results > [data-card-anim] {
+  animation: pp-card-enter var(--dur-slow, 380ms) var(--ease-out, ease) both;
+}
+@keyframes pp-card-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pp-grid-results > [data-card-anim] { animation: none; }
+}
+.pp-pagination-wrap {
+  padding-bottom: 48px;
+}
+
+/* Mobile filter drawer head + apply CTA. */
+.pp-drawer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.pp-drawer-title {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--midnight);
+}
+.pp-drawer-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--muted);
+  border-radius: 6px;
+}
+.pp-drawer-apply {
+  width: 100%;
+  padding: 12px;
+  background: var(--midnight);
+  color: var(--on-dark);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-top: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COMBO GALLERY ADMIN — drop zone, item rows, action pills (Phase 3)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Outer root + summary row. */
+.cga-root {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.cga-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cga-count {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.cga-count-strong { color: var(--text); }
+
+/* Upload button — disabled = wait cursor + 70% opacity. */
+.cga-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--midnight);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.cga-upload-btn[data-disabled='true'] {
+  background: var(--border);
+  cursor: wait;
+  opacity: 0.7;
+}
+
+/* Drop zone — data-active flips the dashed colour + bg. */
+.cga-dropzone {
+  padding: 36px 18px;
+  border-radius: 14px;
+  border: 1.5px dashed var(--border);
+  background: var(--surface);
+  text-align: center;
+  cursor: pointer;
+  transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+.cga-dropzone[data-active='true'] {
+  border-color: var(--gold);
+  background: var(--gold-soft);
+}
+.cga-dropzone-icon {
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.cga-dropzone-msg {
+  margin: 0;
+  font-size: var(--text-ui);
+  color: var(--text);
+}
+.cga-dropzone-hint {
+  margin: 6px 0 0;
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.cga-file-input { display: none; }
+
+/* Empty / loading message + list container. */
+.cga-list-msg {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  text-align: center;
+  padding: 20px;
+}
+.cga-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Individual item row — grid: handle | thumb | fields | actions. */
+.cga-row {
+  display: grid;
+  grid-template-columns: auto 110px 1fr auto;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+/* Mobile — the 4-column desktop grid crushes the fields column on
+   narrow viewports (fields can end up ≤ 80px, clipping inputs to
+   illegible snippets like "Sp" / "S pi"). Restructure to 2 rows:
+     Row 1: drag-handle controls  ·  action buttons (right-aligned)
+     Row 2: thumbnail (80px)  ·  form fields (fills remaining width)
+   Uses named grid-areas so the DOM order is irrelevant. */
+@media (max-width: 640px) {
+  .cga-row {
+    grid-template-columns: auto 80px 1fr;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "handle  thumb   fields"
+      ".       actions actions";
+    gap: 10px;
+    padding: 12px;
+    align-items: start;
+  }
+  .cga-row-handle-col {
+    grid-area: handle;
+    flex-direction: column;   /* grip on top, arrows below — keeps col narrow */
+    align-items: center;
+    padding-top: 0;
+    gap: 2px;
+  }
+  .cga-row-thumb {
+    grid-area: thumb;
+    width: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .cga-row-fields {
+    grid-area: fields;   /* 1fr — fills all remaining width */
+    min-width: 0;
+  }
+  .cga-row-actions {
+    grid-area: actions;
+    flex-direction: row;     /* Visible + Delete side by side in full-width row */
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  /* Compact action pills on mobile so they fit in the top-right corner */
+  .cga-pill-btn,
+  .cga-danger-btn {
+    padding: 5px 10px;
+    font-size: var(--text-xs);
+  }
+}
+.cga-row-handle {
+  align-self: center;
+  cursor: grab;
+  color: var(--muted);
+  padding: 4px;
+}
+/* Column wrapping the drag handle + Move Up / Move Down buttons.
+   Phase 12 — HTML5 DnD doesn't fire on touch and isn't keyboard-
+   reachable, so we ship the buttons as a parallel reorder path. */
+.cga-row-handle-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  padding-top: 4px;
+}
+.cga-row-move-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-2);
+  cursor: pointer;
+  padding: 0;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+.cga-row-move-btn:hover:not(:disabled) {
+  background: var(--surface-2, var(--surface));
+  border-color: var(--gold);
+  color: var(--midnight);
+}
+.cga-row-move-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.cga-row-move-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* Paired-teas picker (Phase 13). Sits inside the row's editable
+   fields column, below the slug. Chips render the currently-selected
+   teas; the trailing <select> adds more. Capped at 8 per combo. */
+.cga-paired-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 28px;
+  flex: 1;
+  align-items: center;
+}
+.cga-paired-empty {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-style: italic;
+}
+.cga-paired-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px 3px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  color: var(--text);
+  max-width: 200px;
+}
+.cga-paired-chip-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cga-paired-chip-x {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 150ms ease, color 150ms ease;
+}
+.cga-paired-chip-x:hover {
+  background: var(--danger-bg, var(--surface));
+  color: var(--danger, var(--midnight));
+}
+.cga-paired-chip-x:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+.cga-paired-select {
+  padding: 5px 10px;
+  font-size: var(--text-xs);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  max-width: 220px;
+}
+.cga-paired-select:hover:not(:disabled) {
+  border-color: var(--gold);
+}
+.cga-paired-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.cga-paired-select:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.cga-row-thumb {
+  width: 110px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+.cga-row-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.cga-row-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cga-row-line-wrap { flex-wrap: wrap; }
+.cga-row-line-label {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  min-width: 36px;
+}
+.cga-row-currency {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.cga-row-slug-prefix {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.cga-row-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+}
+
+/* Field — generic input/textarea inside the item row. */
+.cga-field {
+  width: 100%;
+  padding: 7px 10px;
+  font-size: var(--text-sm);
+  font-family: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: none;
+  resize: vertical;
+}
+.cga-field-price { width: 110px; }
+.cga-field-slug {
+  flex: 1 1 140px;
+  min-width: 120px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-xs);
+}
+
+/* Save button — gold pill. */
+.cga-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- white text on always-coloured gold pill; theme-invariant */
+  color: var(--white);
+  background: var(--gold);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+/* Icon button + dark variant (copy link). */
+.cga-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cga-icon-btn-dark {
+  background: var(--midnight);
+  color: var(--on-dark);
+}
+
+/* Visible/hidden toggle pill. */
+.cga-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: center;
+  padding: 5px 10px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cga-pill-btn[data-visible='true'] {
+  color: var(--success);
+  background: var(--success-bg);
+  border-color: var(--success);
+}
+
+/* Danger pill. */
+.cga-danger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: center;
+  padding: 5px 10px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--danger);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COMBO GALLERY (customer-facing carousel) — Phase 3
+   ═══════════════════════════════════════════════════════════════ */
+
+.cg-section {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.cg-inner {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--section-y-sm) var(--gutter);
+}
+
+/* Section header. */
+.cg-header {
+  text-align: center;
+  margin-bottom: clamp(1.6rem, 3vw, 2.4rem);
+}
+.cg-eyebrow {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-text);
+  margin: 0 0 8px;
+}
+.cg-h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.4rem, 2.4vw, 2rem);
+  font-weight: 300;
+  color: var(--midnight);
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1.2;
+}
+.cg-tea-em {
+  font-style: italic;
+  color: var(--gold-text);
+}
+.cg-sub {
+  font-family: var(--font-sans);
+  font-size: clamp(13px, 1.4vw, 14px);
+  color: var(--muted);
+  margin: 8px auto 0;
+  line-height: 1.55;
+  max-width: 480px;
+}
+.cg-rule {
+  width: 36px;
+  height: 2px;
+  background: var(--gold);
+  border-radius: 1px;
+  margin: 14px auto 0;
+}
+
+/* Carousel container. */
+.cg-carousel {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 560px;
+  border-radius: 20px;
+  overflow: hidden;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- midnight-tinted shadow at 18% alpha; theme-invariant decorative */
+  box-shadow: 0 20px 60px rgba(15, 28, 38, 0.18);
+  outline: none;
+  background: var(--midnight);
+}
+.cg-img-stack {
+  position: absolute;
+  inset: 0;
+}
+
+/* Each slide cross-fades. data-active drives opacity; data-reduced
+   disables the transition for users who prefer reduced motion. */
+.cg-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 900ms ease;
+}
+.cg-slide[data-active='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+.cg-slide[data-reduced='true'] {
+  transition: none;
+}
+.cg-slide-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.0);
+  transition: transform 6s ease-out;
+}
+.cg-slide-img[data-active='true'] {
+  transform: scale(1.06);
+}
+.cg-slide-img[data-reduced='true'],
+.cg-slide-img[data-reduced='true'][data-active='true'] {
+  transform: none;
+  transition: none;
+}
+.cg-img-veil {
+  position: absolute;
+  inset: 0;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- multi-stop midnight gradient veil for slide-image legibility; theme-invariant */
+  background: linear-gradient(180deg, rgba(15, 28, 38, 0) 40%, rgba(15, 28, 38, 0.55) 100%);
+}
+
+/* Per-slide share button (top-right corner). */
+.cg-share-btn {
+  position: absolute;
+  top: clamp(12px, 2vw, 18px);
+  right: clamp(12px, 2vw, 18px);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- white text on translucent midnight pill over a dark image; theme-invariant */
+  color: var(--white);
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- translucent midnight, matching the veil; theme-invariant */
+  background: rgba(15, 28, 38, 0.55);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- translucent white border for frosted-glass effect */
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  letter-spacing: 0.04em;
+  z-index: 2;
+  transition: background var(--dur-normal), transform var(--dur-normal);
+}
+.cg-share-btn:hover {
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- darker hover state on the same translucent pill */
+  background: rgba(15, 28, 38, 0.78);
+  transform: scale(1.04);
+}
+
+/* Frosted overlay covering bottom of carousel. */
+.cg-frosted {
+  position: absolute;
+  left: clamp(16px, 3vw, 32px);
+  right: clamp(16px, 3vw, 32px);
+  bottom: clamp(16px, 3vw, 28px);
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- frosted-glass white at 16% alpha; theme-invariant decorative */
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- matching translucent border */
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 14px;
+  padding: clamp(10px, 1.6vw, 14px) clamp(14px, 2.2vw, 22px);
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- white text on the frosted overlay; theme-invariant */
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(12px, 2vw, 24px);
+  flex-wrap: wrap;
+}
+.cg-frosted-text {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.cg-frosted-title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.05rem, 1.7vw, 1.3rem);
+  font-weight: 400;
+  margin: 0 0 2px;
+  letter-spacing: -0.01em;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- white text on the frosted overlay; theme-invariant */
+  color: var(--white);
+  line-height: 1.2;
+}
+.cg-frosted-desc {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- white at 85% alpha for the description; theme-invariant */
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cg-price-chip {
+  font-family: var(--font-serif);
+  font-size: clamp(1rem, 1.6vw, 1.3rem);
+  font-weight: 500;
+  color: var(--price-chip-fg);
+  white-space: nowrap;
+  padding: 5px 13px;
+  border-radius: 999px;
+  background: var(--price-chip-bg);
+  border: 1px solid var(--price-chip-bd);
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- shadow at 28% alpha for depth on the frosted overlay */
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+  letter-spacing: 0.01em;
+}
+
+/* Prev/Next arrow buttons — appear on hover, always reachable by keyboard. */
+.cg-arrow-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- translucent white border for frosted arrow */
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- frosted-glass background for arrow */
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- white arrow icon over the dark slide */
+  color: var(--white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--dur-normal) ease;
+}
+.cg-arrow-btn[data-hovered='true'] { opacity: 1; }
+.cg-arrow-btn:focus-visible        { opacity: 1; }
+.cg-arrow-btn-left  { left: 14px; }
+.cg-arrow-btn-right { right: 14px; }
+
+/* Dot pagination. */
+.cg-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  margin-top: 16px;
+}
+/* 24px tap target (WCAG 2.2) with the small visual dot drawn inside. */
+.cg-dot {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+.cg-dot::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--border);
+  transition: width var(--dur-normal) ease, background var(--dur-normal) ease;
+}
+.cg-dot[data-active='true']::after {
+  width: 28px;
+  background: var(--gold);
+}
+.cg-dot:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+
+/* Share strip below carousel. */
+.cg-share-strip {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+.cg-share-strip-eyebrow {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 12px;
+  font-family: var(--font-sans);
+}
+
+/* Pause / Play toggle for the auto-rotating carousel.
+   WCAG 2.2.2: any auto-rotating content lasting >5s must have an
+   accessible mechanism to pause. The pause-on-hover/focus path
+   alone doesn't satisfy this for users who haven't tabbed in yet.
+   Renders top-left of the carousel, mirrors the share button's
+   visual treatment so they share one corner motif. */
+.cg-playpause-btn {
+  position: absolute;
+  top: clamp(12px, 2vw, 18px);
+  left: clamp(12px, 2vw, 18px);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- white text on translucent midnight pill over a dark image; theme-invariant */
+  color: var(--white);
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- translucent midnight, matching the share button; theme-invariant */
+  background: rgba(15, 28, 38, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  cursor: pointer;
+  z-index: 3;
+  font-family: var(--font-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: background 180ms ease;
+}
+.cg-playpause-btn:hover {
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- hover state, slightly less translucent */
+  background: rgba(15, 28, 38, 0.72);
+}
+.cg-playpause-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* Mobile carousel layout — Phase 12 fix. Previously these rules lived
+   inline inside \3c style> tags in ComboGallery.tsx which (a) re-injected
+   on every render and (b) leaned on !important cascades. Moved here so
+   the design system stays the single source of truth. The breakpoint
+   matches the rest of the design system (single-column phone layout). */
+@media (max-width: 599px) {
+  .cg-carousel {
+    aspect-ratio: auto;
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+  }
+  .cg-img-stack {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    flex-shrink: 0;
+  }
+  .cg-frosted {
+    position: static;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--surface);
+    border: none;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    padding: 16px 18px;
+    color: var(--text);
+  }
+  .cg-frosted-title {
+    color: var(--midnight);
+  }
+  .cg-frosted-desc {
+    color: var(--text-2);
+  }
+  /* Bottom-gradient veil over the image is unnecessary when
+     the text panel is its own block — kill it on mobile so
+     the image shows clean. */
+  .cg-img-veil {
+    display: none;
+  }
+}
+

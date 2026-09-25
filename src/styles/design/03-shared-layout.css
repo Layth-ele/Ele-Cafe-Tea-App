@@ -1,0 +1,1773 @@
+/* ═══════════════════════════════════════════════════════════
+   CONSISTENCY PATCH — CSS classes for all remaining
+   inline hover/active handlers across the app.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── CartDrawer ─────────────────────────────────────────────
+   NOTE: canonical .cd-* definitions live further below (labeled
+   "CartDrawer custom button classes → design system tokens").
+   This earlier duplicate block was deleted on Day 1 of the
+   roadmap to remove cascade ambiguity.                        */
+
+/* ── ComboGallery ──────────────────────────────────────── */
+.cg-upload-zone {
+  transition: border-color var(--dur-base), background var(--dur-base);
+}
+.cg-upload-zone:hover { border-color: var(--gold) !important; background: var(--gold-soft) !important; }
+
+.cg-thumb-btn {
+  transition: border-color var(--dur-fast);
+}
+.cg-thumb-btn:hover { border-color: var(--gold) !important; }
+
+/* ── Modal — shared infrastructure (Modal.tsx) ─────────────────────────────
+   v3 of the modal system. The .app-modal-* classes are owned by Modal.tsx
+   and define the overlay + panel + animations + mobile bottom-sheet
+   variant. The legacy .modal-close-btn / .modal-close-dark classes are
+   kept below for the close button visual (Modal.tsx still uses them).
+
+   Why class-based instead of inline styled-jsx:
+     - The previous implementation injected a \3c style> block per modal
+       render. Browsers de-duplicate identical sheets but the parse is
+       still per-mount, which made the Confirm-on-Modal pattern jankier
+       than it needed to be.
+     - Media queries (mobile blur reduction, slide-up animation,
+       prefers-reduced-motion) are far cleaner in a stylesheet.
+*/
+
+.app-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 14, 18, 0.65);
+  /* 6px is fine on desktop; mobile cuts it to 1.5px below to keep
+     panel-open frame rate above 60fps on older Android chromium. */
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: app-modal-overlay-in var(--dur-normal) var(--ease-out, ease) both;
+}
+
+.app-modal-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  /* dvh accounts for iOS Safari's collapsing URL bar. Falls back to
+     vh in older browsers via the @supports query below. */
+  max-height: min(90dvh, 800px);
+  background: var(--surface);
+  border-radius: 20px;
+  box-shadow:
+    0 24px 80px rgba(9, 14, 18, 0.35),
+    0 4px 16px rgba(9, 14, 18, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  outline: none;
+  animation: app-modal-panel-in var(--dur-normal) cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+@supports not (height: 1dvh) {
+  /* Browsers that don't yet support dvh (very old). Fall back to vh —
+     the iOS quirk costs ~70px at the bottom but the panel is still
+     scrollable, so content remains reachable. */
+  .app-modal-panel { max-height: min(90vh, 800px); }
+}
+
+@keyframes app-modal-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes app-modal-panel-in {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 16px)) scale(0.97); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Mobile (≤480px) — slide up from the bottom edge instead of scaling.
+   Feels native on phones (matches iOS / Android sheet behaviour) and
+   eliminates the "tiny dialog floating in the centre" feel. The panel
+   also pins to the bottom with rounded top corners only, mirroring the
+   iOS modal sheet. */
+@media (max-width: 480px) {
+  .app-modal-panel {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100% !important;          /* override the inline min(...) */
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    /* dvh again — important on mobile where the URL bar height varies. */
+    max-height: 92dvh;
+    animation: app-modal-panel-up var(--dur-normal) var(--ease-out, var(--ease-out)) both;
+    /* Phase 9.3 — Bottom-sheet swipe gesture. --md-drag-y is the live
+       touch translation. When the user releases below the dismiss
+       threshold (30% of height) the panel returns to translateY(0)
+       via the standard transition; above threshold, onClose fires and
+       the unmount-animation takes over. The transform here composes
+       with the panel-up keyframe at mount (which sets translateY(0) by
+       its end state). */
+    transform: translateY(var(--md-drag-y, 0px));
+    transition: transform var(--dur-normal) var(--ease-out, var(--ease-out));
+  }
+  /* Suppress transition during active touch drag so the panel tracks
+     the finger 1:1 — anything else feels laggy. Spring-back animates
+     when data-dragging flips back to 'false' on release. */
+  .app-modal-panel[data-dragging='true'] {
+    transition: none;
+  }
+  /* Lighter blur on mobile — full 6px caused first-frame stutter on
+     mid-range Android. 1.5px reads as "frosted" without the GPU cost. */
+  .app-modal-overlay {
+    -webkit-backdrop-filter: blur(1.5px);
+    backdrop-filter: blur(1.5px);
+  }
+}
+
+@keyframes app-modal-panel-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Reduced motion — instant crossfade. Vestibular-disorder users get a
+   calm, non-bouncy transition. Critical because the spring easing
+   (cubic-bezier(0.34, 1.2, 0.64, 1)) has overshoot built in. */
+@media (prefers-reduced-motion: reduce) {
+  .app-modal-overlay,
+  .app-modal-panel {
+    animation-duration: 1ms;
+    animation-timing-function: linear;
+  }
+}
+
+/* Mobile button hit-target bump (used by ModalBtn). Desktop uses
+   min-height:40px for compactness; mobile gets the WCAG AAA 44px. */
+@media (max-width: 480px) {
+  .modal-btn {
+    min-height: 44px;
+  }
+}
+
+/* ── Modal close button visuals (kept compatible with v2 markup) ──── */
+.modal-close-btn {
+  /* The button itself is the 44×44 hit target now; the visible 32px
+     circle lives in the inner <span> and has its styles applied
+     inline by Modal.tsx. These .modal-close-btn styles remain to
+     support legacy callers that might still render the old shape. */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.modal-close-btn:hover  > span { background: var(--border); color: var(--text); }
+.modal-close-btn:active > span { transform: scale(0.88); }
+
+.modal-close-dark > span {
+  /* Dark/danger header variants — these target the inner <span> circle
+     because the <button> wrapper is transparent in v3. */
+  background: var(--white-08); border-color: var(--white-15);
+  color: var(--on-dark-7);
+}
+.modal-close-dark:hover > span { background: var(--white-16); color: var(--on-dark); }
+
+/* ── StatCard (AdminOverview) ─────────────────────────── */
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px 22px;
+  display: flex; flex-direction: column; gap: 10px;
+  transition: box-shadow var(--dur-base) var(--ease-in-out),
+              transform var(--dur-base) var(--ease-out);
+  cursor: default;
+}
+.stat-card:hover  { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.stat-card:active { transform: translateY(0); box-shadow: var(--shadow-xs); }
+
+/* ── Orders page ──────────────────────────────────────── */
+.order-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px 24px;
+  display: flex; flex-direction: column; gap: 10px;
+  transition: box-shadow var(--dur-base);
+}
+.order-card:hover { box-shadow: var(--shadow-sm); }
+
+/* ── Static info pages — back link ───────────────────── */
+
+/* ── Account page delete address ─────────────────────── */
+.addr-delete-btn {
+  background: none; border: none; cursor: pointer; padding: 4px;
+  color: var(--muted); border-radius: var(--radius-xs);
+  transition: color var(--dur-fast), transform var(--dur-instant);
+  -webkit-tap-highlight-color: transparent;
+}
+.addr-delete-btn:hover  { color: var(--danger); }
+.addr-delete-btn:active { transform: scale(0.88); }
+
+/* ── Gifts page ───────────────────────────────────────── */
+.gifts-tea-card {
+  transition: box-shadow var(--dur-base), transform var(--dur-base) var(--ease-out);
+  cursor: pointer;
+}
+.gifts-tea-card:hover  { box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.gifts-tea-card:active { transform: translateY(0); }
+
+/* ── Empty states — consistent pattern ───────────────── */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 64px 24px; text-align: center; gap: 16px;
+}
+.empty-state-icon {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: var(--gold-soft); border: 1px solid var(--accent-20);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold); margin-bottom: 4px;
+  animation: iconFloat 3s ease-in-out infinite;
+}
+.empty-state h3 {
+  font-family: var(--font-serif); font-size: 1.4rem; font-weight: 300;
+  color: var(--midnight); margin: 0 0 4px;
+}
+.empty-state p {
+  font-size: var(--text-ui); color: var(--muted); max-width: 280px; line-height: 1.7; margin: 0;
+}
+
+/* ── Page header — consistent across all pages ─────── */
+.page-header {
+  text-align: center;
+  padding: clamp(2.5rem,5vw,4rem) 1rem clamp(1.5rem,2vw,2rem);
+  border-bottom: 1px solid var(--border);
+}
+.page-header .overline { margin-bottom: 10px; }
+.page-header h1 {
+  font-family: var(--font-serif); font-size: clamp(2rem,4vw,3rem);
+  font-weight: 300; letter-spacing: -0.025em; color: var(--midnight);
+  margin: 0 0 8px;
+}
+.page-header p { font-size: var(--text-sm); color: var(--muted); margin: 0; }
+
+/* ── @keyframes spin — used by App.tsx page loader + .icon-spin ─────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Button alias fixes — REMOVED
+   .btn-primary / .btn-secondary existed only for StyleShowcase &
+   ResponsiveTest, both of which are never imported. Deleted. */
+
+/* ── CartDrawer custom button classes → design system tokens ────────────────
+   Replace all the cd-* one-off classes with consistent token-driven styles. */
+.cd-close-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  background: var(--surface-2); border: 1px solid var(--border);
+  color: var(--muted); cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast), transform var(--dur-instant);
+  -webkit-tap-highlight-color: transparent;
+}
+.cd-close-btn:hover  { background: var(--surface-3); color: var(--text); }
+.cd-close-btn:active { transform: scale(0.88); }
+
+.cd-stepper-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: var(--radius-xs);
+  background: none; border: none; cursor: pointer;
+  color: var(--muted);
+  transition: background var(--dur-fast), color var(--dur-fast), transform var(--dur-instant);
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.cd-stepper-btn:hover  { background: var(--surface-2); color: var(--text); }
+.cd-stepper-btn:active { background: var(--surface-3); transform: scale(0.86); }
+
+.cd-remove-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: var(--text-xs); font-weight: 500; color: var(--muted);
+  font-family: var(--font-sans); letter-spacing: 0.04em;
+  text-decoration: underline; text-underline-offset: 2px;
+  padding: 4px 0; transition: color var(--dur-fast), transform var(--dur-instant);
+  -webkit-tap-highlight-color: transparent;
+}
+.cd-remove-btn:hover  { color: var(--danger); }
+.cd-remove-btn:active { transform: scale(0.92); }
+
+.cd-checkout-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 14px; border: none; cursor: pointer;
+  background: var(--midnight); color: var(--on-dark);
+  font-family: var(--font-sans); font-size: var(--text-xs); font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  border-radius: var(--radius-md); text-decoration: none;
+  transition: background var(--dur-fast), transform var(--dur-instant) var(--ease-spring),
+              box-shadow var(--dur-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+.cd-checkout-btn:hover  { background: var(--midnight-2); box-shadow: var(--shadow-md); }
+.cd-checkout-btn:active { transform: scale(0.98); }
+
+.cd-view-cart-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 11px; border: 1.5px solid var(--border); cursor: pointer;
+  background: transparent; color: var(--text);
+  font-family: var(--font-sans); font-size: var(--text-xs); font-weight: 600;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  border-radius: var(--radius-md); text-decoration: none;
+  transition: background var(--dur-fast), border-color var(--dur-fast), transform var(--dur-instant);
+}
+.cd-view-cart-btn:hover  { background: var(--surface-2); border-color: var(--border-2); }
+.cd-view-cart-btn:active { transform: scale(0.97); }
+
+.cd-browse-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 22px; border: 1.5px solid var(--border);
+  background: transparent; color: var(--text);
+  font-family: var(--font-sans); font-size: var(--text-xs); font-weight: 600;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  border-radius: var(--radius-md); cursor: pointer; text-decoration: none;
+  transition: background var(--dur-fast), border-color var(--dur-fast), transform var(--dur-instant);
+}
+.cd-browse-btn:hover  { background: var(--surface-2); border-color: var(--border-2); }
+.cd-browse-btn:active { transform: scale(0.96); }
+
+/* ── TeaProfilePage CTA → design system ────────────────────────────────────
+   tpf-cta was using raw inline styles — replace with composable classes.  */
+.tpf-cta {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 14px 28px; border: none; cursor: pointer;
+  font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 700;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  border-radius: var(--radius-md);
+  transition: background var(--dur-fast), transform var(--dur-instant) var(--ease-spring),
+              box-shadow var(--dur-fast), opacity var(--dur-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+.tpf-cta:hover:not(:disabled)  { box-shadow: 0 6px 20px rgba(15,28,38,.22); transform: translateY(-1px); }
+.tpf-cta:active:not(:disabled) { transform: translateY(0); }
+.tpf-cta:disabled { cursor: not-allowed; }
+.tpf-add-btn { background: var(--midnight); color: var(--on-dark); }
+.tpf-add-btn:hover:not(:disabled) { background: var(--midnight-2); }
+
+/* ═══════════════════════════════════════════════════════════════
+   SHARED PAGE LAYOUT — consistent across all customer-facing pages
+   Matches the visual language of TeaProfilePage.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Page wrapper — dvh keeps the bottom edge from disappearing under
+   iOS Safari's URL bar. Falls back to vh on older browsers. */
+.page-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+}
+
+/* Centred page header — overline + serif title + gold rule */
+.page-hero {
+  text-align: center;
+  padding: clamp(2.5rem,5vw,4rem) 1rem clamp(1.5rem,2vw,2rem);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.page-hero .overline { margin-bottom: 10px; }
+.page-hero h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem,4vw,3rem);
+  font-weight: 300;
+  letter-spacing: -0.025em;
+  color: var(--midnight);
+  margin: 0 0 14px;
+}
+.page-hero-rule {
+  width: 40px; height: 2px;
+  background: var(--gold);
+  border-radius: 1px;
+  margin: 0 auto;
+}
+
+/* Section card — matches TeaProfilePage detail cards */
+.section-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  transition: box-shadow var(--dur-base) var(--ease-in-out);
+}
+.section-card:hover { box-shadow: var(--shadow-sm); }
+
+.section-card-head {
+  display: flex; align-items: center; gap: 14px;
+  padding: var(--sp-5) var(--sp-6);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.section-card-icon {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--gold-soft);
+  border: 1px solid var(--accent-20);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold-text); flex-shrink: 0;
+  transition: transform var(--dur-base) var(--ease-spring);
+}
+.section-card:hover .section-card-icon { transform: scale(1.08) rotate(-4deg); }
+.section-card-head h2 {
+  font-family: var(--font-serif);
+  font-size: 1.15rem; font-weight: 400;
+  color: var(--text); letter-spacing: -0.01em;
+  margin: 0;
+}
+.section-card-body { padding: var(--sp-6); }
+
+/* Credit widget — tea profile card style */
+.credit-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+.credit-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--sp-5) var(--sp-6);
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, var(--surface) 0%, var(--gold-soft) 100%);
+}
+.credit-balance {
+  font-family: var(--font-serif);
+  font-size: clamp(2.2rem,4vw,3rem);
+  font-weight: 300; letter-spacing: -0.03em;
+  color: var(--midnight); line-height: 1;
+}
+.credit-progress-bar {
+  height: 6px; border-radius: var(--radius-full);
+  background: var(--surface-3); overflow: hidden;
+}
+.credit-progress-fill {
+  height: 100%; border-radius: var(--radius-full);
+  background: linear-gradient(to right, var(--gold-deep), var(--gold));
+  transition: width 600ms var(--ease-out);
+}
+.credit-stat {
+  flex: 1; text-align: center; padding: var(--sp-4) var(--sp-5);
+  border-right: 1px solid var(--border);
+}
+.credit-stat:last-child { border-right: none; }
+.credit-stat-val {
+  font-family: var(--font-serif);
+  font-size: 1.4rem; font-weight: 300; color: var(--midnight);
+  line-height: 1; margin-bottom: 4px;
+}
+
+/* Address card */
+.address-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  position: relative;
+  transition: box-shadow var(--dur-base), border-color var(--dur-base);
+}
+.address-card:hover { box-shadow: var(--shadow-xs); border-color: var(--border-2); }
+.address-card.is-default {
+  border-color: var(--gold);
+  background: var(--gold-soft);
+}
+
+/* ─── Toaster (sonner-based, brand-skinned) ────────────────────────────────
+   Class hooks come from src/app/components/ui/sonner.tsx
+   (`toastOptions.classNames`). Sonner injects these onto its internal
+   nodes; we don't have to chase its DOM structure ourselves.
+
+   Goals:
+     • Premium feel — soft shadow, brand serif title, sans body
+     • Close button that doesn't crash into the toast border (the bug
+       in the screenshot — sonner's default puts it on the corner with
+       no padding allowance; we pull the toast inward)
+     • Color accent on the LEFT edge (4px gold/red/etc bar) instead of
+       sonner's default full-border tinting — feels more sophisticated
+     • Same look on every device, with mobile-specific padding
+*/
+
+/* Toast container — applied to every toast regardless of variant */
+.ele-toast {
+  font-family:     var(--font-sans);
+  background:      var(--surface) !important;
+  color:           var(--text) !important;
+  border:          1px solid var(--border) !important;
+  border-radius:   12px !important;
+  /* Generous left padding leaves room for the colored accent bar
+     drawn via a pseudo-element below. Right padding leaves room for
+     the close × so it never overlaps the text. */
+  padding:         14px 44px 14px 18px !important;
+  min-height:      52px;
+  box-shadow:
+    0 12px 40px -8px rgba(15, 28, 38, 0.18),
+    0 4px 12px -2px rgba(15, 28, 38, 0.08) !important;
+  position:        relative;
+  overflow:        hidden;       /* clips the accent bar pseudo */
+  letter-spacing:  -0.005em;
+  /* Smooth entry — sonner already animates, this just polishes it */
+  transition:      transform var(--dur-normal) ease, box-shadow var(--dur-normal) ease;
+}
+
+/* Vertical accent bar on the left edge — the colored part of the
+   toast. 4px wide, full height. We re-color it per variant below. */
+.ele-toast::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--border);    /* default neutral; overridden per variant */
+}
+
+.ele-toast:hover {
+  /* Subtle lift on hover — communicates the toast is interactive
+     (close button, action button). Same idiom as cards. */
+  transform: translateY(-1px);
+  box-shadow:
+    0 16px 48px -10px rgba(15, 28, 38, 0.22),
+    0 6px 16px -4px rgba(15, 28, 38, 0.10) !important;
+}
+
+/* Variant-specific accent colors. We only restyle the left bar +
+   the icon — the toast body stays cream so messages are readable
+   against the brand instead of fighting it. */
+.ele-toast.ele-toast-success::before { background: var(--gold); }
+.ele-toast.ele-toast-error::before   { background: var(--danger); }
+.ele-toast.ele-toast-warning::before { background: var(--gold-deep); }
+.ele-toast.ele-toast-info::before    { background: var(--midnight); }
+
+/* Title (when the toast has both title + description) */
+.ele-toast-title {
+  font-family:     var(--font-serif);
+  font-weight:     500;
+  font-size:       var(--text-base);
+  color:           var(--text);
+  letter-spacing:  -0.01em;
+  line-height:     1.3;
+}
+
+/* Body / description text */
+.ele-toast-description {
+  font-family:     var(--font-sans);
+  font-size:       var(--text-sm);
+  color:           var(--muted);
+  line-height:     1.5;
+  margin-top:      2px;
+}
+
+/* When there's no description (most of our toasts), sonner uses the
+   title slot for the entire message. Bump the size and make it the
+   primary visible text. */
+.ele-toast > [data-content] > [data-title]:only-child {
+  font-family: var(--font-sans);
+  font-size:   var(--text-ui);
+  font-weight: 500;
+  color:       var(--text);
+}
+
+/* Action button (rare — used for "Undo" style affordances) */
+.ele-toast-action {
+  font-family:   var(--font-sans) !important;
+  font-size:     var(--text-xs) !important;
+  font-weight:   600 !important;
+  background:    var(--midnight) !important;
+  color:         var(--on-dark) !important;
+  border:        none !important;
+  border-radius: 8px !important;
+  padding:       6px 12px !important;
+  cursor:        pointer;
+}
+
+/* Cancel button — same shape, neutral colors */
+.ele-toast-cancel {
+  font-family:   var(--font-sans) !important;
+  font-size:     var(--text-xs) !important;
+  background:    transparent !important;
+  color:         var(--muted) !important;
+  border:        1px solid var(--border) !important;
+  border-radius: 8px !important;
+  padding:       6px 12px !important;
+}
+
+/* ── Close button (×) ──
+   This is the bug shown in screenshot 1 — sonner's default puts
+   the × overlapping the border. Fix: position with proper offset
+   and give it a subtle hover affordance. */
+.ele-toast-close {
+  position:        absolute !important;
+  top:             10px !important;
+  right:           10px !important;
+  /* Phase 9 touch-target fix — was 22×22 (WCAG 2.5.8 AA fail).
+     24×24 minimum passes AA. The inner svg stays 12×12 for visual
+     parity with sonner's default; the extra 2px is hit area. */
+  width:           24px !important;
+  height:          24px !important;
+  /* Override sonner's default border + transparent background */
+  background:      transparent !important;
+  border:          none !important;
+  border-radius:   50% !important;
+  display:         flex !important;
+  align-items:     center !important;
+  justify-content: center !important;
+  color:           var(--muted) !important;
+  opacity:         0.55;
+  cursor:          pointer;
+  transition:      opacity var(--dur-fast), background var(--dur-fast), transform var(--dur-fast);
+  /* Sonner's default tries to render at top-left — this re-anchors
+     to the top-right where our padding accounts for it. */
+  transform:       none !important;
+  left:            auto !important;
+}
+.ele-toast-close:hover {
+  opacity:    1;
+  background: var(--surface-2) !important;
+  transform:  scale(1.08) !important;
+}
+.ele-toast-close svg {
+  width:  12px;
+  height: 12px;
+}
+
+/* ── Mobile tweaks ──
+   At narrow viewports, toasts get a touch more padding (easier to
+   tap close) and the position swap is handled in TS. */
+@media (max-width: 600px) {
+  .ele-toast {
+    padding:       16px 48px 16px 20px !important;
+    border-radius: 14px !important;
+    /* Take full width minus screen edge gutters so toasts don't
+       look orphaned against the screen edge on phones. */
+    width:         calc(100vw - 32px) !important;
+    max-width:     440px;
+  }
+  .ele-toast-close {
+    width:  28px !important;
+    height: 28px !important;
+    top:    12px !important;
+    right:  12px !important;
+  }
+  .ele-toast-close svg {
+    width:  14px;
+    height: 14px;
+  }
+}
+
+/* Respect reduced-motion preferences — no hover lift, no scale */
+@media (prefers-reduced-motion: reduce) {
+  .ele-toast,
+  .ele-toast:hover,
+  .ele-toast-close,
+  .ele-toast-close:hover {
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* ─── Pagination — Google Cloud Console-style data-table footer ──────
+   Used by the shared <Pagination /> component (see src/app/components/
+   ui/Pagination.tsx). Visual reference is the GCP / Material Design
+   data-table pagination control: muted greys, right-aligned, circular
+   chevron hover state, native <select> styled as a flat dropdown.
+
+   Element layout:
+   ┌───────────────────────────────────────────────────────────────────┐
+   │  Items per page:  [50 ▼]   1–4   <  >                             │
+   └───────────────────────────────────────────────────────────────────┘
+       label             select   range   prev next
+
+   Tokens used:
+     --muted        muted body text + chevron icon colour
+     --text         active hover state for chevrons
+     --surface-2    chevron hover background (subtle wash)
+     --border       select border (matches form fields)
+   Inherits dark mode automatically since both --muted and --surface-2
+   are themed in tokens.css. */
+.pagination-root {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 28px;
+  padding: 12px 4px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--muted);
+  flex-wrap: wrap; /* Wrap gracefully on narrow viewports */
+}
+
+.pagination-label {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Native select styled to look like the GCP dropdown: borderless, with
+   a subtle chevron via background-image so we don't depend on the
+   browser default (which varies wildly between Chrome/Safari/Firefox).
+   We hide the native arrow with appearance:none and inject our own
+   so the look is identical across browsers. */
+.pagination-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.pagination-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: transparent;
+  border: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text);
+  padding: 4px 24px 4px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  /* Custom dropdown chevron — inline SVG so it adapts to dark mode
+     via currentColor on the <select> color. The fill encodes the
+     muted token at light-mode value; .dark override below recolors. */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a7088' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 12px 12px;
+  transition: background-color var(--dur-fast) ease;
+}
+.pagination-select:hover  { background-color: var(--surface-2); }
+.pagination-select:focus  { outline: none; background-color: var(--surface-2); }
+.pagination-select:focus-visible {
+  /* R3 file4: --accent (no suffix) doesn't exist in tokens.css — the fallback was always firing. #5a7088 IS --muted. */
+  outline: 2px solid var(--muted);
+  outline-offset: 1px;
+}
+
+/* Static fallback: shown when the consumer didn't pass an
+   onPageSizeChange callback. Visually mirrors the .pagination-select
+   value font/color so the rest of the row stays aligned. */
+.pagination-size-static {
+  font-size: var(--text-sm);
+  color: var(--text);
+  padding: 4px 8px;
+}
+
+.pagination-range {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  white-space: nowrap;
+  /* GCP gives the range a tiny nudge of horizontal breathing room
+     compared to the surrounding controls. */
+  margin: 0 4px;
+}
+
+/* Chevron buttons — circular hover state, no border, just the icon.
+   Matches the way GCP / Material data-table pagination renders the
+   prev/next controls. Disabled state fades to ~30% opacity and kills
+   pointer events so tap-targets feel right. */
+.pagination-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease;
+  /* Reset margin / padding so the icon sits in the middle of the
+     32×32 tap target. */
+  padding: 0;
+  margin: 0;
+}
+.pagination-chevron:hover  { background-color: var(--surface-2); color: var(--text); }
+.pagination-chevron:active { background-color: var(--surface-3); }
+.pagination-chevron:focus-visible {
+  /* R3 file4: --accent (no suffix) doesn't exist in tokens.css — the fallback was always firing. #5a7088 IS --muted. */
+  outline: 2px solid var(--muted);
+  outline-offset: 2px;
+}
+.pagination-chevron:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Dark-mode adjustments — recolor the inline SVG chevron in the select
+   since the data-URI baked the light-mode hex. */
+.dark .pagination-select {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a90a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+}
+.dark .pagination-select:hover,
+.dark .pagination-select:focus { background-color: var(--surface-3); }
+
+/* Mobile: at narrow viewports, tighten the gap and let the controls
+   stack onto two lines if needed. The flex-wrap on .pagination-root
+   already permits wrapping; here we just tune the spacing to feel
+   right on a 360-wide phone. */
+@media (max-width: 540px) {
+  .pagination-root {
+    gap: 14px;
+    justify-content: space-between;
+  }
+  .pagination-label { font-size: var(--text-xs); }
+  .pagination-select, .pagination-size-static, .pagination-range { font-size: var(--text-xs); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COLLAPSIBLE SECTION CARD — used on /account
+   Wraps the existing .section-card visual with an expand/collapse
+   header. The body uses the grid-rows trick to animate height
+   without measuring the child.
+   ═══════════════════════════════════════════════════════════════ */
+.collapsible-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  transition:
+    box-shadow var(--dur-base) var(--ease-in-out),
+    border-color var(--dur-base) var(--ease-in-out);
+}
+.collapsible-card:hover  { box-shadow: var(--shadow-sm); }
+.collapsible-card.is-open { border-color: var(--border-2); }
+.collapsible-card.is-open:hover { box-shadow: var(--shadow-md); }
+
+.collapsible-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--surface);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  transition: background var(--dur-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+.collapsible-header:hover { background: var(--surface-2); }
+.collapsible-header:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: -2px;
+}
+
+.collapsible-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0; /* allow text ellipsis */
+  flex: 1;
+}
+.collapsible-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.collapsible-header-text h2 {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 400;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.collapsible-subtitle {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  letter-spacing: 0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collapsible-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-shrink: 0;
+}
+.collapsible-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  color: var(--muted);
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    background var(--dur-fast),
+    color var(--dur-fast);
+}
+.collapsible-card.is-open .collapsible-chevron {
+  transform: rotate(180deg);
+  background: var(--gold-soft);
+  color: var(--gold-text);
+}
+
+/* Animated panel — grid-rows 0fr/1fr trick.
+   Falls back to a hard show/hide for browsers without grid-template-rows
+   transition support (Firefox <127, very rare).  */
+.collapsible-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-normal) var(--ease-out);
+}
+.collapsible-card.is-open .collapsible-panel {
+  grid-template-rows: 1fr;
+}
+.collapsible-panel-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+.collapsible-panel-content {
+  padding: var(--sp-5) var(--sp-5) var(--sp-6);
+  border-top: 1px solid var(--border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collapsible-panel,
+  .collapsible-chevron {
+    transition: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ACCOUNT — ORDER HISTORY (inside a collapsible)
+   Compact list view of recent orders with a Reorder button.
+   ═══════════════════════════════════════════════════════════════ */
+.order-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  /* Phase 9.1 — query container so order rows adapt to their parent's
+     width, not the viewport. Same row JSX used in /orders (full-page)
+     could later appear in a narrower sidebar widget; container queries
+     let us add that placement without duplicating markup. */
+  container-type: inline-size;
+  container-name: order-list;
+}
+.order-history-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--sp-3) var(--sp-4);
+  padding: var(--sp-4);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  transition:
+    box-shadow var(--dur-base),
+    border-color var(--dur-base);
+}
+.order-history-row:hover {
+  box-shadow: var(--shadow-xs);
+  border-color: var(--border-2);
+}
+.order-history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+.order-history-id {
+  font-family: monospace;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--midnight);
+  letter-spacing: -0.01em;
+}
+.order-history-date {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.order-history-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.order-history-summary {
+  grid-column: 1 / -1;
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  line-height: 1.55;
+  /* Clamp long item lists to two lines so the row stays tidy.
+     Customers can click "View all" to see full details. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.order-history-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.order-history-total {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 300;
+  color: var(--midnight);
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+.order-history-reorder {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--midnight);
+  color: var(--on-dark);
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast),
+    transform var(--dur-instant);
+  -webkit-tap-highlight-color: transparent;
+}
+.order-history-reorder:hover  { background: var(--midnight-2, var(--midnight)); }
+.order-history-reorder:active { transform: scale(0.97); }
+.order-history-reorder:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.order-history-view-all {
+  margin-top: var(--sp-4);
+  text-align: center;
+}
+
+/* Mobile — stack the actions under the meta info so the row stays
+   readable on a 360-wide screen. The grid collapses to single column
+   and the actions cluster shows total + button side-by-side. */
+/* Phase 9.1 — Migrated from @media (max-width: 540px). Stacks the
+   action column below the meta column when the container is narrow,
+   regardless of viewport width. Layout matches what the user sees
+   in the OrdersPage container today; future placements (admin order
+   widget, account-page recent-orders) get the same behavior for free. */
+@container order-list (max-width: 540px) {
+  .order-history-row {
+    grid-template-columns: 1fr;
+    padding: var(--sp-3) var(--sp-4);
+  }
+  .order-history-actions {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    grid-column: 1 / -1;
+  }
+  .order-history-id { font-size: var(--text-xs); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CHECKOUT — ORDER CONFIRMATION MODAL
+   Originally inline-styled with fixed paddings that left the modal
+   feeling loose on narrow phones (lots of empty space, oversized
+   icon, big serif title overflowing). These classes tighten things
+   up at <= 480px and let the modal hug the viewport edges with a
+   safe-area-aware gutter.
+   ═══════════════════════════════════════════════════════════════ */
+.confirm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal-panel);
+  background: rgba(9, 14, 18, 0.65);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  /* Safe-area padding so the modal never collides with the iOS notch /
+     dynamic island, and the bottom button isn't hidden behind the
+     home-indicator. */
+  padding:
+    max(env(safe-area-inset-top, 0), 16px)
+    max(env(safe-area-inset-right, 0), 12px)
+    max(env(safe-area-inset-bottom, 0), 24px)
+    max(env(safe-area-inset-left, 0), 12px);
+  overflow-y: auto;
+  animation: fadeIn var(--dur-normal) ease both;
+}
+.confirm-modal-panel {
+  width: 100%;
+  max-width: 520px;
+  background: var(--surface);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(9, 14, 18, 0.35);
+  /* mPanelIn duration tokenized per MOTION_GUIDE.md. Bezier is a tame spring
+     (1.2 vs token's 1.56) tuned for modal panels; retained for visual identity. */
+  animation: mPanelIn var(--dur-slow) cubic-bezier(0.34, 1.2, 0.64, 1) both;
+  margin: auto;
+  /* Cap the panel height on short / landscape viewports so the long
+     step list doesn't push the CTA off-screen. The body becomes
+     scrollable inside the panel instead of the page. */
+  max-height: calc(100dvh - max(env(safe-area-inset-top, 0), 16px) - max(env(safe-area-inset-bottom, 0), 24px));
+  display: flex;
+  flex-direction: column;
+}
+.confirm-modal-header {
+  /* stylelint-disable-next-line color-no-hex -- intentional theme-invariant dark header; the white title and gold "Order Received" overline must stay readable in BOTH themes, so we don't use --midnight (which flips to cream in dark mode). Same hex pair was used in the original inline-styled modal. */
+  background: linear-gradient(135deg, #0f1c26 0%, #1e3040 100%);
+  padding: 28px 28px 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.confirm-modal-checkmark {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(45, 110, 79, 0.18);
+  border: 1.5px solid rgba(82, 200, 130, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+.confirm-modal-overline {
+  font-size: var(--text-2xs);
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: rgba(197, 165, 114, 0.7);
+  margin-bottom: 6px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+}
+.confirm-modal-title {
+  font-family: var(--font-serif);
+  font-size: 1.75rem;
+  font-weight: 300;
+  color: var(--on-dark);
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+  line-height: 1.2;
+}
+.confirm-modal-orderline {
+  font-size: var(--text-xs);
+  color: rgba(240, 232, 216, 0.45);
+  font-family: var(--font-sans);
+}
+.confirm-modal-orderid {
+  font-family: monospace;
+  color: rgba(197, 165, 114, 0.85);
+  font-weight: 600;
+}
+.confirm-modal-body {
+  padding: 24px 28px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1 1 auto;
+}
+.confirm-modal-lead {
+  font-size: var(--text-ui);
+  color: var(--text-2);
+  line-height: 1.7;
+  margin: 0 0 20px;
+  text-align: center;
+}
+.confirm-modal-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.confirm-modal-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.confirm-modal-step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  margin-top: 1px;
+  font-family: var(--font-sans);
+}
+.confirm-modal-step-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 2px;
+  font-family: var(--font-sans);
+  line-height: 1.4;
+}
+.confirm-modal-step-desc {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 0;
+}
+.confirm-modal-note {
+  background: var(--gold-soft);
+  border: 1px solid var(--accent-20);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+.confirm-modal-note-icon { font-size: var(--text-ui); flex-shrink: 0; margin-top: 1px; }
+.confirm-modal-note p {
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  line-height: 1.55;
+  margin: 0;
+  /* Force long emails to wrap rather than stretch the modal.
+     overflow-wrap: anywhere is the modern, non-deprecated equivalent
+     of the old word-break: break-word — handles the "long email
+     overflows the note box" case on its own. */
+  overflow-wrap: anywhere;
+}
+
+/* — narrow phones: tighter paddings, smaller checkmark,
+     smaller serif title, smaller copy, full-width safe area. */
+@media (max-width: 480px) {
+  .confirm-modal-overlay {
+    padding:
+      max(env(safe-area-inset-top, 0), 12px)
+      max(env(safe-area-inset-right, 0), 10px)
+      max(env(safe-area-inset-bottom, 0), 16px)
+      max(env(safe-area-inset-left, 0), 10px);
+  }
+  .confirm-modal-panel {
+    border-radius: 16px;
+    max-height: calc(100dvh - max(env(safe-area-inset-top, 0), 12px) - max(env(safe-area-inset-bottom, 0), 16px));
+  }
+  .confirm-modal-header { padding: 22px 20px 18px; }
+  .confirm-modal-checkmark {
+    width: 52px;
+    height: 52px;
+    margin-bottom: 12px;
+  }
+  .confirm-modal-checkmark svg { width: 26px; height: 26px; }
+  .confirm-modal-overline { font-size: var(--text-2xs); margin-bottom: 4px; }
+  .confirm-modal-title { font-size: 1.35rem; }
+  .confirm-modal-orderline { font-size: var(--text-xs); }
+  .confirm-modal-body { padding: 18px 20px 20px; }
+  .confirm-modal-lead {
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    margin-bottom: 16px;
+    text-align: left; /* easier to read on narrow lines than centered */
+  }
+  .confirm-modal-steps { gap: 10px; margin-bottom: 16px; }
+  .confirm-modal-step-title { font-size: var(--text-xs); }
+  .confirm-modal-step-desc { font-size: var(--text-xs); }
+  .confirm-modal-note { padding: 10px 12px; gap: 8px; }
+  .confirm-modal-note p { font-size: var(--text-xs); }
+}
+
+/* — very narrow (e.g. iPhone SE / 360-wide), trim further. */
+@media (max-width: 360px) {
+  .confirm-modal-header { padding: 20px 16px 16px; }
+  .confirm-modal-title { font-size: 1.2rem; }
+  .confirm-modal-body { padding: 16px 16px 18px; }
+  .confirm-modal-step-num { width: 22px; height: 22px; font-size: var(--text-2xs); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PHASE 3 — UTILITY CLASSES
+   Replaces the most-repeated inline style={{}} patterns identified
+   by the audit (top 10 signatures = 22% of all 1,688 instances).
+   Covers: vertical stacks, horizontal rows, common margins,
+   common gaps, common gap-rows for badges/tag clusters.
+
+   Naming convention:
+     .stack-N    flex-column with gap = var(--sp-N)
+     .row-N      flex-row with gap = var(--sp-N) and align-items: center
+     .row-start-N same but align-items: flex-start (for icon+text where icon is taller)
+     .cluster-N  flex-row + wrap + gap=var(--sp-N) — for badge groups
+     .mb-N       margin-bottom: var(--sp-N)
+     .mt-N       margin-top: var(--sp-N)
+
+   Where N matches the existing --sp-N tokens in tokens.css:
+     1 → 4px,  2 → 8px,  3 → 12px,  4 → 16px,
+     5 → 20px, 6 → 24px, 8 → 32px
+
+   Why these and not, say, the full Tailwind range:
+     - These are the EXACT patterns the audit found. Every class here
+       has direct callers, not speculative coverage.
+     - Adding margin-left / margin-right / padding utilities is tempting
+       but the audit shows they're rare in inline styles — most padding
+       ends up baked into component classes (e.g. .section-card-body).
+     - Skipping color/fontSize utilities deliberately: those styles are
+       almost always dynamic (theme-driven, status-driven) and should
+       use CSS variables, not utility classes.
+   ═══════════════════════════════════════════════════════════════ */
+
+.stack-1 { display: flex; flex-direction: column; gap: var(--sp-1); }
+.stack-2 { display: flex; flex-direction: column; gap: var(--sp-2); }
+.stack-3 { display: flex; flex-direction: column; gap: var(--sp-3); }
+.stack-4 { display: flex; flex-direction: column; gap: var(--sp-4); }
+.stack-5 { display: flex; flex-direction: column; gap: var(--sp-5); }
+.stack-6 { display: flex; flex-direction: column; gap: var(--sp-6); }
+
+.row-1 { display: flex; align-items: center; gap: var(--sp-1); }
+.row-2 { display: flex; align-items: center; gap: var(--sp-2); }
+.row-3 { display: flex; align-items: center; gap: var(--sp-3); }
+.row-4 { display: flex; align-items: center; gap: var(--sp-4); }
+.row-5 { display: flex; align-items: center; gap: var(--sp-5); }
+.row-6 { display: flex; align-items: center; gap: var(--sp-6); }
+
+/* Variant for icon + multi-line text where the icon must align with the
+   first text line, not vertically center. Common in alert/info notes. */
+.row-start-2 { display: flex; align-items: flex-start; gap: var(--sp-2); }
+.row-start-3 { display: flex; align-items: flex-start; gap: var(--sp-3); }
+
+/* `cluster` = wrappable row, used for badge groups, tag chips, action
+   buttons that may overflow on narrow viewports. */
+.cluster-1 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); }
+.cluster-2 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.cluster-3 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }
+
+/* Margin utilities — bottom is FAR more common than top in the audit
+   (33× vs 19×) because design tends to flow top-to-bottom. */
+.mb-1 { margin-bottom: var(--sp-1); }
+.mb-2 { margin-bottom: var(--sp-2); }
+.mb-3 { margin-bottom: var(--sp-3); }
+.mb-4 { margin-bottom: var(--sp-4); }
+.mb-5 { margin-bottom: var(--sp-5); }
+.mb-6 { margin-bottom: var(--sp-6); }
+.mb-8 { margin-bottom: var(--sp-8); }
+
+.mt-1 { margin-top: var(--sp-1); }
+.mt-2 { margin-top: var(--sp-2); }
+.mt-3 { margin-top: var(--sp-3); }
+.mt-4 { margin-top: var(--sp-4); }
+.mt-5 { margin-top: var(--sp-5); }
+.mt-6 { margin-top: var(--sp-6); }
+
+/* `space-between` rows — used for label-value pairs in summaries,
+   header bars with title left + actions right, etc. Common enough
+   to deserve its own utility. */
+.row-between { display: flex; align-items: center; justify-content: space-between; }
+.row-between-2 { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.row-between-3 { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+
+/* Auto-fit grid — repeated 34× in the audit, almost always with the
+   same shape: minmax(180px-220px, 1fr). Locks the breakpoint in CSS
+   instead of duplicating it inline. The `.grid-auto-Npx` lets callers
+   pick the min-column-width without making an opinionated single
+   choice. */
+.grid-auto-140 { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.grid-auto-180 { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.grid-auto-200 { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.grid-auto-220 { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+/* Common typography utilities for repeated patterns. NOT a general-
+   purpose font-size scale — only the patterns the audit shows
+   actually repeat across multiple files. */
+.text-muted    { color: var(--muted); }
+.text-muted-sm { color: var(--muted); font-size: var(--text-xs); }
+.text-muted-xs { color: var(--muted); font-size: var(--text-xs); }
+.text-text2-sm { color: var(--text-2); font-size: var(--text-sm); line-height: 1.6; }
+
+/* `--center-text` flag — cheap way to text-align center without
+   needing a full Tailwind utility set. */
+.text-center { text-align: center; }
+
+/* ═══════════════════════════════════════════════════════════════
+   CART SUMMARY — used on /cart, /checkout, and inside the cart drawer
+   Single class block replaces 25 inline style={{}} instances.
+   See src/app/components/CartSummary.tsx.
+   ═══════════════════════════════════════════════════════════════ */
+.cart-summary-title {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin-bottom: var(--sp-4);
+}
+.cart-summary-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-bottom: 14px; /* off-token by design — visual rhythm calibrated to row height */
+}
+.cart-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: var(--text-sm);
+}
+.cart-summary-row-success { color: var(--success); }
+.cart-summary-item-name {
+  padding-right: var(--sp-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 65%;
+}
+.cart-summary-gst-flag {
+  font-size: var(--text-2xs);
+  color: var(--muted);
+  margin-left: var(--sp-1);
+}
+.cart-summary-gst-italic {
+  font-size: var(--text-2xs);
+  margin-left: var(--sp-1);
+  color: var(--muted);
+  font-style: italic;
+}
+.cart-summary-divider-tight { margin: var(--sp-2) 0 var(--sp-3); }
+.cart-summary-shipping-free {
+  color: var(--success);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.cart-summary-shipping-fee {
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.cart-summary-shipping-pending {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-style: italic;
+}
+.cart-summary-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--sp-2);
+}
+.cart-summary-total-label {
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.cart-summary-total-amount {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: var(--midnight);
+  font-variant-numeric: tabular-nums;
+}
+.cart-summary-gst-notice {
+  font-size: var(--text-2xs);
+  color: var(--muted);
+  margin-bottom: var(--sp-2);
+  font-style: italic;
+}
+.cart-summary-earn-badge {
+  border-radius: var(--radius-sm);
+  padding: 9px var(--sp-3);
+  background: var(--gold-soft);
+  border: 1px solid var(--accent-20);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: var(--sp-2);
+}
+.cart-summary-earn-icon {
+  font-size: var(--text-ui);
+}
+.cart-summary-earn-text {
+  font-size: var(--text-xs);
+  color: var(--text-2);
+}
+.cart-summary-earn-amount {
+  color: var(--gold-text);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EMAIL VERIFICATION MODAL — replaces 14 inline styles in
+   src/app/components/modals/EmailVerificationModal.tsx
+   ═══════════════════════════════════════════════════════════════ */
+.evm-body { display: flex; flex-direction: column; gap: var(--sp-5); }
+.evm-icon-cluster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: var(--sp-2) 0 var(--sp-1);
+}
+.evm-icon-circle {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: var(--gold-soft);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold-deep);
+  border: 1px solid var(--accent-20);
+}
+.evm-lead {
+  font-size: var(--text-ui);
+  color: var(--text);
+  text-align: center;
+  line-height: 1.5;
+  margin: 0;
+}
+.evm-email-strong {
+  color: var(--midnight);
+  /* `word-break: break-word` is deprecated in favor of overflow-wrap.
+     Same behavior — break long unbreakable strings (an email like
+     averylongprefix@somewhere.example.com that overflows the modal
+     width) at any point rather than letting them blow out the layout. */
+  overflow-wrap: anywhere;
+}
+.evm-info-card {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  line-height: 1.7;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px var(--sp-4);
+}
+.evm-info-heading {
+  font-weight: 500;
+  color: var(--text);
+  margin: 0 0 var(--sp-2);
+}
+.evm-info-body { margin: 0; }
+.evm-info-list {
+  margin: 0;
+  padding-left: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.evm-resend-cluster { text-align: center; }
+.evm-resend-help {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin: 0 0 var(--sp-2);
+}
+.evm-resend-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) 18px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-family: var(--font-sans);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--gold-deep);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.evm-resend-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.evm-footer {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WELCOME CREDIT MODAL — replaces 21 inline styles in
+   src/app/components/WelcomeCreditModal.tsx
+   The confetti loop's per-piece styles stay inline (random color,
+   horizontal position, delay, size, rotation per iteration) — but
+   the static container + base shape lives here.
+   ═══════════════════════════════════════════════════════════════ */
+.wcm-overlay {
+  position: fixed;
+  inset: 0;
+  /* Welcome modal sits ABOVE regular modals because it's a one-time
+     celebration that should win any layering conflict — but BELOW
+     the notification panel which carries critical real-time alerts. */
+  z-index: var(--z-modal-panel);
+  background: rgba(9, 14, 18, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-5);
+  animation: wcm-fade-in var(--dur-normal) ease both;
+}
+.wcm-confetti-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.wcm-confetti-piece {
+  position: absolute;
+  top: -30px;
+  border-radius: 2px;
+  opacity: 0.9;
+}
+.wcm-card {
+  position: relative;
+  max-width: 480px;
+  width: 100%;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--gold-tint) 100%);
+  border: 1px solid var(--accent-30);
+  border-radius: var(--radius-xl);
+  padding: clamp(28px, 5vw, 44px) clamp(24px, 5vw, 40px) clamp(24px, 4vw, 36px);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--accent-20) inset;
+  text-align: center;
+  animation: wcm-pop-in var(--dur-xslow) cubic-bezier(.34, 1.56, .64, 1) both;
+}
+.wcm-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--dur-fast);
+}
+/* Was previously a JS mouseEnter/mouseLeave style mutation —
+   translates cleanly to a :hover rule and avoids the runtime
+   handlers entirely. */
+.wcm-close:hover { background: rgba(0, 0, 0, 0.12); }
+.wcm-disc {
+  width: 78px;
+  height: 78px;
+  margin: 0 auto 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-deep) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 30px rgba(212, 170, 104, 0.4);
+  position: relative;
+}
+.wcm-halo {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: rgba(212, 170, 104, 0.3);
+  animation: wcm-halo 2.4s ease-in-out infinite;
+}
+.wcm-sparkles-icon {
+  color: var(--on-dark);
+  position: relative;
+  z-index: 1;
+}
+.wcm-overline {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+  margin: 0 0 var(--sp-2);
+}
+.wcm-headline {
+  font-family: var(--font-serif);
+  font-size: clamp(1.6rem, 4vw, 2.1rem);
+  font-weight: 300;
+  color: var(--midnight);
+  letter-spacing: -0.02em;
+  margin: 0 0 14px;
+  line-height: 1.15;
+}
+.wcm-points-box {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: 14px 28px;
+  margin: var(--sp-2) 0 14px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--accent-30);
+  border-radius: 14px;
+}
+.wcm-gift-icon {
+  color: var(--gold-deep);
+  align-self: center;
+}
+.wcm-points-number {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 6vw, 2.8rem);
+  font-weight: 400;
+  color: var(--gold-deep);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.wcm-points-label {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  font-weight: 500;
+}
+.wcm-lead {
+  font-size: var(--text-ui);
+  color: var(--text-2);
+  line-height: 1.6;
+  margin: 0 auto 22px;
+  max-width: 360px;
+}
+.wcm-emphasis { color: var(--midnight); }
+.wcm-cta-cluster {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.wcm-cta-primary {
+  flex: 1 1 auto;
+  padding: 13px var(--sp-6);
+  background: var(--midnight);
+  color: var(--on-dark);
+  border: 1.5px solid var(--midnight);
+  border-radius: 999px;
+  font-size: var(--text-ui);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform var(--dur-fast), box-shadow var(--dur-fast);
+}
+/* Replaces the JS mouseEnter/Leave handlers with a CSS :hover —
+   browser-native, no React re-render, identical visual effect. */
+.wcm-cta-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(15, 28, 38, 0.25);
+}
+.wcm-cta-secondary {
+  padding: 13px 18px;
+  background: transparent;
+  color: var(--text-2);
+  border: none;
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+

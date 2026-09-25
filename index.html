@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      Viewport — accessible + native-mobile-app feel:
+        - maximum-scale=5
+            Allows pinch-to-zoom up to 5× so low-vision users can
+            magnify text per WCAG 1.4.4 (Resize Text, AA). Phase 22
+            restored this; prior config (`maximum-scale=1.0,
+            user-scalable=no`) felt more native-app-like but failed
+            1.4.4 — the only AA criterion the app didn't meet.
+            5× is plenty for reading; iOS/Android cap at 5× anyway.
+        - viewport-fit=cover
+            Renders the page underneath iPhone X+ notch and home
+            indicator. We add safe-area-inset padding in design.css
+            so content isn't actually hidden behind them.
+        - interactive-widget=resizes-content
+            On Android, the on-screen keyboard resizes the visual
+            viewport instead of overlaying content. Mobile forms feel
+            substantially better with this on.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5, viewport-fit=cover, interactive-widget=resizes-content" />
+
+    <!-- ── Primary SEO ───────────────────────────────────────────────────── -->
+    <title>Loose Leaf Tea Online in Canada | Ele Café Vancouver Tea Shop</title>
+    <meta name="description" content="Shop premium loose leaf teas — black, green, white, oolong, rooibos, herbal &amp; caffeine-free blends from our Vancouver tea café. Free in-store pickup and shipping across Canada." />
+    <meta name="author" content="Ele Café" />
+    <!-- theme-color: media-aware so the browser URL bar matches the page
+         background in both light and dark modes. Without the media split
+         the dark color was used in light mode too, creating visual
+         dissonance with the cream background. -->
+    <meta name="theme-color" content="#fdfaf5" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f1c26" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="geo.region" content="CA-BC" />
+    <meta name="geo.placename" content="Vancouver, British Columbia" />
+    <meta name="geo.position" content="49.2634;-123.1162" />
+    <meta name="ICBM" content="49.2634, -123.1162" />
+
+    <!-- ── Search Console Verification (add your token) ─────────────────── -->
+    <!-- <meta name="google-site-verification" content="YOUR_TOKEN_HERE" /> -->
+
+    <!-- ── Open Graph ────────────────────────────────────────────────────── -->
+    <meta property="og:type"         content="website" />
+    <meta property="og:site_name"    content="Ele Café" />
+    <meta property="og:locale"       content="en_CA" />
+    <meta property="og:title"        content="Loose Leaf Tea Online in Canada | Ele Café Vancouver Tea Shop" />
+    <meta property="og:description"  content="Premium loose leaf teas from our Vancouver tea café. Shop online with shipping across Canada or pick up in store." />
+    <meta property="og:url"          content="https://elecafe.ca" />
+    <meta property="og:image"        content="https://elecafe.ca/og-default.png" />
+    <meta property="og:image:type"   content="image/png" />
+    <meta property="og:image:width"  content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt"    content="Ele Café — premium loose leaf tea shop in Vancouver" />
+
+    <!-- ── Twitter Card ──────────────────────────────────────────────────── -->
+    <meta name="twitter:card"        content="summary_large_image" />
+    <meta name="twitter:title"       content="Ele Café | Loose Leaf Tea, Vancouver" />
+    <meta name="twitter:description" content="Premium loose leaf teas from Vancouver, shipped across Canada." />
+    <meta name="twitter:image"       content="https://elecafe.ca/og-default.png" />
+    <meta name="twitter:image:alt"   content="Ele Café — premium loose leaf tea shop in Vancouver" />
+
+    <!-- ── Canonical / hreflang ─────────────────────────────────────────────
+         Deliberately NOT in the shell: this file is served for every route,
+         so a hard-coded href would tell Google every page is a copy of the
+         homepage. SeoHead emits the per-page canonical + hreflang, and
+         renderSeo injects the canonical into server-rendered pages. -->
+
+    <!-- ── Icons & PWA ─────────────────────────────────────────────────────
+         SVG favicon: scales crisply at any size, supported by all modern
+         browsers (Chrome 80+, Firefox 41+, Safari 9+, Edge). The .ico
+         fallback used to be required for legacy IE; we don't support it. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- ── Resource hints ──────────────────────────────────────────────────
+         Preconnect to Firebase services we hit on every page load. -->
+    <link rel="preconnect" href="https://firebasestorage.googleapis.com" />
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" />
+    <link rel="preconnect" href="https://firestore.googleapis.com" />
+
+    <!-- dns-prefetch for observability + analytics. These only fire when
+         the corresponding env vars are set (Sentry DSN, RUM endpoint,
+         GA measurement id), but resolving DNS ahead of time saves
+         ~50-100ms when they DO fire. Zero cost when they don't. -->
+    <link rel="dns-prefetch" href="https://o4509073.ingest.sentry.io" />
+    <link rel="dns-prefetch" href="https://www.google-analytics.com" />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+
+    <!-- ── Structured Data: LocalBusiness ────────────────────────────────────
+         Not hard-coded here: address, phone, hours and socials change in
+         Admin → Settings. The LocalBusiness JSON-LD is built from those
+         settings by functions/src/lib/storeContent.ts — injected into the
+         first-byte HTML by renderSeo (homepage + tea/category/collection
+         pages) and by SeoHead on the Home and Contact pages. -->
+
+    <!-- ── Structured Data: WebSite + SearchAction (Sitelinks searchbox) ── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "@id": "https://elecafe.ca/#website",
+      "name": "Ele Café",
+      "url": "https://elecafe.ca",
+      "description": "Premium loose-leaf tea, ceremonial matcha and fresh coffee — Vancouver, BC",
+      "publisher": { "@id": "https://elecafe.ca/#business" },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://elecafe.ca/products?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+
+    <!-- ── Critical inline CSS ─────────────────────────────────────────────
+         Only the rules that must apply before React mounts. The full
+         stylesheet (~22 KB gz, 4,100 lines) is loaded asynchronously
+         via the rel="preload" + onload trick injected at build time
+         (see vite.config.ts → transformIndexHtml). Phase 5 step 2 of
+         the perf roadmap.
+
+         What lives here:
+           - Color tokens for the FCP: bg, text, accent. Without these,
+             dark-mode users see a flash of the light-mode background.
+           - Layout reset (margin, height) so #root fills the viewport
+             before React paints.
+           - Loading fallback styles — the only thing visible during the
+             ~50-200ms while React hydrates.
+           - Skeleton-pulse keyframe — referenced by LazyImage on the
+             very first product card.
+           - Modulepreload font hints (if the browser supports them) so
+             the system fallback shows immediately.
+
+         What does NOT live here:
+           - Component classes (.tea-card, .nav-*, .cart-*) — those load
+             with the async stylesheet and are needed only after React
+             paints, by which time the stylesheet is in.
+           - Utility classes (.stack-N, .row-N) — same. -->
+    <style>
+      /* Tokens: only the FCP-critical ones, mirrored from tokens.css.
+         When tokens.css changes any of these, update here too. */
+      :root {
+        --bg: #fdfaf5;
+        --text: #1a2530;
+        --text-2: #444;
+        --muted: #686360;
+        --gold: #c5a572;
+        --accent: #bfa16c;
+        --surface-2: #f5f2ee;
+        --surface-3: #ede9e3;
+        --font-sans: 'Jost', 'Jost Fallback', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        --font-serif: 'Cormorant Garamond', 'Cormorant Garamond Fallback', Georgia, 'Times New Roman', serif;
+      }
+
+      /*
+        Font-fallback metric tuning to eliminate CLS from font-swap.
+
+        Without this: Cormorant Garamond loads asynchronously after first
+        paint. Georgia (the fallback) and Cormorant have different
+        metrics — Cormorant is slightly narrower with a different cap
+        height — so when Cormorant swaps in, every line of serif text
+        reflows by 1-2px. Footer/hero/headings shift = ~0.08 CLS hit.
+
+        With this: we register two fake font-families ('Cormorant
+        Garamond Fallback' and 'Jost Fallback') that point at local
+        system fonts via local() and use size-adjust/ascent-override/
+        descent-override to make those system fonts render with metrics
+        matching Cormorant/Jost. When the real fonts arrive and replace
+        the fallbacks, the layout doesn't shift because metrics are
+        already aligned.
+
+        Values empirically tuned from f-mods.netlify.app for these
+        font pairings. If you change the body font in main.tsx or
+        @fontsource imports, re-tune by sampling the new font's
+        metrics.
+      */
+      @font-face {
+        font-family: 'Cormorant Garamond Fallback';
+        src: local('Georgia'), local('Times New Roman');
+        size-adjust: 96%;
+        ascent-override: 90%;
+        descent-override: 25%;
+        line-gap-override: 0%;
+      }
+      @font-face {
+        font-family: 'Jost Fallback';
+        src: local('Helvetica Neue'), local('Arial');
+        size-adjust: 102%;
+        ascent-override: 92%;
+        descent-override: 22%;
+        line-gap-override: 0%;
+      }
+      html.dark, html[data-theme="dark"] {
+        --bg: #111820;
+        --text: #eee8dc;
+        --text-2: #c5bdaa;
+        /* Phase 7 a11y fix — was #908578 which gave 4.30:1 on .hero-sub
+           bg (#1a2530), 3.73:1 on .pillar-sub bg (#21303d), 4.48:1 on
+           .cc-* bg (#1d2124). All failed WCAG AA's 4.5:1 minimum for
+           normal text. Lifted to #a89e8a which clears 5.0:1 on every
+           dark-theme surface. Caught by the local axe snapshot run
+           (scripts/local-a11y-snapshot.mjs); the static contrast script
+           missed it because it only validates documented token pairs,
+           and this inline preboot's override of --muted from the
+           tokens.css canonical #8aa0b4 isn't on that list. */
+        --muted: #a89e8a;
+        --surface-2: #1a2530;
+        --surface-3: #243140;
+      }
+
+      html, body { margin: 0; min-height: 100%; }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      #root { min-height: 100%; }
+      img { display: block; max-width: 100%; }
+
+      /* The loading state visible while React hydrates. After hydrate
+         these styles are dead code — but cheap to ship inline. */
+      .loading {
+        display: flex; align-items: center; justify-content: center;
+        min-height: 60vh;
+        font-size: 14px; color: var(--muted);
+        letter-spacing: .05em;
+      }
+
+      /* LazyImage's skeleton pulse — referenced before the main stylesheet
+         loads on the first product card render. */
+      @keyframes skeleton-pulse {
+        0%, 100% { opacity: 1; }
+        50%      { opacity: 0.4; }
+      }
+
+      /* Reduced-motion preference — fold into the critical bundle so
+         the very first animation (LazyImage skeleton) respects it
+         even before the main stylesheet arrives. */
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+
+    <!-- ── Pre-React theme init — prevents light/dark FOUC ───────────────── -->
+    <!-- Runs synchronously in <head>, BEFORE first paint.
+         Keeps initTheme() in src/lib/theme.ts as the source of truth but
+         applies the result ahead of React hydration.                        -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('ele-cafe-theme');
+          var theme  = (stored === 'dark' || stored === 'light')
+            ? stored
+            : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          var root = document.documentElement;
+          root.setAttribute('data-theme', theme);
+          if (theme === 'dark') root.classList.add('dark');
+        } catch (e) { /* localStorage blocked → fall back to light */ }
+      })();
+    </script>
+
+    <!-- ── Google Analytics 4 (uncomment and add your Measurement ID) ───── -->
+    <!--
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX', { anonymize_ip: true });
+    </script>
+    -->
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <!--
+      No-JS fallback for pages that aren't server-rendered. Kept free of
+      facts that change (tea count, phone, address, hours) — renderSeo
+      replaces everything between the seo-noscript markers with live
+      content from Firestore on "/", tea, category, collection and
+      pairing URLs.
+    -->
+    <!-- seo-noscript:start -->
+    <noscript>
+      <div style="max-width:680px;margin:48px auto;padding:32px 24px;font-family:Georgia,'Times New Roman',serif;line-height:1.6;color:#1a2530;text-align:center">
+        <h1 style="font-size:2rem;font-weight:300;letter-spacing:-0.02em;margin:0 0 8px">Ele Café — Premium Loose Leaf Tea, Vancouver</h1>
+        <p style="font-size:1.05rem;color:#444;margin:0 0 18px">Premium loose leaf teas, ceremonial matcha and fresh coffee from our Vancouver tea café. Free in-store pickup and shipping across Canada.</p>
+        <p style="font-size:0.95rem;margin:0 0 18px">
+          Shop by type:
+          <a href="/products/black" style="color:#0f1c26">Black tea</a> ·
+          <a href="/products/green" style="color:#0f1c26">Green tea</a> ·
+          <a href="/products/white" style="color:#0f1c26">White tea</a> ·
+          <a href="/products/oolong" style="color:#0f1c26">Oolong tea</a> ·
+          <a href="/products/rooibos" style="color:#0f1c26">Rooibos</a> ·
+          <a href="/products/herbal" style="color:#0f1c26">Herbal tea</a> ·
+          <a href="/products/flower" style="color:#0f1c26">Flower tea</a> ·
+          <a href="/products/fruit" style="color:#0f1c26">Fruit tea</a>
+        </p>
+        <p style="font-size:0.95rem;margin:0 0 18px"><a href="/contact" style="color:#0f1c26">Visit us — address, hours &amp; phone</a></p>
+        <p style="font-size:0.9rem;color:#444;background:#f5f2ee;padding:14px 18px;border-radius:6px;margin:24px 0">
+          This site needs JavaScript to shop online. Please enable JavaScript in your browser, or visit us in store.
+        </p>
+      </div>
+    </noscript>
+    <!-- seo-noscript:end -->
+
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

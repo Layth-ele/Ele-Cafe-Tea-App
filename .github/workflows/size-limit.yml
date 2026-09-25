@@ -1,0 +1,132 @@
+name: Bundle Size
+
+# Phase 0.3 of the UI/UX roadmap. Compares the gzipped size of each
+# chunk against the per-chunk budgets in .size-limit.json. Posts a
+# diff comment on the PR; fails the build on a budget breach so a
+# conscious decision (raise the budget? optimize?) becomes explicit
+# rather than the regression sliding in unnoticed.
+#
+# Why we don't use the official size-limit-action:
+#   It works fine but pulls in a heavyweight Docker image and inflates
+#   CI time by ~30s on cold cache. Running size-limit directly + posting
+#   our own comment is faster and more transparent. The trade-off is
+#   that the comment has fewer fancy diff visualizations; we think that's
+#   a fair price.
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'vite.config.ts'
+      - '.size-limit.json'
+      - '.github/workflows/size-limit.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: size-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  size:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Build with the same env as production. The Firebase env vars
+      # are required by vite.config.ts's REQUIRED_FIREBASE_ENV gate;
+      # we use placeholders here because size-limit only inspects
+      # output bytes, not runtime correctness.
+      - name: Build
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY:     "ci-placeholder"
+          VITE_FIREBASE_AUTH_DOMAIN: "ci.example.com"
+          VITE_FIREBASE_PROJECT_ID:  "ci-placeholder"
+          VITE_FIREBASE_APP_ID:      "ci-placeholder"
+
+      - name: Run size-limit
+        id: size
+        run: |
+          # The exit status is what enforces the budget. Capture stdout
+          # for the PR comment.
+          npx size-limit --json > .size-report.json || (echo "size-limit failed"; cat .size-report.json; exit 1)
+          echo "## Bundle size report" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat .size-report.json >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      # Post the report as a PR comment. The marker line lets us
+      # update the same comment on subsequent pushes instead of
+      # spamming a new one each time.
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            // Run output: [{ name, passed, size, loading }]. The configured
+            // limit isn't echoed in JSON, so read it from .size-limit.json
+            // and zip by name to render budgets in the PR comment.
+            const report = JSON.parse(fs.readFileSync('.size-report.json', 'utf8'));
+            const config = JSON.parse(fs.readFileSync('.size-limit.json', 'utf8'));
+            const limitByName = Object.fromEntries(config.map(c => [c.name, c.limit]));
+
+            const lines = report.map(r => {
+              const used = (r.size / 1024).toFixed(2) + ' KB';
+              const limit = limitByName[r.name] ?? '—';
+              const status = r.passed ? '✅' : '❌';
+              const loadHint = r.loading > 0
+                ? ` · ~${r.loading.toFixed(0)}ms on 3G`
+                : '';
+              return `| ${r.name} | ${used} | ${limit} | ${status}${loadHint} |`;
+            }).join('\n');
+
+            const anyFail = report.some(r => !r.passed);
+            const body = [
+              '<!-- size-limit-report -->',
+              `### 📦 Bundle size — gzipped${anyFail ? ' ⚠️' : ''}`,
+              '',
+              '| Chunk | Size | Budget | Status |',
+              '|---|---|---|---|',
+              lines,
+              '',
+              '_Per-chunk budgets in `.size-limit.json`. Failures block merge — raise the budget by editing the file if the regression is intentional, with a justification in the PR description._',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body && c.body.includes('<!-- size-limit-report -->'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

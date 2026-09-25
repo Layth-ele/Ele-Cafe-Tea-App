@@ -1,0 +1,1513 @@
+/* ============================================================
+   ELE CAFÉ — ENTERPRISE DESIGN SYSTEM  v3
+   One file. One truth. Zero conflicts.
+   ============================================================ */
+
+/* ─── ENTERPRISE A11Y BLOCK ────────────────────────────────
+   Added in the UX audit pass. Covers:
+     1. Skip navigation link (WCAG 2.1 AA §2.4.1)
+     2. Touch-target minimums  (WCAG 2.5.5 — 44×44px)
+     3. Focus-visible polish   (WCAG 2.4.11)
+     4. High-contrast mode     (prefers-contrast: more)
+   ─────────────────────────────────────────────────────────── */
+
+/* 1. Skip navigation ─────────────────────────────────────── */
+.skip-nav {
+  position: fixed;
+  top: -100%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  padding: 10px 20px;
+  background: var(--midnight);
+  color: var(--white);
+  font-family: var(--font-sans);
+  font-size: var(--text-ui);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
+  transition: top var(--dur-fast) var(--ease-out);
+  /* Hide from layout until focused — doesn't affect page flow */
+}
+.skip-nav:focus {
+  top: 0;
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* 2. Touch-target enforcement ────────────────────────────── */
+/* Upgrade small icon buttons to 44px minimum without visually
+   enlarging them — expand the hit area with min-width/min-height. */
+.drawer-close,
+.cart-close,
+.nav-icon-btn,
+.wishlist-heart-btn,
+.tc-stepper-btn,
+.cg-nav-btn,
+.share-icon-btn,
+.cpp-hero-share-corner,
+[class*="-icon-btn"],
+[class*="-close-btn"] {
+  min-width:  44px;
+  min-height: 44px;
+}
+
+/* 3. Global focus-visible ring ───────────────────────────── */
+/* A single canonical focus ring rather than scattered per-component
+   overrides. Uses :focus-visible so mouse clicks don't show it.
+   The 2px gold ring on a white offset matches brand colours and
+   passes WCAG 3:1 contrast on any surface. */
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+/* Suppress the native ring — ours is better */
+:focus:not(:focus-visible) { outline: none; }
+
+/* Within dark surfaces, gold is still sufficient contrast */
+.dark :focus-visible,
+.nav-root :focus-visible,
+.footer  :focus-visible {
+  outline-color: var(--gold-light);
+}
+
+/* 4. High-contrast mode (Windows HCM / forced-colors) ─────── */
+@media (forced-colors: active) {
+  /* Buttons: ensure border is visible in HCM */
+  .btn, button, [role="button"] {
+    border: 2px solid ButtonText;
+    forced-color-adjust: auto;
+  }
+  /* Cards: use system border */
+  .card, .tea-card, .cg-frosted, .cpp-hero-overlay {
+    border: 1px solid ButtonText;
+  }
+  /* Focus ring: let the system handle it */
+  :focus-visible { outline: 3px solid Highlight; }
+  /* Skeleton: visible as a placeholder */
+  .skeleton { background: ButtonFace; border: 1px solid ButtonText; }
+  /* Badges: don't rely on colour alone */
+  .tea-tag, .badge { border: 1px solid ButtonText; }
+  /* Price chips: legible */
+  .cpp-price-chip, .cg-price-chip {
+    border: 1px solid ButtonText;
+    background: ButtonFace;
+    color: ButtonText;
+  }
+  /* Nav and drawer: high-contrast backgrounds */
+  .nav-root, .drawer { border-color: ButtonText; }
+  /* Announcement ticker: visible text */
+  .announce { border-bottom: 1px solid ButtonText; }
+  /* Wishlist heart: visible */
+  .wishlist-heart-btn svg { forced-color-adjust: none; stroke: ButtonText; }
+}
+
+@media (prefers-contrast: more) {
+  /* Slightly stronger borders and text contrast for "more contrast"
+     preference (not full forced-colors but users asking for more) */
+  .card, .tea-card { border-color: var(--midnight); }
+  .field { border-color: var(--midnight); }
+  .btn-outline { border-color: var(--midnight); border-width: 2px; }
+  .muted, .text-muted, [class*="-muted"] { color: var(--text); }
+}
+
+
+
+/* ─── 0. PERFORMANCE ────────────────────────────────────────
+   Skeleton shimmer — used by LazyImage before anything else   */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* ─── 1. DESIGN TOKENS — SEE tokens.css ─────────────────────
+   Day-6 consolidation: all :root / .dark token declarations that
+   used to live here now live in src/styles/tokens.css as the
+   single source of truth. Component-scoped .dark rules continue
+   below (e.g. `.dark .nav-root { ... }`).                      */
+
+/* Dark mode — component-specific overrides */
+.dark .nav-root { border-bottom-color: var(--border); }
+.dark .nav-root.hero-mode { background: var(--bg); }
+.dark .nav-root.compact-mode { background: var(--surface); }
+.dark .card { background: var(--surface); border-color: var(--border); }
+.dark .field { background: var(--surface-2); border-color: var(--border); color: var(--text); }
+.dark .field:focus { border-color: var(--gold); }
+.dark .field::placeholder { color: var(--muted); }
+.dark .btn-dark { background: var(--surface-3); color: var(--text); border-color: var(--border-2); }
+.dark .btn-dark:hover { background: var(--surface-4); border-color: var(--muted-2); }
+.dark .tea-card .tea-name { color: var(--text); }
+.dark .tea-card .tea-price { color: var(--muted); }
+.dark .hero { background: var(--surface-2); }
+.dark .hero-title { color: var(--text); }
+/* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- one-off near-black for footer in dark mode; distinct from --ft-bg */
+.dark .footer { background: #0c1520; }
+.dark .skeleton { background: linear-gradient(90deg, var(--surface-3) 0%, var(--surface-2) 50%, var(--surface-3) 100%); }
+
+/* ─── 3. RESET & BASE ───────────────────────────────────────  */
+/* In Tailwind's `base` layer, NOT unlayered: unlayered CSS beats every
+   layered rule, so an unlayered `* { padding: 0 }` silently cancelled all
+   Tailwind spacing utilities (px-4, py-2, mb-3…) used by the admin UI kit.
+   Component classes in these files stay unlayered and keep winning. */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+}
+
+a, button, label, [role="button"], input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+[id] { scroll-margin-top: var(--nav-height, 80px); }
+html { scroll-padding-top: var(--nav-height, 110px); }
+
+::selection { background: var(--accent-20); color: var(--text); }
+
+/* Offset for fixed navbar — updated by JS scroll handler via CSS var */
+body { padding-top: var(--nav-height, 110px); }
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.65;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+a    { text-decoration: none; color: inherit; }
+img  { display: block; max-width: 100%; height: auto; }
+button, input, select, textarea { font-family: var(--font-sans); }
+svg  { flex-shrink: 0; }
+
+/* ── Global mobile / iOS polish ──────────────────────────────────────
+   These rules eliminate three common iOS nuisances that affect the
+   entire app, so they live in the base layer rather than being
+   re-applied on every interactive component:
+
+   1. -webkit-tap-highlight-color: transparent
+        Removes the default gray flash iOS Safari draws over a tapped
+        element. We implement our own :active feedback (transform:
+        scale, background change) which feels intentional; the iOS
+        flash on top of that reads as a glitch.
+
+   2. touch-action: manipulation on interactive elements
+        Disables the 300ms double-tap-to-zoom delay on buttons / links.
+        Customers report a noticeable snappiness improvement on phones.
+        We don't apply it globally because some elements (image
+        galleries, maps) genuinely benefit from pinch/double-tap.
+
+   3. -webkit-text-size-adjust: 100%
+        Stops iOS Safari from auto-bumping text size on landscape
+        rotation, which broke our clamp() typography scales by
+        layering an extra multiplier on top.
+*/
+html, body {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+
+  /*
+    Native-mobile-app shell — applied at the root so every page
+    inherits it.
+
+    Phase 17 fix (desktop scroll regression):
+      Previously this rule set `overflow-x: hidden` on BOTH `html`
+      and `body`. The CSS spec promotes `overflow-y: visible` to
+      `auto` whenever `overflow-x` is non-visible — which turned
+      `body` into its own vertical scroll container *in addition
+      to* `html`. On desktop with a reserved 15px scrollbar gutter
+      + `max-width: 100vw`, the page often ended up with neither
+      container reporting scrollable height: html's scroll target
+      was usurped by body, and body's own height matched the
+      outer flex column at exactly 100dvh — so the page felt
+      locked. Mobile dodged this because the visual-viewport
+      meta tag pins the layout differently.
+
+      Two-line fix: apply horizontal clipping at `html` only, and
+      use `overflow-x: clip` instead of `hidden`. `clip` (CR 90+,
+      Safari 16+, FF 81+) clips visually without establishing a
+      scroll container — so vertical scrolling stays where it
+      should: at the document level. The fallback for older
+      browsers is `overflow-x: visible`, which doesn't clip — a
+      minor cosmetic regression on a vanishing set of browsers,
+      not a functional one. Body keeps `width: 100%` and
+      `max-width: 100vw` belt-and-braces; only the overflow
+      property moves up.
+
+      The original author's comments (kept below) explain the
+      INTENT correctly — disable horizontal page scroll, keep
+      vertical — the implementation just needed adjusting.
+
+      Disables horizontal scrolling on the document. If any
+      internal component overflows its width, it gets clipped
+      rather than letting the user side-scroll the whole page.
+      The right fix when this clips something is to fix the
+      component, not to re-enable horizontal page scroll.
+
+      width: 100%; max-width: 100vw
+          Belt-and-braces against off-by-one scrollbars or rogue
+          fixed-width children creating a page wider than the
+          viewport.
+
+      overscroll-behavior-y: none
+          Kills the iOS rubber-band overscroll at the top and bottom
+          of the page. Without this, pull-to-refresh and the
+          elastic bounce both fire — neither belong in a native-feel
+          app. Pages that should allow refresh (e.g. lists with
+          their own pull-to-refresh) can opt back in locally.
+
+      touch-action: pan-y
+          Hard lock on horizontal pan + pinch-zoom at the gesture
+          level. The viewport meta tag handles pinch-zoom in modern
+          browsers, but touch-action covers older WebKit edge cases
+          and prevents accidental horizontal pans that bypass the
+          overflow-x rule.
+
+      env(safe-area-inset-*)
+          With viewport-fit=cover the body sits underneath the
+          iPhone notch and home indicator. We add padding so content
+          doesn't actually disappear behind them. Top is handled
+          separately by the existing --nav-height padding (the navbar
+          already accounts for the notch internally).
+  */
+  width: 100%;
+  max-width: 100vw;
+}
+
+/* Horizontal clip at the document level only. Body is intentionally
+   NOT included — see the Phase 17 comment above. */
+html {
+  overflow-x: clip;
+}
+body {
+  overscroll-behavior-y: none;
+  touch-action: pan-y;
+  /* Bottom safe area for iOS home indicator. Sides matter only in
+     landscape on notched devices; we add them defensively. */
+  padding-left:   env(safe-area-inset-left,  0);
+  padding-right:  env(safe-area-inset-right, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+button, [role="button"], a, input[type="button"], input[type="submit"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* .no-transition is declared once in tokens.css — kept there because
+   it's a theme-switch concern. Removed here to avoid duplication. */
+
+/* ─── 4. FOCUS ──────────────────────────────────────────────  */
+:focus          { outline: none; }
+:focus-visible  {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: var(--radius-xs);
+}
+.field:focus-visible {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--accent-10);
+}
+.btn:focus-visible,
+.nav-icon:focus-visible,
+.nav-ham:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* ─── 5. TYPOGRAPHY ─────────────────────────────────────────
+   Weight hierarchy: display=300, h1=300, h2=350ish via font,
+   h3=400, h4=500, body=400, label=500, overline=600          */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  letter-spacing: -0.025em;
+  color: var(--text);
+  line-height: 1.08;
+}
+h1 { font-size: clamp(2rem, 5vw, 3.6rem);    font-weight: 300; }
+h2 { font-size: clamp(1.5rem, 3.5vw, 2.4rem); font-weight: 300; line-height: 1.12; }
+h3 { font-size: clamp(1.15rem, 2.5vw, 1.6rem);font-weight: 400; line-height: 1.2; }
+h4 { font-size: clamp(1rem, 2vw, 1.2rem);     font-weight: 500; line-height: 1.3; letter-spacing: -0.01em; }
+h5 { font-size: clamp(0.9rem, 1.5vw, 1rem);   font-weight: 500; line-height: 1.4; letter-spacing: 0; }
+h6 { font-size: 0.85rem; font-weight: 600;  line-height: 1.4; letter-spacing: 0.02em; }
+
+p   { line-height: 1.75; color: var(--text-2); }
+
+.text-display {
+  font-family: var(--font-serif);
+  font-size: clamp(3rem, 7vw, 6rem);
+  font-weight: 300; letter-spacing: -0.04em; line-height: 0.92;
+  color: var(--midnight);
+}
+.text-display em { font-style: italic; color: var(--gold-deep); }
+
+/* Label / utility */
+.overline {
+  font-size: var(--text-2xs); letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--gold-text); font-weight: 600; display: block;
+  font-family: var(--font-sans);
+}
+.label    { font-size: var(--text-xs); font-weight: 500; color: var(--text-2); letter-spacing: 0.01em; }
+.serif    { font-family: var(--font-serif); }
+.italic   { font-style: italic; }
+.mono     { font-family: var(--font-mono, monospace); }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Colour utilities — the comprehensive utility class block lives at
+   the bottom of this file (~L3491). The earlier audit pass had
+   duplicate .text-muted / .stack-2 / .stack-4 / .stack-6 definitions
+   here that have been consolidated into that block. The dead utilities
+   .text-gold, .flex-center, .flex-between, .caption, .gold-rule and
+   .gold-rule-center were also removed — none were referenced by any
+   JSX. Add back specifically when something needs them. */
+.text-sm  { font-size: var(--text-sm); }
+.text-xs  { font-size: var(--text-xs); }
+
+/* ─── 6. LAYOUT ─────────────────────────────────────────────  */
+.container    { width: 100%; max-width: 1200px; margin-inline: auto; padding-inline: var(--gutter); }
+.container-sm { max-width: 680px;  margin-inline: auto;  padding-inline: var(--gutter); }
+.container-xs { max-width: 440px;  margin-inline: auto;  padding-inline: var(--gutter); }
+
+.section    {
+  padding-block: var(--section-y); }
+.section-sm {
+  padding-block: var(--section-y-sm); }
+.section-xs { padding-block: clamp(1.5rem, 3vw, 2.5rem); }
+
+/* iOS Safari: vh includes the URL-bar's collapsed-state height, so
+   100vh overflows when the bar is visible. dvh tracks the actual
+   viewport. Fallback handles browsers older than the dvh feature. */
+.min-h-screen { min-height: 100vh; min-height: 100dvh; }
+
+/* ─── 7. ANNOUNCEMENT ───────────────────────────────────────  */
+.announce {
+  /* Rich gold-tinted midnight — more premium than flat black */
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- multi-stop gradient; the three shades form the look */
+  background: linear-gradient(135deg, #0f1e2d 0%, #1a2d40 50%, #0f1e2d 100%);
+  /* R3 file4: was rgba(240,232,216,0.95). The .announce surface is the
+     fixed-dark gradient above which doesn't flip in dark mode, so the
+     text token must not flip either — use --on-admin-95 (never-flips
+     palette). */
+  color: var(--on-admin-95);
+  height: 52px;                /* taller — more presence */
+  overflow: hidden;
+  display: flex; align-items: center;
+  position: relative;
+  /* R3 file4: was rgba(184,146,74,0.18). Snapped to the nearest accent
+     alpha token — --accent-20 is 0.20, indistinguishable from 0.18 on a
+     1px hairline, so we don't expand the palette for the small delta. */
+  border-bottom: 1px solid var(--accent-20);
+}
+
+/* Seamless marquee track — two identical copies */
+.announce-track {
+  display: flex; align-items: center;
+  /* The lone surviving will-change in the codebase. .announce-track
+     runs an infinite marquee animation — i.e. it's ACTIVELY transforming
+     on every frame, so GPU-layer promotion is genuinely earned. The
+     5 other instances (Phase 5 step 4 audit) were on hover-transformable
+     elements where the browser handles layer promotion lazily — pre-
+     declaring will-change there just kept dozens of elements in their
+     own GPU layers permanently, costing ~30-100 MB on /products. */
+  white-space: nowrap; will-change: transform;
+  animation: marquee 60s linear infinite;   /* slower — easy to read */
+  gap: 0;
+}
+.announce-track:hover { animation-play-state: paused; }
+
+/* One set of messages */
+.announce-item {
+  display: inline-flex; align-items: center; gap: 56px;  /* gap = breathing room between messages */
+  padding: 0 28px;
+  font-size: var(--text-ui);
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  font-family: var(--font-sans);
+  /* R3 file4: was rgba(240,232,216,0.95). Same fixed-dark surface as
+     .announce above — never-flips token. */
+  color: var(--on-admin-95);
+  line-height: 1;
+}
+
+/* A single message — highlight chip (optional) + prose */
+.announce-msg {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.announce-text {
+  position: relative;
+}
+
+/* ── Luxury highlight chip ─────────────────────────────────────────────
+   The "flashy" anchor in each announcement — for promo codes, prices,
+   key dates. Treated as a small pill so it visually breaks from the
+   message prose without shouting. Gold border + soft inner gradient
+   + subtle drop-shadow gives the luxury-flashy feel.
+
+   Uses tabular-nums + slightly tighter letter-spacing inside the chip
+   so prices and dates render as crisp small caps regardless of length. */
+.announce-highlight {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--gold);
+  background: linear-gradient(
+    135deg,
+    rgba(184,146,74,0.18) 0%,
+    rgba(184,146,74,0.10) 50%,
+    rgba(184,146,74,0.18) 100%
+  );
+  border: 1px solid rgba(184,146,74,0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(240,232,216,0.10),
+    0 1px 3px rgba(0,0,0,0.30),
+    0 0 12px rgba(184,146,74,0.18);
+  /* Tabular-nums keeps the chip's width stable as content shifts
+     (e.g. "$2.99" vs "$24.99" stay similarly proportioned). */
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Reduce-motion users get a still chip — the marquee stops anyway,
+   but we also kill any chip pulses if we ever add them later. */
+@media (prefers-reduced-motion: reduce) {
+  .announce-highlight { transition: none; }
+}
+
+.announce strong { color: var(--gold); font-weight: 700; letter-spacing: 0.04em; }
+
+/* Slow, smooth scroll */
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Soft fade edges — wider than before for elegance */
+.announce::before,
+.announce::after {
+  content: ''; position: absolute; top: 0; bottom: 0;
+  width: 120px; z-index: 1; pointer-events: none;
+}
+/* stylelint-disable color-no-hex, scale-unlimited/declaration-strict-value -- fade edges must match the .announce gradient's base shade #0f1e2d */
+.announce::before { left: 0;  background: linear-gradient(to right, #0f1e2d 0%, transparent 100%); }
+.announce::after  { right: 0; background: linear-gradient(to left,  #0f1e2d 0%, transparent 100%); }
+/* stylelint-enable color-no-hex, scale-unlimited/declaration-strict-value */
+
+/* Gold underline accent */
+.announce-accent-line {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent 0%, rgba(184,146,74,0.35) 30%, rgba(184,146,74,0.55) 50%, rgba(184,146,74,0.35) 70%, transparent 100%);
+}
+
+/* ─── 8. NAVBAR ─────────────────────────────────────────────  */
+.nav-root {
+  position: relative;
+  background: var(--surface);
+  border-bottom: 1px solid transparent;
+  transition:
+    box-shadow       var(--dur-slow) var(--ease-in-out),
+    border-color     var(--dur-slow) var(--ease-in-out),
+    background-color var(--dur-slow) var(--ease-in-out);
+}
+.nav-root.scrolled     { box-shadow: var(--shadow-md); border-bottom-color: var(--border); }
+.nav-root.hero-mode    { background: var(--bg); border-bottom-color: transparent; box-shadow: none; }
+.nav-root.compact-mode { background: var(--surface); border-bottom-color: var(--border); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MOBILE  (< 768px):  single row  — hamburger | logo (center) | icons
+   DESKTOP (≥ 768px):  two rows    — row1: logo centred full-width
+                                      row2: nav links (left) | icons (right)
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Mobile: one row — hamburger left, logo absolutely centred, icons right ── */
+.nav-inner {
+  position: relative;         /* anchor for the absolutely-centred logo */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 58px;
+  padding-inline: clamp(var(--sp-2), 3vw, var(--sp-4));
+  max-width: 1400px; margin-inline: auto;
+}
+
+/* Left edge — hamburger only on mobile */
+.nav-left  {
+  display: flex; align-items: center;
+  z-index: 1;                 /* above the absolutely-positioned logo */
+}
+
+/* Logo — dead-centred to the nav bar regardless of side widths */
+.nav-mid   {
+  position: absolute;
+  left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: auto;
+  z-index: 0;                 /* below the side buttons so they get tap events */
+}
+
+/* Right edge — all icons */
+.nav-right {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 2px;
+  z-index: 1;
+  margin-left: auto;          /* push all the way to the right */
+}
+
+/* ── Desktop: two-row layout ────────────────────────────────────────────── */
+@media (min-width: 768px) {
+  .nav-inner {
+    display: grid;
+    /* Row 1: logo centred across full width
+       Row 2: nav-left | spacer | nav-right */
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-rows: auto auto;
+    align-items: center;
+    height: auto;             /* height set by content */
+    padding-block: 12px;
+    gap: 0;
+  }
+
+  /* Row 1: logo spans all 3 columns, centred */
+  .nav-mid {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    padding-block: 10px 8px;
+  }
+
+  /* Row 2: hamburger+links on left, icons on right */
+  .nav-left  { grid-column: 1; grid-row: 2; }
+  .nav-right { grid-column: 3; grid-row: 2; }
+
+  /* Day 16 v4: hamburger always visible, inline nav links hidden.
+     Matches the reference style (teashop.com) — hamburger drives all
+     navigation, header stays clean. The previous design hid the
+     hamburger on desktop in hero mode and showed it again in compact
+     mode, which was a confusing toggle for users. */
+  .nav-ham   { display: inline-flex; }
+  .nav-links { display: none; }
+
+  /* Compact mode: collapse back to single row for efficiency */
+  .nav-root.compact-mode .nav-inner {
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-rows: 1fr;        /* single row */
+    height: clamp(52px, 8vh, 64px);
+    padding-block: 0;
+    gap: 0;
+  }
+  /* Day 16 v8: logo spans ALL columns in compact mode (was: column 2
+     only). The base CSS uses position:absolute + left:50% to center
+     the logo, but for an absolutely-positioned grid item the
+     containing block is its EXPLICIT grid area. Constraining it to
+     column 2 meant "center within the auto column" — which drifts
+     right when the icons cluster (column 3) is wider than the
+     hamburger (column 1) and the auto column shifts off-center.
+     Spanning 1 / -1 makes the containing block the full row width,
+     so left:50% is true center of the nav. Hamburger and icons stay
+     in their respective columns at z-index 1 (above the logo's
+     z-index 0) so they're still clickable. */
+  .nav-root.compact-mode .nav-mid   { grid-column: 1 / -1; grid-row: 1; padding-block: 0; }
+  .nav-root.compact-mode .nav-left  { grid-column: 1; grid-row: 1; }
+  .nav-root.compact-mode .nav-right { grid-column: 3; grid-row: 1; }
+/* Day 16 v4: nav-ham/nav-links handled at the top of the desktop block.
+   No compact-mode override needed since hamburger is always visible. */
+}
+
+/* ── Mobile hero → compact height shrink ───────────────────────────────── */
+.nav-root.hero-mode    .nav-inner { height: clamp(64px, 14vw, 80px); }
+.nav-root.compact-mode .nav-inner { height: 54px; }
+
+/* ── Wordmark / logo ─────────────────────────────────────────────────────── */
+.nav-wordmark {
+  font-family: var(--font-serif); font-size: 1.4rem; font-weight: 400;
+  letter-spacing: 0.04em; color: var(--midnight); text-decoration: none;
+  white-space: nowrap; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 44px;
+  transition: font-size var(--dur-slow) var(--ease-in-out);
+}
+.dark .nav-wordmark { color: var(--gold); }
+
+.nav-logo-img {
+  height: 44px; width: auto; max-width: 180px; object-fit: contain; display: block;
+  transition: height var(--dur-slow) var(--ease-in-out),
+              max-width var(--dur-slow) var(--ease-in-out);
+}
+
+/* Dark mode: NO cream pill around the logo. Admin uploads a
+   dark-mode-friendly version (light strokes on transparent) to the
+   "White-background logo" slot — that slot is what the Navbar reads
+   in dark mode (see useThemeStore wiring in Navbar.tsx). The previous
+   rule wrapped the logo in a white pill which clashed with light-on-
+   transparent logo files, drawing an unwanted white circle around
+   the brand mark. Logo asset choice belongs in /admin/settings, not
+   in CSS. */
+/* Mobile: logo shrinks with the navbar */
+.nav-root.hero-mode    .nav-logo-img { height: 44px; max-width: 180px; }
+.nav-root.compact-mode .nav-logo-img { height: 32px; max-width: 140px; }
+
+/* Desktop: larger logo on the top row */
+@media (min-width: 768px) {
+  .nav-root:not(.compact-mode) .nav-logo-img {
+    height: clamp(48px, 7vw, 72px);
+    max-width: 220px;
+  }
+  .nav-root.compact-mode .nav-logo-img { height: 36px; max-width: 160px; }
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.nav-ham {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px;
+  background: none; border: none; cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background var(--dur-fast) var(--ease-in-out),
+              transform  var(--dur-instant) ease;
+  flex-shrink: 0;
+}
+.nav-ham:hover  { background: var(--surface-2); }
+.nav-ham:active { background: var(--surface-3); transform: scale(0.92); }
+
+.nav-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: none; border: none; cursor: pointer; color: var(--text);
+  transition: background var(--dur-fast) var(--ease-in-out),
+              transform  var(--dur-instant) ease;
+  position: relative; text-decoration: none; flex-shrink: 0;
+}
+.nav-icon:hover  { background: var(--surface-2); }
+.nav-icon:active { background: var(--surface-3); transform: scale(0.90); }
+.nav-icon svg    { width: 19px; height: 19px; }
+
+.nav-badge {
+  position: absolute; top: 3px; right: 3px;
+  min-width: 16px; height: 16px; padding: 0 3px;
+  border-radius: var(--radius-full);
+  background: var(--gold); color: var(--accent-text);
+  font-size: var(--text-2xs); font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── Nav links (desktop row 2) ───────────────────────────────────────────── */
+.nav-links {
+  display: none;            /* hidden on mobile — shown via media query above */
+  align-items: center; gap: 28px;
+}
+.nav-links a {
+  font-size: var(--text-xs); font-weight: 500; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--text-2);
+  text-decoration: none; padding-bottom: 2px;
+  border-bottom: 1.5px solid transparent;
+  transition: color var(--dur-fast) var(--ease-in-out),
+              border-color var(--dur-fast) var(--ease-in-out);
+}
+.nav-links a:hover, .nav-links a.active { color: var(--text); border-bottom-color: var(--gold); }
+
+/* ─── 9. MOBILE DRAWER ──────────────────────────────────────  */
+/* The mobile drawer renders on top of whatever page is underneath; its
+   palette is intentionally fixed (always dark navy with cream text) and
+   does not flip with light/dark mode. These hex literals are deliberate. */
+/* stylelint-disable color-no-hex, scale-unlimited/declaration-strict-value -- drawer palette is fixed, not theme-aware */
+.drawer-overlay {
+  position: fixed; inset: 0;
+  background: rgba(9,14,18,0.40);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: var(--z-overlay);
+  animation: fadeIn var(--dur-normal) ease forwards;
+}
+.drawer {
+  position: fixed; top: 0; left: 0;
+  /* Day 16 v6: tightened drawer width to match the reference more
+     closely (~60-65% of viewport on mobile, narrower than my v5's
+     92vw which felt closer to full-screen). On tablets+ caps at
+     320px so it doesn't dominate the layout. */
+  width: min(320px, 78vw); height: 100dvh;
+  /* Phase 9.7.2 — safe-area-inset for iPhone notch (top) +
+     iOS home indicator (bottom) + landscape edge (left). The
+     max() preserves the layout's intended padding when the
+     env() is 0 on non-notched devices. */
+  padding-top:    max(env(safe-area-inset-top), 0px);
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  padding-left:   max(env(safe-area-inset-left), 0px);
+  background: var(--surface);
+  /* +1 over the overlay so the panel sits above the scrim */
+  z-index: calc(var(--z-overlay) + 1);
+  display: flex; flex-direction: column; overflow-y: auto;
+  animation: slideIn var(--dur-normal) var(--ease-out) forwards;
+  box-shadow: 4px 0 32px rgba(15,28,38,0.18);
+  border-right: 1px solid var(--border);
+}
+@keyframes slideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+
+/* Day 16 v9: items fade-in WHILE sliding down from above (translateY)
+   so the reveal reads as top-to-bottom. The previous translateX(-12px)
+   gave a left-to-right feel which clashed with the natural reading
+   order of a top-down menu. */
+@keyframes drawerItemIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Day 16 v6: drawer head is now just a wrapper for the X close,
+   top-left aligned. No logo, no border-bottom — cleaner, more
+   whitespace. Matches the reference (teashop.com) exactly. */
+.drawer-head {
+  display: flex; align-items: center; justify-content: flex-start;
+  padding: 18px 20px 8px; flex-shrink: 0;
+}
+.drawer-close {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none;
+  cursor: pointer; color: var(--text-2);
+  border-radius: var(--radius-sm);
+  transition:
+    background var(--dur-fast),
+    color var(--dur-fast),
+    transform var(--dur-instant);
+  /* Negative margin nudges the X visually flush with the drawer's
+     left edge while keeping a 36px tap target. */
+  margin-left: -8px;
+}
+.drawer-close:hover  { background: var(--surface-2); color: var(--midnight); }
+.drawer-close:active { transform: scale(0.90); }
+
+/* Wordmark style retained in case it's used elsewhere — drawer-head no
+   longer renders one. */
+.drawer-wordmark {
+  font-family: var(--font-serif); font-size: 1.3rem; font-weight: 300;
+  color: var(--midnight); letter-spacing: 0.02em;
+}
+
+.drawer-nav { flex: 1; padding: 4px 0; }
+.drawer-link {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 22px; font-size: var(--text-base); font-weight: 400;
+  color: var(--text); text-decoration: none;
+  border-bottom: 1px solid var(--border);
+  opacity: 0;
+  animation-name: drawerItemIn;
+  /* v7: 340ms → 460ms.
+     v9: 460ms → 540ms. Combined with the 130ms inter-item step
+     in Navbar.tsx, the full reveal feels more deliberate — about
+     1.4s for a typical 6-item drawer to fully settle. */
+  animation-duration: var(--dur-xslow);
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+  background: none; border-left: none; border-right: none; border-top: none;
+  width: 100%; text-align: left; cursor: pointer;
+  font-family: var(--font-sans); letter-spacing: 0.01em;
+  transition:
+    background var(--dur-fast),
+    color var(--dur-fast),
+    padding-left var(--dur-base);
+}
+.drawer-link:hover  {
+  background: var(--surface-2);
+  color: var(--midnight);
+  padding-left: 28px;
+}
+.drawer-link:active { background: var(--surface-3); }
+/* Day 16 v6: subtler active state. The reference keeps menu items
+   visually uniform (same color, same weight) — no background tint. We
+   shift only the text color + weight so the current page is hinted
+   without the menu becoming busy. */
+.drawer-link.active {
+  color: var(--gold-text);
+  font-weight: 500;
+}
+.drawer-link svg { color: var(--muted); flex-shrink: 0; }
+
+/* Day 16 v6: footer plain — no separate background bar, no top border.
+   Login + Language sit as left-aligned text on the same cream surface
+   as the rest of the drawer. Matches the reference layout exactly. */
+.drawer-foot {
+  padding: 22px;
+  flex-shrink: 0;
+  opacity: 0;
+  /* Same 540ms as the items so the footer doesn't feel out
+     of step with the slower stagger. */
+  animation: drawerItemIn var(--dur-xslow) cubic-bezier(0.16, 1, 0.3, 1) both;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.drawer-foot-link {
+  display: block; font-size: var(--text-ui); color: var(--text);
+  text-decoration: none; padding: 4px 0;
+  transition: color var(--dur-fast);
+  background: none; border: none; cursor: pointer;
+  font-family: var(--font-sans); text-align: left; width: 100%;
+  font-weight: 400;
+}
+.drawer-foot-link:hover  { color: var(--gold-text); }
+.drawer-foot-email {
+  font-size: var(--text-xs); color: var(--muted); margin-bottom: 2px;
+  display: block; letter-spacing: 0.02em;
+}
+
+/* Day 16 v7: language + theme controls inside the drawer footer.
+   Sits as a horizontal cluster with a tiny top border separating it
+   from the auth section above. The toggle components themselves
+   render with .nav-icon styling — we just give them room to breathe
+   here. */
+.drawer-controls {
+  display: flex; align-items: center; gap: 8px;
+  padding-top: 14px; margin-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer-overlay,
+  .drawer,
+  .drawer-link,
+  .drawer-foot {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+/* stylelint-enable color-no-hex, scale-unlimited/declaration-strict-value */
+
+/* ─── 9b. NOTIFICATION BELL (Day 16 v11) ────────────────────
+   Slide-in panel + list items + empty state + detail modal table.
+   Replaces the previous all-inline-styles approach. Uses CSS vars
+   throughout so light/dark themes inherit automatically. */
+
+/* Position the bell button so the badge can sit on its corner */
+.notif-bell-btn { position: relative; }
+
+/* Click-away overlay covers the rest of the page beneath the panel.
+   Day 16 v13: bumped z-indices to 9000/9001 because the panel is now
+   rendered via createPortal to document.body (escaping the navbar's
+   stacking context). At document root, these need to clear the
+   navbar (200), modals (~1000), and any other floating UI. 9000+
+   matches the convention used by toast libraries. */
+.notif-overlay {
+  position: fixed; inset: 0;
+  z-index: var(--z-notification);
+  background: rgba(9,14,18,0.30);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: notifFadeIn var(--dur-normal) ease forwards;
+}
+@keyframes notifFadeIn { from { opacity: 0 } to { opacity: 1 } }
+
+/* The panel itself — full height, slides in from right */
+.notif-panel {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  z-index: var(--z-notification-panel);
+  width: min(420px, 100vw);
+  /* dvh — iOS Safari URL bar variation. Without this, the bottom of
+     the notification list gets cropped under the address bar on
+     scroll. */
+  height: 100dvh;
+  /* Phase 9.7.2 — safe-area-inset for iPhone notch (top) +
+     iOS home indicator (bottom) + landscape edge (right, since the
+     panel is right-pinned). */
+  padding-top:    max(env(safe-area-inset-top), 0px);
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  padding-right:  max(env(safe-area-inset-right), 0px);
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -8px 0 32px rgba(9,14,18,0.18);
+  display: flex; flex-direction: column;
+  animation: notifSlideIn var(--dur-normal) var(--ease-out) both;
+}
+@keyframes notifSlideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* Header — dark band at the top, brand serif title */
+.notif-panel-head {
+  background: var(--midnight);
+  color: var(--on-dark);
+  padding: 18px 20px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+}
+.notif-panel-title {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 300;
+  letter-spacing: 0.01em;
+  color: var(--on-dark);
+  margin: 0;
+}
+.notif-panel-sub {
+  font-size: var(--text-xs);
+  color: var(--gold);
+  margin: 2px 0 0;
+  letter-spacing: 0.04em;
+}
+.notif-panel-actions {
+  display: flex; align-items: center; gap: 8px;
+}
+.notif-head-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 10px;
+  font-size: var(--text-xs);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--on-dark-2, rgba(240,232,216,0.78));
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.notif-head-btn:hover {
+  background: rgba(255,255,255,0.12);
+  color: var(--on-dark);
+}
+.notif-head-close {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  /* R3 file4: was rgba(240,232,216,0.55). Hover state below uses
+     var(--on-dark) (theme-flipping) so the resting colour must flip
+     too — use --on-dark-55 (the 0.55 alpha tier of the flipping
+     palette). */
+  color: var(--on-dark-55);
+  border-radius: var(--radius-sm);
+  transition: background var(--dur-fast), color var(--dur-fast), transform var(--dur-instant);
+}
+.notif-head-close:hover  { background: var(--white-10); color: var(--on-dark); }
+.notif-head-close:active { transform: scale(0.90); }
+
+/* Body — scrollable list area */
+.notif-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--surface);
+}
+
+/* Empty / loading state */
+.notif-empty {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 240px;
+  gap: 8px;
+  text-align: center;
+  padding: 16px;
+}
+.notif-empty-icon { color: var(--muted); opacity: 0.4; margin-bottom: 4px; }
+.notif-empty-title {
+  font-size: var(--text-ui); color: var(--text); font-weight: 500;
+  margin: 0;
+}
+.notif-empty-hint {
+  font-size: var(--text-xs); color: var(--muted); opacity: 0.8;
+  margin: 0;
+}
+
+/* Notification list — uniform list, no margin/border-radius pop on
+   unread items. Unread state uses a soft tint + a left accent bar
+   (see .notif-item.is-unread::before) to stay distinct without
+   breaking the list rhythm. */
+
+/* Day 16 v12: date-group header (Today / Yesterday / This week / Older) */
+.notif-group {
+  border-bottom: 1px solid var(--border);
+}
+.notif-group:last-child { border-bottom: none; }
+.notif-group-title {
+  margin: 0;
+  padding: 12px 16px 6px;
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  /* subtle shadow line so the sticky header reads as separate from
+     the list as it scrolls past */
+  box-shadow: 0 1px 0 0 var(--border);
+}
+
+.notif-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.notif-item {
+  position: relative;
+  padding: 14px 16px 14px 22px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  transition: background var(--dur-fast);
+}
+.notif-item:last-child { border-bottom: none; }
+.notif-item:hover { background: var(--surface-2); }
+.notif-item.is-unread {
+  background: var(--gold-soft);
+}
+.notif-item.is-unread:hover { background: var(--gold-soft); filter: brightness(0.98); }
+/* Left accent bar on unread items — visual hint without a chunky border */
+.notif-item.is-unread::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--gold);
+}
+
+.notif-item-row {
+  display: flex; align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.notif-item-emoji {
+  font-size: var(--text-lg); flex-shrink: 0; margin-top: 1px;
+  line-height: 1;
+}
+.notif-item-main {
+  flex: 1; min-width: 0;
+}
+.notif-item-title-row {
+  display: flex; align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.notif-item-title {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.notif-item.is-unread .notif-item-title { color: var(--text); }
+.notif-item:not(.is-unread) .notif-item-title { color: var(--text-2); }
+.notif-item-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex-shrink: 0; margin-top: 5px;
+}
+.notif-item-body {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 4px 0 6px 28px;
+  overflow-wrap: anywhere;
+}
+.notif-item-time {
+  font-size: var(--text-2xs);
+  color: var(--muted);
+  opacity: 0.75;
+  margin: 0 0 10px 28px;
+  letter-spacing: 0.02em;
+}
+
+/* Action row — kept on its own row beneath the content */
+.notif-item-actions {
+  display: flex; align-items: center;
+  gap: 6px; flex-wrap: wrap;
+  padding-left: 28px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.notif-action {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 9px;
+  font-size: var(--text-2xs);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-2);
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+}
+.notif-action:hover { background: var(--surface-3); color: var(--text); }
+.notif-action-read {
+  background: var(--gold-soft);
+  border-color: var(--accent-20);
+  color: var(--gold-text);
+}
+.notif-action-read:hover { background: var(--gold-soft); filter: brightness(0.95); }
+/* Day 16 v12: mark-as-unread variant — neutral surface, opposite of
+   the gold-tinted "Mark read" so the two actions don't read as the
+   same affordance. */
+.notif-action-unread {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text-2);
+}
+.notif-action-unread:hover { background: var(--surface-3); color: var(--text); }
+.notif-action-view {
+  border-color: var(--border);
+}
+.notif-action-delete {
+  margin-left: auto;
+  color: var(--muted);
+}
+.notif-action-delete:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* Detail modal: clean two-column rows for orderId / customer / total etc. */
+.notif-detail-table {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+/* Day 16 v14: admin-variant table — slightly stronger border to set
+   it apart from customer notifications. */
+.notif-detail-table.is-admin {
+  border-color: var(--midnight);
+}
+.notif-detail-row {
+  display: flex; justify-content: space-between;
+  gap: 16px;
+  padding: 9px 14px;
+  font-size: var(--text-xs);
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  align-items: center;
+}
+.notif-detail-row[data-stripe="on"] { background: var(--surface-2); }
+.notif-detail-row:last-child { border-bottom: none; }
+.notif-detail-label {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.notif-detail-value {
+  color: var(--text);
+  font-weight: 500;
+  text-align: right;
+  word-break: break-all;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.notif-detail-value code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: var(--text-xs);
+  letter-spacing: 0.02em;
+  background: var(--surface-2);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+
+/* Day 16 v14: admin badge — small pill above the body of a notification
+   detail when the notification is admin-only. Distinct gold border so
+   admins can scan the modal and immediately know it's their action. */
+.notif-admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  margin-bottom: 12px;
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-text);
+  background: var(--gold-soft);
+  border: 1px solid var(--accent-20);
+  border-radius: var(--radius-full);
+}
+
+/* Hint footer for admin notifications — guides the admin to the next
+   step (e.g. "Open the Orders dashboard"). */
+.notif-admin-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  color: var(--text-2);
+  background: var(--info-bg);
+  border: 1px solid var(--info-border, var(--info));
+  border-radius: var(--radius-md);
+}
+.notif-admin-hint svg { flex-shrink: 0; margin-top: 1px; color: var(--info); }
+
+/* Tiny ADMIN pill on admin items in the bell panel list, so admins can
+   scan a mixed inbox and see which ones need their action. Sits in
+   the body area beneath the title. */
+.notif-item-pill {
+  display: inline-block;
+  margin: 0 0 4px 28px;
+  padding: 2px 7px;
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-text);
+  background: var(--gold-soft);
+  border: 1px solid var(--accent-20);
+  border-radius: var(--radius-full);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   CopyButton — used inline next to copyable values (order ID, email,
+   security answer). Hover tooltip; tap-friendly on mobile.
+
+   The visible icon button is small (18×18) but has padding to bring
+   the tap target up to 28×28. The .copy-btn-tip tooltip appears on
+   hover/focus on desktop. Mobile users get the toast feedback +
+   icon swap (copy → check) instead of the tooltip (no hover).
+───────────────────────────────────────────────────────────────────── */
+.copy-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px; height: 24px;
+  padding: 0;
+  margin-left: 2px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast), transform var(--dur-instant);
+  flex-shrink: 0;
+}
+.copy-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text);
+}
+.copy-btn:active { transform: scale(0.92); }
+.copy-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.copy-btn.is-copied {
+  color: var(--success);
+  border-color: var(--success);
+  background: var(--success-bg);
+}
+/* Hover tooltip — desktop only via media query so mobile doesn't
+   end up with a stuck "Copy" pill on tap.
+
+   z-index 950: above dropdowns/cards/sticky headers (which use 30
+   and below) and above the gift-builder mobile drawer (950 also,
+   but the tooltip wins because it's the descendant rendered on
+   hover). Below modal overlays (9000+) so a copy tooltip can't
+   flash over a dialog. Bumped from 10 in the original — that was
+   below virtually every floating element in the admin panel, which
+   meant tooltips got buried under whatever surface they hovered
+   near (see the AdminOverview order-id-tag screenshot).               */
+.copy-btn-tip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(2px);
+  padding: 4px 8px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  background: var(--midnight);
+  color: var(--on-dark);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-fast), transform var(--dur-fast);
+  /* Inside .notif-panel which creates its own stacking context, so
+     any positive z-index puts us above siblings within the panel. */
+  z-index: var(--z-raised);
+}
+.copy-btn-tip::after {
+  content: '';
+  position: absolute;
+  top: 100%; left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--midnight);
+}
+@media (hover: hover) {
+  .copy-btn:hover .copy-btn-tip,
+  .copy-btn:focus-visible .copy-btn-tip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+/* When in the copied state, force the tooltip visible briefly so
+   even desktop users see the success label change. */
+.copy-btn.is-copied .copy-btn-tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  background: var(--success);
+  color: var(--on-dark);
+}
+.copy-btn.is-copied .copy-btn-tip::after { border-top-color: var(--success); }
+
+/* Admin variant of the bell-list item gets a thin gold left dash so
+   the panel reads as "your stuff vs admin stuff" at a glance,
+   without making admin items feel louder than customer ones. */
+.notif-item.is-admin:not(.is-unread)::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--gold-soft);
+}
+
+/* Reduced motion: skip slide-ins so users with the preference get an
+   instant panel rather than a flash of motion. */
+@media (prefers-reduced-motion: reduce) {
+  .notif-panel,
+  .notif-overlay {
+    animation: none !important;
+  }
+}
+
+
+/* Day 16 v7: hide language + theme toggles in the nav-right cluster
+   on phones — they live inside the drawer footer at <768px so the
+   header stays clean. NotificationBell stays visible in header
+   (when logged in) because notifications are time-sensitive. */
+@media (max-width: 768px) {
+  .nav-mobile-hide { display: none; }
+}
+
+/* ─── 11. BUTTONS ───────────────────────────────────────────
+   Unified token-driven system. Consistent 10px radius.
+   Four sizes × five variants.                                 */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: var(--sp-2); padding: 11px 26px;
+  font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.12em;
+  text-transform: uppercase; font-family: var(--font-sans);
+  border-radius: var(--radius-md); cursor: pointer; white-space: nowrap;
+  text-decoration: none; touch-action: manipulation;
+  border: 1.5px solid transparent;
+  transition:
+    background     var(--dur-fast) var(--ease-in-out),
+    color          var(--dur-fast) var(--ease-in-out),
+    border-color   var(--dur-fast) var(--ease-in-out),
+    transform      var(--dur-instant) var(--ease-spring),
+    box-shadow     var(--dur-fast) var(--ease-in-out);
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active:not(:disabled) { transform: scale(0.96); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+
+.btn-dark    { background: var(--midnight);  color: var(--on-dark);  border-color: var(--midnight); }
+.btn-dark:hover { background: var(--midnight-2); border-color: var(--midnight-2); box-shadow: var(--shadow-md); }
+
+.btn-gold    { background: var(--gold); color: var(--accent-text); border-color: var(--gold); }
+.btn-gold:hover { background: var(--gold-hover); border-color: var(--gold-hover); box-shadow: var(--shadow-gold); }
+
+.btn-outline { background: transparent; color: var(--midnight); border-color: var(--border); }
+.btn-outline:hover { border-color: var(--midnight); background: var(--surface-2); }
+/* Dark mode: outline button is transparent (page bg shows through),
+   so text needs the standard --text token (which flips light in dark
+   mode), NOT --on-dark — that flips DARK in dark mode for use on top
+   of the inverted .btn-dark surface. Using --on-dark here was making
+   buttons like "Add Address" and "Continue with Google" render as
+   dark text on a dark transparent background = invisible. */
+/* R3 file4: was rgba(240,232,216,0.2) and rgba(240,232,216,0.04).
+   This rule is INSIDE .dark — it only fires in dark mode where the
+   button sits transparent on the dark page bg. The flipping --on-dark
+   palette would resolve to the dark RGB here, producing dark-on-dark
+   borders. Need the LITERAL cream — use --cream-N family which doesn't
+   flip. */
+.dark .btn-outline       { color: var(--text); border-color: var(--cream-2-bd); }
+.dark .btn-outline:hover { border-color: var(--gold); color: var(--gold); background: var(--cream-04-bg); }
+
+.btn-ghost   { background: transparent; color: var(--text-2); border-color: transparent; }
+.btn-ghost:hover { background: var(--surface-2); }
+
+/* stylelint-disable color-no-hex, scale-unlimited/declaration-strict-value -- white text on always-coloured button; theme-invariant */
+.btn-danger  { background: var(--danger); color: #fff; border-color: var(--danger); }
+.btn-danger:hover { filter: brightness(0.90); box-shadow: var(--shadow-sm); }
+
+.btn-success { background: var(--success); color: #fff; border-color: var(--success); }
+.btn-success:hover { filter: brightness(0.90); }
+/* stylelint-enable color-no-hex, scale-unlimited/declaration-strict-value */
+
+/* Sizes */
+.btn-xl { padding: 15px 36px; font-size: var(--text-xs); border-radius: var(--radius-lg); }
+.btn-lg { padding: 13px 32px; font-size: var(--text-xs); }
+.btn-sm { padding: 7px 16px;  font-size: var(--text-2xs); border-radius: var(--radius-sm); }
+.btn-xs { padding: 4px 10px;  font-size: var(--text-2xs);  border-radius: var(--radius-xs); letter-spacing: 0.08em; }
+.btn-full { width: 100%; }
+
+/* Icon-only square */
+.btn-icon {
+  padding: 0; width: 40px; height: 40px;
+  border-radius: 50%; letter-spacing: 0; text-transform: none;
+}
+.btn-icon.btn-sm { width: 32px; height: 32px; }
+.btn-icon.btn-lg { width: 48px; height: 48px; }
+
+/* ─── 12. FORM FIELDS ───────────────────────────────────────  */
+.field-group { display: flex; flex-direction: column; gap: calc(var(--sp-1) + 2px); }
+
+.field-label {
+  font-size: var(--text-xs); letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted); font-weight: 600; font-family: var(--font-sans);
+  margin-bottom: 2px;
+}
+
+.field {
+  width: 100%; padding: 10px 14px;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-ui); color: var(--text); font-family: var(--font-sans);
+  outline: none;
+  transition: border-color var(--dur-base) var(--ease-in-out),
+              box-shadow   var(--dur-base) var(--ease-in-out);
+  box-sizing: border-box;
+  -webkit-appearance: none;
+}
+.field:hover:not(:disabled) { border-color: var(--border-2); }
+.field:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--accent-10);
+}
+.field::placeholder { color: var(--muted); }
+.field:disabled     { opacity: 0.5; cursor: not-allowed; background: var(--surface-2); }
+.field.invalid      {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(184,50,40,0.10);
+  animation: fieldShake var(--dur-slow) cubic-bezier(0.36,0.07,0.19,0.97);
+}
+.field.valid        { border-color: var(--success); }
+textarea.field      { resize: vertical; min-height: 100px; padding-top: 12px; line-height: 1.6; }
+select.field        { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a7088' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+
+.field-hint  { font-size: var(--text-xs); color: var(--muted); margin-top: 3px; }
+.field-error { font-size: var(--text-xs); color: var(--danger); margin-top: 3px; display: flex; align-items: center; gap: 4px; animation: fadeUp var(--dur-fast) ease both; }
+

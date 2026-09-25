@@ -1,0 +1,2162 @@
+/* ═══════════════════════════════════════════════════════════════
+   ADMIN CUSTOMERS — replaces 84 inline styles in
+   src/app/pages/admin/AdminCustomers.tsx
+   The page has three surfaces: the main list (avatar + info + stats +
+   actions), the customer profile modal (4-tile stats grid + account
+   info + credit history + recent orders + tx history), and the
+   adjust-credits modal (mode toggle + form). The four-card stats
+   grid pattern + gold-soft summary card both recur and could become
+   shared `.admin-stats-grid` / `.admin-summary-card` primitives in
+   a future round, but for now we keep them per-page until 2-3 admin
+   pages need them.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Page shell — vertical stack for the whole admin-customers view. */
+.ac-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Stats row — top of page (4 KPI cards). */
+.ac-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+.ac-stat-card { padding: 14px; }
+.ac-stat-card-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ac-stat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  background: var(--gold-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ac-stat-icon-svg { color: var(--gold-text); }
+.ac-stat-value {
+  font-family: var(--font-serif);
+  font-size: 1.3rem;
+  font-weight: 300;
+  color: var(--midnight);
+  line-height: 1;
+}
+.ac-stat-label {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-top: 3px;
+  letter-spacing: 0.04em;
+}
+
+/* Search + refresh row. */
+.ac-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.ac-search-wrap {
+  flex: 1;
+  max-width: 360px;
+}
+.ac-refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ac-count {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-left: auto;
+}
+
+/* Empty / loading state. */
+.ac-empty {
+  text-align: center;
+  padding: 60px;
+  color: var(--muted);
+}
+.ac-empty-icon {
+  margin: 0 auto 12px;
+  opacity: 0.4;
+}
+.ac-empty-spinner { margin: 0 auto 12px; }
+.ac-empty-msg     { font-size: var(--text-ui); }
+.ac-empty-msg-sm  { font-size: var(--text-sm); }
+
+/* Customer-list rows. */
+.ac-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ac-row {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.ac-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--gold-soft);
+  border: 1px solid var(--accent-20);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ac-avatar-icon { color: var(--gold-text); }
+
+.ac-info {
+  flex: 1;
+  min-width: 160px;
+}
+.ac-name {
+  font-size: var(--text-ui);
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ac-email {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ac-joined {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-top: 2px;
+  opacity: 0.7;
+}
+
+/* Per-row stats (spend / orders / points). */
+.ac-row-stats {
+  display: flex;
+  gap: 18px;
+  flex-shrink: 0;
+}
+.ac-row-stat {
+  text-align: center;
+}
+.ac-row-stat-val {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--midnight);
+  font-family: var(--font-serif);
+}
+.ac-row-stat-val-gold {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--gold-text);
+  font-family: var(--font-serif);
+}
+.ac-row-stat-cap {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+
+/* Action buttons (View / Credits). */
+.ac-actions {
+  display: flex;
+  gap: 7px;
+  flex-shrink: 0;
+}
+.ac-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Profile modal ── */
+.ac-pm-stack {
+  display: flex;
+  flex-direction: column;
+}
+.ac-pm-loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--muted);
+}
+.ac-pm-loading-spinner { margin: 0 auto 8px; }
+.ac-pm-loading-msg     { font-size: var(--text-sm); }
+
+.ac-pm-content {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.ac-pm-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+.ac-pm-stat-tile {
+  text-align: center;
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+}
+/* The icon color is per-stat (gold / success / steel) so we keep
+   it inline as the only non-static value on the tile. */
+.ac-pm-stat-icon { margin: 0 auto 6px; }
+.ac-pm-stat-val {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 300;
+  color: var(--midnight);
+}
+.ac-pm-stat-label {
+  font-size: var(--text-2xs);
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Account info card. */
+.ac-pm-info-card {
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.ac-pm-section-eyebrow {
+  font-size: var(--text-2xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.ac-pm-info-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Credit history card (gold tinted). */
+.ac-pm-credit-card {
+  background: var(--gold-soft);
+  border-radius: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--accent-20);
+}
+.ac-pm-credit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.ac-pm-credit-tile {
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 10px;
+}
+.ac-pm-credit-tile-label {
+  font-size: var(--text-2xs);
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+.ac-pm-credit-tile-val {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--gold-text);
+}
+
+/* Recent-orders + tx-history sections share the eyebrow class.
+   The order list is bounded-height to keep the modal scannable. */
+.ac-pm-section-eyebrow-tight {
+  font-size: var(--text-2xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.ac-pm-orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.ac-pm-tx-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.ac-pm-order-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface-2);
+  border-radius: 7px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+}
+.ac-pm-order-id {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--midnight);
+  font-family: monospace;
+}
+.ac-pm-order-date {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-top: 2px;
+}
+.ac-pm-order-right { text-align: right; }
+.ac-pm-order-total {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  color: var(--midnight);
+}
+.ac-pm-order-status {
+  font-size: var(--text-2xs);
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-weight: 500;
+}
+.ac-pm-order-status[data-status='delivered'] {
+  background: var(--success-bg);
+  color: var(--success);
+}
+.ac-pm-order-status[data-status='cancelled'] {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+/* Transaction rows. The pill border + text color come from a
+   per-type CSS variable set inline (the pill color comes from
+   TX_META, which is the same source-of-truth shared with the rest
+   of the credit history UI). */
+.ac-pm-tx-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface-2);
+  border-radius: 7px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+}
+.ac-pm-tx-pill {
+  font-size: var(--text-2xs);
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: var(--surface);
+  border: 1px solid var(--ac-tx-color, var(--text));
+  color: var(--ac-tx-color, var(--text));
+  font-weight: 600;
+}
+.ac-pm-tx-note {
+  font-size: var(--text-2xs);
+  color: var(--muted);
+  margin-top: 3px;
+  font-style: italic;
+}
+.ac-pm-tx-date {
+  font-size: var(--text-2xs);
+  color: var(--muted);
+  margin-top: 2px;
+}
+.ac-pm-tx-right { text-align: right; }
+.ac-pm-tx-pts {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--ac-tx-color, var(--text));
+}
+.ac-pm-tx-bal {
+  font-size: var(--text-2xs);
+  color: var(--muted);
+}
+
+/* InfoRow helper — icon + label + value. */
+.ac-info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-xs);
+}
+.ac-info-row-icon {
+  color: var(--gold);
+  flex-shrink: 0;
+}
+.ac-info-row-label {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.ac-info-row-value {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Adjust modal ── */
+.ac-am-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ac-am-current {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  text-align: center;
+}
+.ac-am-current strong { color: var(--text); }
+
+.ac-am-mode-row {
+  display: flex;
+  gap: 8px;
+}
+.ac-am-mode-btn {
+  flex: 1;
+  padding: 9px;
+  border-radius: 7px;
+  font-weight: 600;
+  font-size: var(--text-xs);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: background var(--dur-fast) var(--ease-standard),
+              color var(--dur-fast) var(--ease-standard);
+}
+.ac-am-mode-btn[data-active='true'][data-mode='add'] {
+  background: var(--success);
+  color: var(--surface);
+}
+.ac-am-mode-btn[data-active='true'][data-mode='deduct'] {
+  background: var(--danger);
+  color: var(--surface);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SKELETON VARIANTS — Phase 5.2
+   Shape-matched skeletons rendered by src/app/components/ui/Skeleton.tsx.
+   Builds on the existing `.skeleton` shimmer (section 22) — these
+   classes add SHAPES (line, avatar, card, table) on top of that
+   foundation. The base shimmer animation respects prefers-reduced-
+   motion via section-23's existing rule.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Single line of text. */
+.sk-line {
+  border-radius: var(--radius-xs);
+  margin-block: 4px;
+}
+
+/* Round avatar placeholder. */
+.sk-avatar {
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Tea-card-shaped placeholder — matches .tea-card geometry so
+   the layout doesn't shift when real content arrives.
+
+   Phase 8 CLS-fix follow-up: previously only had a title bar +
+   subtitle bar in the body — about 82px of body content total.
+   Real tea cards have category + name + price + "Add to cart"
+   button — about 139px of body content. The 57px-per-row delta
+   showed up as a measurable layout shift on / when the skeleton
+   swapped to real cards (CLS spike ≈ 0.215 on a 10-card grid).
+
+   The skeleton body now stacks four blocks (overline, name, price,
+   button) at the same heights as the real card's children, so the
+   swap is layout-neutral. */
+.sk-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.sk-card-img {
+  aspect-ratio: 1;
+  width: 100%;
+  border-radius: 0;
+}
+.sk-card-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* Phase 8 CLS-fix — explicit body height matches tea-card body:
+     14px overline + 5px margin + 30px name + 4px margin + 13px price +
+     12px margin + 38px button + 14px bottom padding ≈ 130px. The
+     bullet-point heights below sum to the same value via flex. */
+}
+.sk-card-title {
+  /* Was 18px — bumped to match .tea-name's actual rendered height
+     (font-size 1.05rem × line-height 1.2 ≈ 21px). */
+  height: 21px;
+  width: 70%;
+  border-radius: var(--radius-xs);
+}
+.sk-card-sub {
+  height: 14px;
+  width: 40%;
+  border-radius: var(--radius-xs);
+}
+/* Phase 8 CLS-fix — added overline + button placeholders so total
+   sk-card body height matches tea-card body height. These are inert
+   visual blocks that never become interactive, so no a11y concerns. */
+.sk-card-body::before {
+  content: '';
+  display: block;
+  height: 9px;
+  width: 30%;
+  border-radius: var(--radius-xs);
+  /* Same shimmer as .skeleton */
+  background: linear-gradient(90deg, var(--surface-3) 0%, var(--surface-2) 50%, var(--surface-3) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+  margin-bottom: 5px;
+}
+.sk-card-body::after {
+  content: '';
+  display: block;
+  height: 38px;
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-top: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk-card-body::before {
+    animation: none;
+    background: var(--surface-3);
+  }
+}
+
+/* Table-row skeleton — repeat in a column for paginated lists. */
+.sk-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sk-table-row {
+  display: grid;
+  grid-template-columns: repeat(var(--sk-cols, 4), 1fr);
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.sk-table-cell {
+  height: 16px;
+  border-radius: var(--radius-xs);
+}
+
+/* Page skeleton — full-viewport Suspense fallback for lazy routes.
+   Gentle pulse without the more demanding shimmer animation, since
+   it's covering the entire viewport during route transition and a
+   strong animation here can feel anxious. */
+.sk-page {
+  min-height: 60dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(16px, 4vw, 40px);
+}
+.sk-page-pulse {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  animation: sk-page-fade 1.6s ease-in-out infinite;
+}
+@keyframes sk-page-fade {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50%      { opacity: 0.8; transform: scale(1.0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk-page-pulse { animation: none; }
+}
+
+/* sr-only is the visually-hidden screen-reader-only utility — every
+   project has one of these, but we re-declare here in case it lives
+   in tailwind.css under a name we don't control. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FIELD PRIMITIVE — Phase 6.3
+   The .field, .field-group, .field-label, .field-hint, .field-error
+   classes are pre-existing (declared earlier in this file). We
+   add only the new bits the Phase-6 Field primitive needs:
+     - .field-label-req (the little asterisk on required fields)
+     - aria-invalid styling for the input
+   Everything else flows through pre-existing classes.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Required-field asterisk on the label. Inline-flex + tinted color
+   so it doesn't compete with the label text but is still visible. */
+.field-label-req {
+  color: var(--danger);
+  font-weight: 600;
+  margin-left: 2px;
+}
+
+/* When aria-invalid='true' is set on the input, change border color
+   so the error state is visible without depending on JS to add a
+   class. This is the cheapest way to wire field-state styling: the
+   accessibility attr IS the styling source-of-truth. */
+.field[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+.field[aria-invalid='true']:focus,
+.field[aria-invalid='true']:focus-visible {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SUBMIT BUTTON — Phase 6.6
+   The button itself uses the existing .btn / .btn-gold etc system.
+   We add only the inline spinner + the layout for icon+label.
+   ═══════════════════════════════════════════════════════════════ */
+
+.btn-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: btn-spinner-rot 0.8s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+@keyframes btn-spinner-rot {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Reduced motion: keep the spinner visible but stop rotating —
+     a static dot still says "loading," continuous rotation is what
+     RM users want stopped. */
+  .btn-spinner { animation: none; }
+}
+
+/* Loading variant: subtle dim so the button feels "busy" without
+   changing variant color (so the submit-pressed visual stays). */
+.btn-loading {
+  opacity: 0.85;
+  cursor: wait;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ADMIN ANALYTICS — replaces 66 inline styles in
+   src/app/pages/admin/AdminAnalytics.tsx
+   Composed of: page shell (vertical stack), period filter card with
+   dark gradient header, KPI stat cards, two-column section grid,
+   top-teas list with rank circles, status progress bars, new vs
+   returning customer comparison, financial breakdown, weekly
+   revenue bar chart, footer info banner.
+   ═══════════════════════════════════════════════════════════════ */
+
+.sa-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Period filter card — has a dark gradient header. */
+.sa-filter-card {
+  overflow: hidden;
+  padding: 0;
+}
+.sa-filter-header {
+  background: linear-gradient(to right, var(--midnight), var(--midnight-2));
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sa-filter-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sa-filter-eyebrow {
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(240, 232, 216, 0.7);
+}
+.sa-filter-live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(82, 183, 136, 0.2);
+  border: 1px solid rgba(82, 183, 136, 0.4);
+  color: var(--success);
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.sa-filter-body {
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sa-period-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: var(--text-xs);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+}
+.sa-period-btn[data-active='true'] {
+  border: none;
+  background: var(--midnight);
+  color: var(--on-dark);
+}
+.sa-custom-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: var(--text-xs);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.sa-custom-btn[data-active='true'] {
+  border: none;
+  background: var(--accent-purple);
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- white text on always-coloured button; theme-invariant */
+  color: var(--white);
+}
+.sa-custom-btn-clear {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  cursor: pointer;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- white text on always-coloured button; theme-invariant */
+  color: var(--white);
+  border-radius: 999px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Date-modal grid + small text */
+.sa-date-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.sa-date-input { margin-top: 4px; }
+
+/* KPI grid */
+.sa-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.sa-stat-card { padding: 16px; }
+.sa-stat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.sa-stat-label {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.sa-stat-value {
+  font-family: var(--font-serif);
+  font-size: clamp(1.5rem, 2.5vw, 1.8rem);
+  font-weight: 300;
+  color: var(--midnight);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.sa-stat-sub {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* Two-column section grid (Top Teas + Status + New vs Returning + Financial) */
+.sa-sections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+.sa-section { padding: 20px 22px; }
+.sa-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.sa-section-icon { color: var(--gold); }
+.sa-section-title {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-text);
+  font-family: var(--font-sans);
+  margin: 0;
+}
+
+/* Empty per-section. */
+.sa-section-empty {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  text-align: center;
+  padding: 24px 0;
+}
+
+/* Top teas list */
+.sa-tea-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sa-tea-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sa-tea-rank {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- white text on always-coloured rank circle; theme-invariant */
+  color: var(--white);
+  flex-shrink: 0;
+  background: var(--surface-3);
+}
+.sa-tea-rank[data-rank='1'] { background: var(--gold); }
+.sa-tea-rank[data-rank='2'] { background: var(--muted); }
+.sa-tea-rank[data-rank='3'] { background: var(--gold-deep); }
+.sa-tea-info {
+  flex: 1;
+  min-width: 0;
+}
+.sa-tea-row-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  margin-bottom: 4px;
+}
+.sa-tea-name {
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sa-tea-rev {
+  color: var(--success);
+  font-weight: 700;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+.sa-tea-bar {
+  background: var(--surface-3);
+  border-radius: 999px;
+  height: 5px;
+  overflow: hidden;
+}
+.sa-tea-bar-fill {
+  background: var(--gold);
+  height: 100%;
+  width: var(--sa-bar-width, 0%);
+}
+.sa-tea-units {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+/* Progress row — used by Status + New vs Returning */
+.sa-progress-row { margin-bottom: 10px; }
+.sa-progress-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  margin-bottom: 5px;
+}
+.sa-progress-label {
+  font-weight: 600;
+  color: var(--text-2);
+}
+.sa-progress-count { color: var(--muted); }
+.sa-progress-pct { opacity: 0.6; }
+.sa-progress-track {
+  width: 100%;
+  background: var(--surface-3);
+  border-radius: 999px;
+  height: 7px;
+  overflow: hidden;
+}
+.sa-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  width: var(--sa-pct, 0%);
+  background: var(--sa-color, var(--gold));
+  transition: width 700ms ease;
+}
+
+/* New vs returning */
+.sa-nvr-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.sa-nvr-tile {
+  text-align: center;
+  border-radius: 10px;
+  padding: 16px;
+}
+.sa-nvr-tile-new {
+  background: var(--info-bg);
+  border: 1px solid var(--info);
+}
+.sa-nvr-tile-ret {
+  background: var(--success-bg);
+  border: 1px solid var(--success);
+}
+.sa-nvr-num {
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  font-weight: 300;
+}
+.sa-nvr-tile-new .sa-nvr-num { color: var(--info); }
+.sa-nvr-tile-ret .sa-nvr-num { color: var(--success); }
+.sa-nvr-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  margin-top: 4px;
+}
+.sa-nvr-tile-new .sa-nvr-label { color: var(--info); }
+.sa-nvr-tile-ret .sa-nvr-label { color: var(--success); }
+.sa-nvr-sub {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Financial breakdown rows */
+.sa-fin-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.sa-fin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+.sa-fin-row:last-child { border-bottom: none; }
+.sa-fin-row-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sa-fin-row-icon { color: var(--muted); }
+.sa-fin-row-label {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+.sa-fin-row-value {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--sa-fin-color, var(--text));
+}
+
+/* Weekly revenue bar chart */
+.sa-week-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 140px;
+  padding: 0 4px;
+}
+.sa-week-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.sa-week-rev {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-weight: 500;
+}
+.sa-week-bar {
+  width: 100%;
+  background: var(--gold);
+  border-radius: 4px 4px 0 0;
+  min-height: 4px;
+  height: var(--sa-week-h, 4px);
+  transition: height 700ms ease;
+}
+.sa-week-label {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOGIN PAGE — Phase 6 reference migration
+   Replaces inline panel/card styles in src/app/pages/LoginPage.tsx
+   with semantic classes. The form itself uses <Field> + <SubmitButton>
+   primitives — these classes are only the page-shell chrome.
+   ═══════════════════════════════════════════════════════════════ */
+
+.lp-panel {
+  min-height: calc(100dvh - var(--header-h, 64px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  padding: var(--page-top) var(--gutter) var(--section-y-sm);
+}
+
+.lp-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: var(--card-pad);
+}
+
+.lp-head {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.lp-logo {
+  height: 48px;
+  width: auto;
+  max-width: 180px;
+  margin: 0 auto 18px;
+  display: block;
+  object-fit: contain;
+}
+.lp-overline { margin-bottom: 10px; }
+.lp-subtitle { margin-top: 6px; }
+.lp-rule     { margin: 16px auto 0; }
+
+.lp-google { gap: 10px; }
+
+.lp-divider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.lp-divider { flex: 1; }
+.lp-divider-text {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  letter-spacing: 0.1em;
+}
+
+.lp-pass-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+.lp-pass-label { margin: 0; }
+.lp-forgot-btn {
+  min-height: 24px;
+  padding: 2px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-family: var(--font-sans);
+}
+
+.lp-signup-prompt { text-align: center; }
+.lp-signup-link {
+  color: var(--gold-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Password strength meter on signup. Width + color come from inline
+   CSS variables since they're per-keystroke values; everything else
+   lives here. */
+.sp-pw-meter-wrap { margin-top: 6px; }
+.sp-pw-meter-track {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.sp-pw-meter-fill {
+  height: 100%;
+  width: var(--sp-pw-w, 0%);
+  background: var(--sp-pw-color, var(--border));
+  border-radius: 2px;
+  transition: width var(--dur-normal) ease, background var(--dur-normal) ease;
+}
+.sp-pw-meter-label {
+  font-size: var(--text-xs);
+  color: var(--sp-pw-color, var(--muted));
+  margin-top: 3px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   OFFLINE BANNER — Phase 5
+   Top-of-page indicator for online/offline state. Slides down from
+   the top, sits above the Navbar so it's the first thing visible.
+   The banner pushes the rest of the app down rather than overlaying.
+   ═══════════════════════════════════════════════════════════════ */
+
+.ofb-banner {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky, 50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  /* Phase 9.7.2 — safe-area-inset for iPhone notch when the page
+     scrolls and this sticky banner is exposed at the top edge.
+     max() preserves the default 8px when env() is 0. */
+  padding: max(env(safe-area-inset-top), 8px) 16px 8px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  animation: ofb-slide-in var(--dur-normal) var(--ease-standard);
+}
+.ofb-banner[data-state='offline'] {
+  background: var(--state-warning-bg, color-mix(in srgb, var(--warning) 15%, var(--surface)));
+  color: var(--state-warning-fg, var(--warning));
+  border-bottom: 1px solid color-mix(in srgb, var(--warning) 35%, transparent);
+}
+.ofb-banner[data-state='reconnected'] {
+  background: var(--state-success-bg, color-mix(in srgb, var(--success) 15%, var(--surface)));
+  color: var(--state-success-fg, var(--success));
+  border-bottom: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
+}
+.ofb-icon { flex-shrink: 0; }
+.ofb-text { line-height: 1.4; }
+
+@keyframes ofb-slide-in {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ofb-banner { animation: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ADMIN PROMOTIONS — replaces 37 inline styles in
+   src/app/pages/admin/AdminPromotions.tsx
+   Three surfaces: page header (eyebrow, title, count), promo-list
+   row (status dot, code+meta, badge, status button, action buttons),
+   skeleton loading state, empty state.
+   ═══════════════════════════════════════════════════════════════ */
+
+.ap-shell {
+  /* The admin layout already pads the page — no second storefront gutter. */
+  max-width: none;
+}
+.ap-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.ap-eyebrow {
+  font-size: var(--text-2xs);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+}
+.ap-title {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  color: var(--midnight);
+  margin: 0;
+  letter-spacing: -0.02em;
+  font-size: var(--fs-page-title);
+}
+.ap-subtitle {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.ap-skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ap-skeleton-row {
+  height: 72px;
+  border-radius: var(--radius-lg);
+}
+
+.ap-empty {
+  padding: 80px 0;
+  text-align: center;
+  color: var(--muted);
+}
+.ap-empty-icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+}
+.ap-empty-icon { opacity: 0.4; }
+.ap-empty-msg { font-size: var(--text-ui); }
+.ap-empty-cta {
+  margin-top: 16px;
+  font-size: var(--text-xs);
+}
+
+.ap-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ap-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: box-shadow var(--dur-base);
+}
+.ap-row:hover { box-shadow: var(--shadow-sm); }
+
+/* Status dot — color from inline --ap-status-dot custom prop, plus
+   an active glow when active. */
+.ap-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--ap-status-dot, var(--border));
+}
+.ap-status-dot[data-active='true'] {
+  box-shadow: 0 0 0 3px var(--success-bg);
+}
+
+.ap-row-info {
+  flex: 1;
+  min-width: 0;
+}
+.ap-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.ap-code {
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  font-size: var(--text-ui);
+  color: var(--midnight);
+  letter-spacing: 0.05em;
+}
+.ap-copy-btn {
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  transition: color var(--dur-fast);
+}
+.ap-copy-btn-success { color: var(--success); }
+
+.ap-meta {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.4;
+}
+.ap-desc {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin: 2px 0 0;
+  line-height: 1.4;
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.ap-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.ap-badge {
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  background: var(--gold-soft);
+  color: var(--gold-text);
+  font-family: var(--font-sans);
+}
+
+/* Status pill button — color triplet via CSS vars set inline. */
+.ap-status-btn {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  border: 1px solid var(--ap-status-bg, var(--border));
+  background: var(--ap-status-bg, var(--surface-2));
+  color: var(--ap-status-fg, var(--muted));
+  transition:
+    background-color var(--dur-fast),
+    color var(--dur-fast),
+    border-color var(--dur-fast);
+}
+
+/* Edit/delete icon buttons. Hover handled in CSS instead of JS. */
+.ap-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 6px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.ap-icon-btn:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.ap-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ap-icon-btn-delete:hover {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+/* AdminPromotions form (PromotionForm sub-component). */
+.ap-form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.ap-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.ap-code-input {
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-size: var(--text-base);
+}
+.ap-active-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: var(--text-ui);
+  color: var(--text);
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+.ap-active-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--midnight);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.ap-active-title {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.ap-active-desc {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ACCOUNT PAGE LOADING + ORDER ERROR — Phase 5
+   Replaces ad-hoc skeleton + error styles in AccountPage.tsx.
+   ═══════════════════════════════════════════════════════════════ */
+.ap-loading-shell { padding: clamp(2rem, 4vw, 4rem) 0; }
+.ap-loading-container { max-width: 720px; }
+.ap-loading-row {
+  height: 88px;
+  border-radius: var(--radius-xl);
+  margin-bottom: 14px;
+}
+.ap-orders-skel-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.ap-orders-skel-row {
+  height: 72px;
+  border-radius: var(--radius-lg);
+}
+.ap-orders-error {
+  text-align: center;
+  padding: var(--sp-6) 0;
+}
+.ap-orders-error-msg {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.ap-orders-retry-link {
+  margin-top: var(--sp-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ADMIN ORDERS LOADING + ERROR — Phase 5
+   ═══════════════════════════════════════════════════════════════ */
+.ao-skel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ao-skel-row {
+  height: 90px;
+  border-radius: var(--radius-lg);
+}
+.ao-load-error {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--muted);
+}
+.ao-load-error-icon {
+  color: var(--danger);
+  margin-bottom: 8px;
+}
+.ao-load-error-msg {
+  font-size: var(--text-ui);
+  margin-bottom: 12px;
+}
+
+/* AdminOverview StatSkeleton — uses card padding + matches StatCard layout */
+.ao-stat-skel { padding: 24px; }
+.ao-stat-skel-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.ao-stat-skel-icon { border-radius: 8px; }
+.ao-stat-skel-value { margin-bottom: 8px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   TEA PROFILE PAGE LOADING — Phase 5
+   ═══════════════════════════════════════════════════════════════ */
+.tp-skel-shell {
+  min-height: 100dvh;
+  background: var(--bg);
+}
+.tp-skel-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--section-y-sm) var(--gutter);
+}
+.tp-skel-back { margin-bottom: 32px; }
+.tp-skel-hero {
+  aspect-ratio: 1;
+  border-radius: 12px;
+}
+.tp-skel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STALE INDICATOR — Phase 5
+   Subtle "data is being refetched in the background" signal.
+   Gray pulsing dot + "Updating…" text. Used by Tanstack Query
+   consumers wired to (isStale && isFetching).
+   ═══════════════════════════════════════════════════════════════ */
+
+.stale-ind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-family: var(--font-sans);
+  letter-spacing: 0.02em;
+}
+.stale-ind-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: stale-pulse 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.stale-ind-label { line-height: 1; }
+
+@keyframes stale-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stale-ind-dot { animation: none; opacity: 0.7; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ACCOUNT PAGE PROFILE FORM — Phase 6 layout classes
+   ═══════════════════════════════════════════════════════════════ */
+.account-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-4);
+}
+.account-phone-block { margin-bottom: var(--sp-5); }
+.account-phone-wrap {
+  position: relative;
+}
+.account-phone-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+.account-phone-input { padding-left: 36px; }
+.account-email-readonly {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CHECKOUT PAGE — Phase 6.5 multi-step refactor
+   The 1194-line single-page checkout is now a 3-step wizard
+   (delivery → payment → review). These classes hold the new
+   step-navigation chrome; the existing form fields keep their
+   styles unchanged.
+   ═══════════════════════════════════════════════════════════════ */
+
+.co-container { max-width: 960px; }
+.co-header { margin-bottom: 28px; }
+.co-overline { margin-bottom: 8px; }
+.co-steps { margin-bottom: 32px; }
+
+.co-left {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* How-it-works panel uses the surface-2 background. */
+.co-howitworks { background: var(--surface-2); }
+
+/* Step navigation row — Back on the left, Continue/Next on the right. */
+.co-step-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.co-nav-back {
+  flex-shrink: 0;
+}
+.co-nav-next {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+/* Review-step hint text shown below the Back button (helps mobile
+   users find the Place Order CTA in the wrapped right column). */
+.co-review-hint {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  line-height: 1.5;
+  flex: 1 1 220px;
+}
+
+/* Place Order button on the review step. */
+.co-place-order {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ACCOUNT PAGE — addresses sub-form
+   Phase 6 useFieldArray migration. Replaces ad-hoc inline-style
+   patterns from the old setAddresses-driven form with semantic
+   classes. The card chrome (.address-card, .is-default) is
+   pre-existing — these are the layout + empty-state classes.
+   ═══════════════════════════════════════════════════════════════ */
+
+.ap-addr-empty {
+  text-align: center;
+  padding: var(--sp-6) 0;
+}
+.ap-addr-empty-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--sp-3);
+}
+.ap-addr-empty-icon { color: var(--muted); }
+.ap-addr-empty-msg {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.ap-addr-empty-sub {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.ap-addr-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.ap-addr-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-4);
+}
+.ap-addr-card-head-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ap-addr-card-eyebrow {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ap-addr-default-badge { font-size: var(--text-2xs); }
+.ap-addr-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* Delete-address icon button — pure CSS hover (no JS handlers). */
+.ap-addr-delete-btn {
+  width: 30px;
+  height: 30px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.ap-addr-delete-btn:hover {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.ap-addr-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+.ap-addr-grid-2-narrow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--sp-3);
+}
+.ap-addr-row { margin-bottom: var(--sp-3); }
+
+/* Bottom action row — Add + Save buttons. */
+.ap-addr-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-top: var(--sp-5);
+  flex-wrap: wrap;
+}
+.ap-addr-actions[data-has-items='true'] {
+  margin-top: var(--sp-2);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ADMIN ORDERS — edit modal (Phase 6 useFieldArray migration)
+   The EditOrderModal is a useFieldArray-backed line-item form.
+   These classes replace the previous one-off inline-style chrome.
+   ═══════════════════════════════════════════════════════════════ */
+
+.ao-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ao-edit-eyebrow {
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.ao-edit-form-err {
+  font-size: var(--text-xs);
+  color: var(--danger);
+  margin-bottom: 8px;
+}
+
+/* Items list — vertical stack of line rows. */
+.ao-edit-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* Each line item row — name | quantity stepper | price | delete */
+.ao-edit-item {
+  display: grid;
+  grid-template-columns: 1fr 88px 88px 32px;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.ao-edit-item-name {
+  font-size: var(--text-sm);
+  padding: 6px 10px;
+  height: 36px;
+}
+
+.ao-edit-qty {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  height: 36px;
+}
+.ao-edit-qty-btn {
+  width: 28px;
+  height: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: var(--text-ui);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ao-edit-qty-val {
+  flex: 1;
+  text-align: center;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.ao-edit-price-wrap { position: relative; }
+.ao-edit-price-prefix {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.ao-edit-price-input {
+  padding: 6px 8px 6px 18px;
+  font-size: var(--text-sm);
+  height: 36px;
+}
+
+/* Delete button on each item row — pure CSS hover. */
+.ao-edit-item-remove {
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.ao-edit-item-remove:hover {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+/* Fees & discounts — 2-column grid. */
+.ao-edit-fees-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.ao-edit-currency-wrap { position: relative; }
+.ao-edit-currency-prefix {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--text-xs);
+  color: var(--muted);
+  pointer-events: none;
+}
+.ao-edit-currency-input { padding-left: 22px; }
+.ao-edit-currency-input-wide { padding-left: 28px; }
+
+/* Hint text in warning colour for "discount exceeds subtotal". */
+.ao-edit-warn { color: var(--warning); }
+
+.ao-edit-shipping-shortcut {
+  display: flex;
+  align-items: flex-end;
+}
+/* "Remove shipping fee" — danger-coloured outline. */
+.ao-edit-shipping-remove {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* Totals summary panel. */
+.ao-edit-summary {
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  border: 1px solid var(--border);
+  font-size: var(--text-sm);
+}
+.ao-edit-summary-eyebrow {
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.ao-edit-summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  color: var(--ao-row-color, var(--text-2));
+}
+.ao-edit-summary-total {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: var(--text-base);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  color: var(--midnight);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GIFT BUILDER — Step 3 (Personalize)
+   Phase 6 cleanup: removed inline-style local Field; recipient/sender
+   now use the compound <FormField> primitive. The remaining textarea
+   + Label + Preview keep their inline-style behaviour but as classes.
+   ═══════════════════════════════════════════════════════════════ */
+
+.gb-step3-stack {
+  max-width: 600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.gb-step3-intro {
+  margin: 0;
+  font-size: var(--text-ui);
+  color: var(--text-2);
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* Eyebrow label used for Occasion / Gift message / Preview. */
+.gb-step3-label {
+  display: block;
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-family: var(--font-sans);
+}
+.gb-step3-label-req {
+  color: var(--gold-text);
+  margin-left: 4px;
+}
+
+/* Gift-message textarea. Driven by data-over-limit for the danger
+   border colour and pure CSS :focus for the gold-on-focus accent. */
+.gb-step3-message {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-ui);
+  font-family: var(--font-sans);
+  outline: none;
+  resize: vertical;
+  line-height: 1.6;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.gb-step3-message:focus {
+  border-color: var(--gold);
+  box-shadow: var(--focus-shadow);
+}
+.gb-step3-message[data-over-limit='true'] {
+  border-color: var(--danger);
+}
+.gb-step3-message[data-over-limit='true']:focus {
+  /* over-limit beats focus — danger stays */
+  border-color: var(--danger);
+  box-shadow: none;
+}
+
+/* Character counter under the textarea — gets warning colour
+   when message length is past 90% of the cap. */
+.gb-step3-counter {
+  display: flex;
+  justify-content: flex-end;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-top: 4px;
+}
+.gb-step3-counter[data-near-limit='true'] {
+  color: var(--warning);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STEP 4 — OCCASION (dedicated full-step layout)
+   Roadmap §6-step modal flow. The occasion picker used to share Step
+   3 with the names + message form; promoting it to its own step lets
+   the tiles breathe (larger icons, more padding) and makes the
+   optional "Skip" action unmistakable.
+   ═══════════════════════════════════════════════════════════════ */
+.gb-step4-stack {
+  /* Wider than the personal-info form (600px) — occasion tiles want
+     more room to lay out a 3-4 column grid without feeling cramped. */
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.gb-step4-intro {
+  text-align: center;
+}
+.gb-step4-h {
+  margin: 0 0 6px;
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: clamp(1.25rem, 2.2vw, 1.6rem);
+  color: var(--midnight);
+  letter-spacing: -0.01em;
+}
+.gb-step4-sub {
+  margin: 0;
+  font-size: var(--text-ui);
+  color: var(--text-2);
+  line-height: 1.6;
+}
+/* Larger-icon variant for the shared OccasionPicker. Scoped via
+   ancestor so OccasionPicker itself stays untouched (it's not in the
+   roadmap's locked file list). */
+.gb-step4-occ .op-tile {
+  padding: 18px 12px;
+  gap: 10px;
+}
+.gb-step4-occ .op-icon {
+  font-size: 32px;
+}
+.gb-step4-occ .op-label {
+  font-size: var(--text-xs);
+}
+/* Prominent Skip — full-width secondary button below the grid.
+   Visually equal-weight to a button, distinct from a link. The
+   chevron signals "advances the flow" rather than "destructive". */
+.gb-step4-skip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+  color: var(--text-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
+}
+.gb-step4-skip:hover {
+  background: var(--surface);
+  border-color: var(--gold);
+  color: var(--midnight);
+}
+.gb-step4-skip:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ADMIN PRODUCTS — local field wrapper
+   Phase 6 cleanup: ProductFormField uses these classes instead of
+   inline styles. The wrapper injects htmlFor on the label and id on
+   the child input via cloneElement, so the previous unlabelled
+   inputs now have proper aria.
+   ═══════════════════════════════════════════════════════════════ */
+
+.ap-prod-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ap-prod-field-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-2);
+  text-transform: uppercase;
+}
+.ap-prod-field-hint {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+

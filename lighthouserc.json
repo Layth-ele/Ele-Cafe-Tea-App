@@ -1,0 +1,89 @@
+{
+  "//": [
+    "Lighthouse CI configuration — Phase 5, step 1 of the perf roadmap.",
+    "",
+    "Run locally:    npm run test:lighthouse",
+    "Run in CI:      lhci autorun",
+    "",
+    "Strategy:",
+    "  - `npm run build` produces dist/, then `npm run preview` serves it",
+    "    on http://localhost:4173. LHCI launches a headless Chrome against",
+    "    a fixed list of URLs and asserts every category score against the",
+    "    budgets below.",
+    "  - We test 3 routes covering the customer's core journey: home,",
+    "    products listing, a product detail page. Login/checkout aren't",
+    "    auth-aware in CI without a seeded fixture, so they're omitted.",
+    "  - Each URL is run 3 times; LHCI takes the MEDIAN run to reduce",
+    "    flake from cold-cache vs warm-cache jitter.",
+    "",
+    "Score thresholds:",
+    "  - Performance:    >= 0.95  (warn at 0.95, error if drop below)",
+    "  - Accessibility:  >= 1.00  (must be 100; we have axe gating too)",
+    "  - Best practices: >= 0.95",
+    "  - SEO:            >= 0.95",
+    "  - PWA:            off — Workbox-managed, separate concern.",
+    "",
+    "Tightening to 1.00 across the board comes in roadmap Phase 5 step 2",
+    "(critical-CSS inline) which lifts FCP/LCP enough to consistently hit",
+    "the perf 100 mark. Until then, 0.95 is a tight-but-realistic gate."
+  ],
+  "ci": {
+    "collect": {
+      "startServerCommand": "npm run preview -- --port 4173",
+      "startServerReadyPattern": "Local:",
+      "url": [
+        "http://localhost:4173/",
+        "http://localhost:4173/products",
+        "http://localhost:4173/products/black",
+        "http://localhost:4173/products/green",
+        "http://localhost:4173/tea-profile/black/english-breakfast",
+        "http://localhost:4173/tea-profile/green/sencha",
+        "http://localhost:4173/cart",
+        "http://localhost:4173/gifts",
+        "http://localhost:4173/about",
+        "http://localhost:4173/contact",
+        "http://localhost:4173/login",
+        "http://localhost:4173/signup"
+      ],
+      "numberOfRuns": 3,
+      "settings": {
+        "preset": "desktop",
+        "throttlingMethod": "simulate",
+        "skipAudits": [
+          "uses-http2"
+        ]
+      }
+    },
+    "assert": {
+      "preset": "lighthouse:no-pwa",
+      "assertions": {
+        "categories:performance":    ["error", { "minScore": 0.95 }],
+        "categories:accessibility":  ["error", { "minScore": 1.00 }],
+        "categories:best-practices": ["error", { "minScore": 0.95 }],
+        "categories:seo":            ["error", { "minScore": 0.95 }],
+
+        "first-contentful-paint":    ["error", { "maxNumericValue": 1800 }],
+        "largest-contentful-paint":  ["error", { "maxNumericValue": 2000 }],
+        "cumulative-layout-shift":   ["error", { "maxNumericValue": 0.1 }],
+        "total-blocking-time":       ["error", { "maxNumericValue": 200 }],
+        "speed-index":               ["error", { "maxNumericValue": 3400 }],
+
+        "uses-text-compression":     "error",
+        "uses-responsive-images":    "warn",
+        "modern-image-formats":      "warn",
+        "render-blocking-resources": "warn",
+        "unminified-css":            "error",
+        "unminified-javascript":     "error",
+        "unused-css-rules":          "warn",
+        "unused-javascript":         "warn",
+        "font-display":              "error",
+        "uses-rel-preload":          "warn",
+        "uses-rel-preconnect":       "warn",
+        "no-document-write":         "error"
+      }
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}

@@ -1,0 +1,904 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(uid) { return request.auth != null && request.auth.uid == uid; }
+    function isAdmin()    { return request.auth != null && request.auth.token.role == 'admin'; }
+    function validReview(d) {
+      return d.keys().hasOnly(['userId', 'userName', 'rating', 'comment', 'createdAt', 'updatedAt'])
+        && d.userId == request.auth.uid
+        && d.rating is int && d.rating >= 1 && d.rating <= 5
+        && (!('comment' in d)  || (d.comment is string && d.comment.size() <= 2000))
+        && (!('userName' in d) || (d.userName is string && d.userName.size() <= 100));
+    }
+
+    // Inventory access = shared-account password + 4-digit employee code.
+    // validateInventoryAccessCode only runs for the inventory@elecafe.ca
+    // account; on a correct code it issues a per-employee custom token
+    // (uid inv-{employeeId}) with these claims, which the client uses on a
+    // memory-only Firebase app (src/features/inventory/lib/inventorySession.ts):
+    //   inv: true · invEmp: name · invEmpId · invRole: 'edit'|'readonly'
+    //   invExp: expiry in epoch ms (one shift)
+    // So the code is enforced HERE, not just in the UI, the read-only role
+    // can't write, and updatedBy / loggedBy must be the signed-in employee.
+    function invSession() {
+      return request.auth != null
+        && request.auth.token.inv == true
+        && request.auth.token.invExp is int
+        && request.auth.token.invExp > request.time.toMillis();
+    }
+    function invEditor()       { return invSession() && request.auth.token.invRole == 'edit'; }
+    function invEmployeeName() { return request.auth.token.invEmp; }
+    function isInventoryUser() { return isAdmin() || invSession(); }
+
+    // "YYYY-MM-DD" for a timestamp (UTC).
+    function pad2(n)     { return n < 10 ? '0' + string(n) : string(n); }
+    function ymd(t)      { return string(t.year()) + '-' + pad2(t.month()) + '-' + pad2(t.day()); }
+
+    // /teas — public read, admin write
+    match /teas/{teaId} {
+      allow read:  if true;
+      allow create, delete: if isAdmin();
+      // Update path:
+      //   • admins can update any field (full edit access);
+      //   • signed-in customers can update ONLY avgRating + ratingCount
+      //     + updatedAt, and only when those values are within sane
+      //     ranges. This is what makes review submission work — the
+      //     client-side transaction in TeaProfilePage updates the tea
+      //     doc with the recomputed mean. Without this carve-out, the
+      //     entire review transaction rolls back with PERMISSION_DENIED
+      //     and reviews silently fail for non-admin users.
+      //
+      // The constraints:
+      //   - affectedKeys() ⊆ {avgRating, ratingCount, updatedAt} — no
+      //     other field changes allowed (so a customer can't sneak in
+      //     a price update via a fake "review" write).
+      //   - avgRating must be a number in [0, 5].
+      //   - ratingCount must be a non-negative integer that grows by
+      //     at most 1 (so a customer can't bump it by 1000 in one
+      //     request to fake popularity).
+      allow update: if isAdmin() || (
+        isSignedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['avgRating', 'ratingCount', 'updatedAt']) &&
+        request.resource.data.avgRating is number &&
+        request.resource.data.avgRating >= 0 &&
+        request.resource.data.avgRating <= 5 &&
+        request.resource.data.ratingCount is int &&
+        request.resource.data.ratingCount >= 0 &&
+        request.resource.data.ratingCount <= (resource.data.get('ratingCount', 0) + 1)
+      );
+      match /reviews/{reviewId} {
+        allow read: if true;
+        // One review per customer (doc id = their uid), with ONLY the
+        // review fields. Extra fields are refused: a review must never be
+        // able to carry e.g. `price` / `available` (IDs from the browser
+        // were once used to build /teas paths — see placeOrder).
+        allow create: if isSignedIn()
+          && reviewId == request.auth.uid
+          && validReview(request.resource.data);
+        allow update: if (isOwner(resource.data.userId)
+                          && request.resource.data.userId == resource.data.userId
+                          && validReview(request.resource.data))
+                      || isAdmin();
+        allow delete: if isOwner(resource.data.userId) || isAdmin();
+      }
+    }
+
+    // /orders
+    match /orders/{orderId} {
+      // Read rule order matters: `isAdmin()` is checked FIRST so admins
+      // short-circuit the OR without ever evaluating `resource.data`.
+      // `get` requests on a NON-EXISTENT document arrive with
+      // `resource == null`, so `resource.data.userId` evaluates to null
+      // in CEL, making `isOwner(null)` false. Without putting `isAdmin()`
+      // first AND guarding the owner clause with `resource != null`,
+      // customers get permission-denied on freshly-generated orderIds.
+      allow read: if isAdmin()
+                  || (resource != null && isOwner(resource.data.userId));
+
+      // ─── Create: client-write path is CLOSED. ──────────────────────
+      // Round 2 Bug #21: previously the rule allowed direct setDoc
+      // bypass of the placeOrder callable, and the comment block here
+      // openly admitted that field validation (item prices, arithmetic
+      // balance) was not enforced. A malicious client could write
+      // `items: [{ productId: 'real', price: 0.01, quantity: 100 }]`
+      // and the order persisted with that fabricated price.
+      //
+      // Fix: deny client creates entirely. The placeOrder cloud function
+      // uses the Admin SDK (which bypasses these rules) so legitimate
+      // orders go through the validated path. Any direct setDoc from a
+      // browser client is now rejected.
+      //
+      // The placeOrder function:
+      //   • verifies request.auth.token.email_verified
+      //   • cross-checks request.auth.uid === data.userId
+      //   • re-fetches each item's price from /teas/{productId} and
+      //     uses the canonical price (R2 Bug #16 fix)
+      //   • recomputes subtotal/totalAmount from server-trusted values
+      //   • XOR-validates creditApplied / creditPointsRedeemed
+      //
+      // Defense in depth: even if the callable were misconfigured, this
+      // rule guarantees the client cannot side-step it.
+      allow create: if false;
+
+      // ─── Update: customer carve-outs + admin allowlist ────────────
+      // Round 1 Bug #19 + Round 2 Bug #22: previously `isAdmin()`
+      // permitted any field change, including overwriting userId,
+      // createdAt, decremented, and creditPointsActuallyDeducted —
+      // breaking the audit/restore chain. Now admin updates are
+      // bounded to a workflow allowlist, and the customer branches
+      // are unchanged but documented.
+      allow update: if (isAdmin() && adminUpdateAllowed())
+        || (isOwner(resource.data.userId) && (
+            // Customer cancel: only from pending → cancelled, only the
+            // status / reason / updatedAt fields touched.
+            (resource.data.status == 'pending'
+             && request.resource.data.status == 'cancelled'
+             && request.resource.data.diff(resource.data)
+                .affectedKeys().hasOnly(['status','cancellationReason','updatedAt']))
+        ));
+      allow delete: if false;
+    }
+
+    // Admin-update allowlist for /orders. Defines:
+    //   1. The set of fields admin is permitted to mutate.
+    //   2. Immutable fields admin must NOT touch.
+    //
+    // Why both: hasOnly() guarantees affected keys are within the
+    // allowlist, but a forgetful admin tool calling setDoc with merge
+    // could re-write an unchanged immutable field with an identical
+    // value — affectedKeys would not include it, but a careless
+    // refactor might. The explicit immutable list documents intent.
+    function adminUpdateAllowed() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        // Status workflow (admin owns the order's state machine — see
+        // adminStatusChangeAllowed for the permitted transitions):
+        'status',
+        // Status reasons / notes:
+        'cancellationReason', 'rejectionReason', 'adminNote',
+        // Fulfilment fields:
+        'trackingNumber', 'carrier',
+        // Edit-pending-order fields (see pendingEditAllowed):
+        'items', 'subtotal', 'shippingFee', 'gst', 'totalAmount',
+        'promoCode', 'promoDiscount', 'discount', 'discountCode',
+        // Fulfilment timestamps (approvedAt / paidAt are written only by
+        // the approveOrder Cloud Function, alongside the card capture):
+        'shippedAt', 'deliveredAt', 'pickedUpAt',
+        // Last-modified marker:
+        'updatedAt',
+      ])
+      // Belt-and-braces: explicit immutable-field guard. `payment` is
+      // Cloud-Function-only — admins can never mark an order paid or
+      // alter a card hold from the browser.
+      && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'userId', 'orderId', 'customerId', 'createdAt',
+        'decremented', 'payment', 'approvedAt', 'paidAt',
+        'creditApplied', 'creditPointsRedeemed', 'creditPointsActuallyDeducted',
+        'shippingAddress', 'fulfillmentMethod',
+      ])
+      && adminStatusChangeAllowed()
+      && pendingEditAllowed();
+    }
+
+    // Admin status transitions. Approval (pending → in_progress) is NOT
+    // here: it must go through the approveOrder Cloud Function, which
+    // captures the card hold. Ending an order (rejected / cancelled) is
+    // allowed — onOrderWrite then releases the hold or refunds the card.
+    function adminStatusChangeAllowed() {
+      let from = resource.data.status;
+      let to   = request.resource.data.status;
+      return to == from
+        || (from == 'pending'          && to in ['rejected', 'cancelled'])
+        || (from == 'in_progress'      && to in ['ready_for_pickup', 'shipped', 'cancelled'])
+        || (from == 'ready_for_pickup' && to in ['delivered', 'cancelled'])
+        || (from == 'shipped'          && to in ['delivered', 'cancelled'])
+        || (from == 'delivered'        && to in ['rejected', 'cancelled']);
+    }
+
+    // Items / totals can only be edited while the order is pending, and
+    // the new total can never exceed the amount held on the card.
+    function pendingEditAllowed() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'items', 'subtotal', 'shippingFee', 'gst', 'totalAmount',
+          'promoCode', 'promoDiscount', 'discount', 'discountCode',
+        ])
+        || (resource.data.status == 'pending'
+            && request.resource.data.status == 'pending'
+            && (!('payment' in resource.data)
+                || resource.data.payment.status != 'authorized'
+                || request.resource.data.totalAmount * 100 <= resource.data.payment.authorizedAmount + 0.5));
+    }
+
+    // /roleSignals — Cloud-Function-only writes; owner reads.
+    //
+    // Cloud Functions write a doc here when a user's role changes
+    // (admin promote/demote). The user's client subscribes to its own
+    // /roleSignals/{uid} and force-refreshes the ID token on each
+    // update — picking up the new admin custom claim immediately
+    // without requiring sign-out + sign-in.
+    //
+    // No client writes allowed: Cloud Functions use Admin SDK and
+    // bypass these rules. Even if a write were allowed, the only
+    // effect would be forcing the client to refresh its token —
+    // harmless without a corresponding setCustomUserClaims call.
+    match /roleSignals/{userId} {
+      allow read:  if isOwner(userId) || isAdmin();
+      allow write: if false;
+    }
+
+    // /users
+    //
+    // Self-write is allowed but tightly bounded:
+    //   - read: owner + admin
+    //   - create: owner (first signup writes the full doc)
+    //   - update: owner can modify ONLY the allowlisted profile fields.
+    //     Denylisting just role + createdAt isn't enough — a future
+    //     code path that stores e.g. `balance` on /users would let
+    //     attackers fake their own balance until rules are updated.
+    //     Allowlist makes new fields explicit additions.
+    //   - delete: admin only.
+    //
+    // Allowlisted profile fields (must match client-side AccountPage
+    // + AuthContext.ensureUserDoc writes):
+    //     displayName, phone, photoURL, email, addresses, updatedAt
+    //
+    // Forbidden via this allowlist (only Cloud Functions write these):
+    //     role, createdAt, uid (immutable), totalActiveMs, lastSessionMs,
+    //     lastSessionEndedAt (analytics, owner-write tolerated).
+    //
+    // Note: useSessionTracker writes totalActiveMs / lastSessionMs /
+    // lastSessionEndedAt for the OWN user — explicitly allowed in the
+    // list below so the analytics flush doesn't get rejected.
+    match /users/{userId} {
+      allow read:   if isOwner(userId) || isAdmin();
+      // Self-create is limited to the profile fields the app writes, with
+      // role pinned to 'user'. Server-owned fields (customerId, role, …)
+      // can't be self-assigned — placeOrder copies customerId onto orders.
+      allow create: if isOwner(userId)
+                    && request.resource.data.keys().hasOnly([
+                         'uid', 'email', 'displayName', 'photoURL', 'phone', 'addresses',
+                         'role', 'createdAt', 'updatedAt', 'emailVerified',
+                         'totalActiveMs', 'lastSessionMs', 'lastSessionEndedAt',
+                       ])
+                    && request.resource.data.get('role', 'user') == 'user'
+                    && request.resource.data.get('uid', userId) == userId
+                    && request.resource.data.get('emailVerified', false) == false;
+      // Update path:
+      //   • Owner: allowlisted profile fields only.
+      //   • Admin: any field EXCEPT role / createdAt / uid (immutable).
+      //
+      // The previous shape (`isOwner(...) WITH allowlist || isAdmin()`)
+      // let admins overwrite role+createdAt+uid via setDoc-merge — easy
+      // to do accidentally if admin tooling re-saves a user record
+      // verbatim. role changes must go through setAdminRole Cloud
+      // Function (which sets the custom claim atomically); writing
+      // role on /users without the matching claim creates a desync
+      // where the doc says "admin" but the auth token says "user".
+      allow update: if (isOwner(userId)
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly([
+                            'displayName', 'phone', 'photoURL', 'email',
+                            'addresses', 'updatedAt',
+                            'totalActiveMs', 'lastSessionMs', 'lastSessionEndedAt',
+                            'emailVerified', 'lang',
+                          ])
+                        // Site language for server-sent emails.
+                        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['lang'])
+                            || request.resource.data.lang in ['en', 'fr'])
+                        // Defense in depth on the emailVerified field:
+                        // user may only flip it to TRUE (not false), and
+                        // only when the auth token actually says verified.
+                        // Without these guards, a malicious client could
+                        // write emailVerified=true to /users/{uid} from
+                        // an unverified account just to trigger the bonus
+                        // grant Cloud Function. Belt-and-braces: the
+                        // function should also re-check, but the rule
+                        // is the authoritative gate.
+                          && (!request.resource.data.diff(resource.data).affectedKeys()
+                              .hasAny(['emailVerified'])
+                            || (request.resource.data.emailVerified == true
+                                && request.auth.token.email_verified == true)))
+                    || (isAdmin()
+                        && !request.resource.data.diff(resource.data).affectedKeys()
+                            .hasAny(['role', 'createdAt', 'uid']));
+      allow delete: if isAdmin();
+
+      // Phase 11.4 — /users/{uid}/wishlist/{slug}.
+      // Owner-only read/write. Each doc is a tea slug; payload is a
+      // denormalized snapshot (name, image, priceAtSave) so the
+      // wishlist page can render without re-fetching the products
+      // catalog. Server-side Cloud Functions (e.g. low-stock alerts)
+      // can read via collectionGroup query — they run as admin SDK
+      // and bypass these rules anyway.
+      match /wishlist/{slug} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Phase 11.5 — /users/{uid}/preferences/{docId}.
+      // Owner-only. Currently used by 'notifications' doc; future
+      // prefs (e.g. display, privacy) can land here too without
+      // a rule change.
+      match /preferences/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // FCM push token registry — /users/{uid}/fcmTokens/{tokenHash}.
+      //
+      // Each document holds one FCM registration token for one installed
+      // browser/device. The client writes on registration; the Cloud
+      // Function (sendPushToUser) reads to send and deletes stale tokens.
+      //
+      // Rules:
+      //   read   — owner only (Cloud Functions use admin SDK, bypass rules)
+      //   create — owner only, must include a non-empty `token` field
+      //   update — owner only (token refresh writes same hash, updates fields)
+      //   delete — owner only (sign-out cleanup from usePushNotifications)
+      //
+      // Admins can read via the admin SDK. No client-side admin read is
+      // needed — the AdminCustomers panel doesn't show FCM tokens.
+      match /fcmTokens/{tokenHash} {
+        allow read:   if isOwner(userId);
+        allow create: if isOwner(userId)
+                      && request.resource.data.token is string
+                      && request.resource.data.token.size() > 0;
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // /carts
+    match /carts/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // /gifts
+    match /gifts/{giftId} {
+      allow read:           if isOwner(resource.data.userId) || isAdmin();
+      allow create:         if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    // /credits — read by owner+admin; write by admin only (client) or
+    // Cloud Functions (server). Customer redemption goes through the
+    // onOrderWrite Cloud Function which uses Admin SDK to deduct
+    // server-side — clients never write here directly.
+    //
+    // Why admin can write client-side: the AdminCustomers panel has
+    // an "Add credit / Deduct credit" UI (refunds, goodwill gestures,
+    // etc.) that runs adminAdjustCredit() from the browser. Admin is
+    // trusted everywhere else (settings, promotions, teas) so it's
+    // consistent. Customer self-grant is still impossible — the
+    // isAdmin() check requires the role custom claim.
+    //
+    // R3-9 — admin client-side writes are now bounded to the field
+    // allowlist that adminAdjustCredit() actually touches, with the
+    // diff REQUIRED to include both `balance` and `updatedAt`. This
+    // makes it harder for an admin to accidentally edit /credits via
+    // the Firebase console without the matching /creditTransactions
+    // audit row — the rule rejects writes that don't look like a
+    // legitimate adjustment. Cloud Functions still bypass via Admin
+    // SDK and can write any field.
+    //
+    // The CREATE path is permissive (any field) because the first-write
+    // shape from adminAdjustCredit + the cloud function's onNewUser
+    // bootstrap both use full-doc tx.set, and a hasOnly() create rule
+    // would have to enumerate every field across both paths.
+    match /credits/{userId} {
+      allow read:   if isOwner(userId) || isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin() && creditAdminUpdateAllowed();
+      allow delete: if false;
+    }
+    function creditAdminUpdateAllowed() {
+      // Must touch `balance` and `updatedAt` together — matches
+      // adminAdjustCredit's update shape and rejects single-field
+      // console edits. Field set must be within the allowlist; any
+      // unknown field (e.g., a typo'd field-name from the console)
+      // is rejected.
+      return request.resource.data.diff(resource.data).affectedKeys().hasAll(['balance','updatedAt'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+               'balance', 'updatedAt',
+               'lifetimeEarned', 'lifetimeRedeemed', 'lifetimeSpend',
+               'orderCount',
+               'welcomeBonusGiven', 'welcomeBonusGrantedAt',
+               // R3 file2 Bug #16: `lastEarnedAt` removed from the
+               // allowlist together with the field itself.
+             ]);
+    }
+
+    // /creditTransactions — immutable audit log written by Cloud Functions
+    // OR by admin (when adminAdjustCredit() logs an entry alongside the
+    // balance update). Users can never write here because they could
+    // fabricate "earn 99999" entries to spoof their own history.
+    match /creditTransactions/{txId} {
+      allow read:                   if isOwner(resource.data.userId) || isAdmin();
+      allow create:                 if isAdmin();
+      allow update, delete:         if false;
+    }
+
+    // /categories
+    match /categories/{id} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
+    // /notifications — Cloud Functions create, users read+delete+mark-read
+    match /notifications/{notifId} {
+      allow read: if isOwner(resource.data.recipientId)
+                  || (isAdmin() && resource.data.recipientId == 'admin');
+      // Update is restricted to flipping isRead only. Two checks:
+      //   1. diff().affectedKeys().hasOnly(['isRead']) — recipientId,
+      //      title, body, etc. cannot be tampered with.
+      //   2. request.resource.data.isRead is bool — value must be a
+      //      real boolean, not a string "yes" or number 42 that the
+      //      bell would treat as truthy but admin-side tooling /
+      //      analytics would see as malformed.
+      allow update: if (isOwner(resource.data.recipientId)
+                    || (isAdmin() && resource.data.recipientId == 'admin'))
+                    && request.resource.data.diff(resource.data)
+                       .affectedKeys().hasOnly(['isRead'])
+                    && request.resource.data.isRead is bool;
+      allow delete: if isOwner(resource.data.recipientId)
+                    || (isAdmin() && resource.data.recipientId == 'admin');
+      // Admins can create test notifications targeted at themselves
+      // (recipientId == 'admin'). Production notifications come from
+      // Cloud Functions using the Admin SDK which bypasses these rules.
+      // The required-fields check below makes it impossible to write a
+      // malformed test doc that crashes the bell.
+      allow create: if isAdmin()
+                    && request.resource.data.recipientId == 'admin'
+                    && request.resource.data.type        is string
+                    && request.resource.data.title       is string
+                    && request.resource.data.body        is string
+                    && request.resource.data.isRead      == false
+                    && request.resource.data.createdAt   == request.time;
+    }
+
+    // /counters
+    match /counters/{counterId} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
+    // /settings
+    match /settings/{docId} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
+    // /promotions
+    match /promotions/{promoId} {
+      allow read:  if true;
+      // Admin has unrestricted write access (create/edit/delete promos).
+      allow create, delete: if isAdmin();
+      // Update path: admin only.
+      //
+      // Previously this allowed signed-in customers to increment
+      // usageCount by 1 — but the Cloud Function `onOrderWrite` now
+      // owns promo-usage tracking server-side using the Admin SDK
+      // (which bypasses these rules). Keeping the customer-write path
+      // open created a DoS surface: any signed-in user could spam
+      // single-field updates and exhaust a promo's `usageLimit` in
+      // seconds, locking other customers out. Closed.
+      allow update: if isAdmin();
+    }
+
+    // /comboGalleryItems — global "pairs with our tea" carousel shown
+    // on every tea profile page when settings.global.comboGalleryEnabled
+    // is true. Public read so visitors see it. Admin-only write with
+    // strict field validation so the customer carousel can't be poisoned
+    // (e.g. broken image URL crashing the auto-rotate, negative price
+    // displaying as -$24).
+    //
+    // Flat top-level collection — `/comboGalleryItems/{id}`, NOT a
+    // nested `/comboGallery/items/{id}` subcollection. Keeps queries +
+    // rules one-liners. Make sure the path here matches `collection(db,
+    // 'comboGalleryItems')` in the client code.
+    //
+    // Phase 12 — field allowlist via hasOnly(). Brings combo writes in
+    // line with the pattern used on /orders and /users, where an admin
+    // can only persist a known set of keys. Prevents accidental writes
+    // of unknown fields by future code paths.
+    match /comboGalleryItems/{itemId} {
+      allow read:   if true;
+      allow create, update: if isAdmin()
+                    && request.resource.data.keys().hasOnly([
+                         'imageUrl', 'storagePath', 'title', 'description',
+                         'titleFr', 'descriptionFr',
+                         'price', 'currency', 'order', 'enabled', 'slug',
+                         'pairedTeaIds',
+                         'createdAt', 'updatedAt',
+                       ])
+                    && request.resource.data.imageUrl    is string
+                    && request.resource.data.storagePath is string
+                    && request.resource.data.title       is string
+                    && request.resource.data.description is string
+                    && request.resource.data.price       is number
+                    && request.resource.data.price       >= 0
+                    && request.resource.data.title.size()       <= 100
+                    && request.resource.data.description.size() <= 500
+                    && (!('titleFr' in request.resource.data)
+                        || (request.resource.data.titleFr is string && request.resource.data.titleFr.size() <= 100))
+                    && (!('descriptionFr' in request.resource.data)
+                        || (request.resource.data.descriptionFr is string && request.resource.data.descriptionFr.size() <= 500))
+                    && request.resource.data.imageUrl.size()    <= 2048
+                    && (!('slug'    in request.resource.data) || request.resource.data.slug    is string)
+                    && (!('order'   in request.resource.data) || request.resource.data.order   is int)
+                    && (!('enabled' in request.resource.data) || request.resource.data.enabled is bool)
+                    // Phase 13 — pairedTeaIds: list of tea doc IDs, capped at 8.
+                    // Firestore CEL has no "is array" predicate, so we test
+                    // by reading .size() inside a list-only path (.hasAny on
+                    // an empty list is a list operation that returns false
+                    // for non-list values, which would trip the gate).
+                    && (!('pairedTeaIds' in request.resource.data)
+                        || (request.resource.data.pairedTeaIds is list
+                            && request.resource.data.pairedTeaIds.size() <= 8));
+      allow delete: if isAdmin();
+    }
+
+    // /promotionUsage — per-customer usage log used to enforce
+    // perUserLimit on promo codes. Created during checkout when a
+    // customer applies a promo. The rule validates field shapes
+    // (previously only userId was checked) so a malicious client
+    // can't spoof admin analytics by writing fake $9999 discount
+    // records.
+    match /promotionUsage/{usageId} {
+      allow read:   if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isSignedIn()
+                    && request.resource.data.userId         == request.auth.uid
+                    && request.resource.data.promotionId    is string
+                    && request.resource.data.promotionId.size() > 0
+                    && request.resource.data.orderId        is string
+                    && request.resource.data.orderId.size() > 0
+                    && request.resource.data.discountAmount is number
+                    && request.resource.data.discountAmount >= 0
+                    && request.resource.data.keys().hasOnly([
+                         'promotionId', 'promoCode', 'userId', 'orderId',
+                         'discountAmount', 'usedAt'
+                       ]);
+      allow update, delete: if false;
+    }
+
+    // /translations — EN→FR Google Translate cache.
+    // Public read so any visitor reads cached translations.
+    // Writes restricted to ADMIN ONLY — previously any signed-in user
+    // could write under "populate the cache as strings are encountered",
+    // which let a malicious customer poison the cache with arbitrary
+    // text (e.g. swap "Add to Cart" for a phishing link). Cache
+    // population should be done by an admin or by a server-side
+    // function using the Admin SDK; the i18n hook can fall back to
+    // the source string when no cached translation exists.
+    match /translations/{lang}/cache/{docId} {
+      allow read:   if true;
+      allow write:  if isAdmin();
+    }
+
+    // /security_events — reCAPTCHA low-score logs, admin read only
+    match /security_events/{eventId} {
+      allow read:            if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    // /verificationEvents — analytics about email-verification UX flow.
+    // One doc per "interesting" event:
+    //   • modal_shown       — verification modal opened
+    //   • resend_clicked    — user clicked the resend button
+    //   • verified          — verification check returned true
+    //   • action_blocked    — gated action intercepted (order/review)
+    // Read is admin-only (privacy). Writes: signed-in users only,
+    // schema-validated, append-only. Doc id is client-generated; dedup
+    // by user happens admin-side.
+    match /verificationEvents/{eventId} {
+      allow read:   if isAdmin();
+      allow create: if isSignedIn()
+                    && request.resource.data.userId    == request.auth.uid
+                    && request.resource.data.event     in ['modal_shown', 'resend_clicked', 'verified', 'action_blocked']
+                    && request.resource.data.createdAt is timestamp
+                    && request.resource.data.keys().hasOnly([
+                         'userId', 'event', 'reason', 'isVerified',
+                         'createdAt', 'userAgent', 'pageUrl',
+                       ])
+                    // Keep strings bounded so the collection stays cheap.
+                    && (!('reason'    in request.resource.data) || request.resource.data.reason.size()    <= 100)
+                    && (!('userAgent' in request.resource.data) || request.resource.data.userAgent.size() <= 500)
+                    && (!('pageUrl'   in request.resource.data) || request.resource.data.pageUrl.size()   <= 500);
+      // Append-only history. Cleanup via admin Cloud Function if needed.
+      allow update, delete: if false;
+    }
+
+    // /giftBuilderEvents — funnel analytics for /gifts and the
+    // 4-step Gift Builder modal. Allows anonymous + signed-in writes
+    // with strict shape/size caps; admin-only read. Append-only.
+    match /giftBuilderEvents/{eventId} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.path            is string
+                    && request.resource.data.path.size()     > 0
+                    && request.resource.data.path.size()     <= 500
+                    && request.resource.data.visitorId       is string
+                    && request.resource.data.visitorId.size()<= 64
+                    && request.resource.data.isAuthed        is bool
+                    && request.resource.data.event           in [
+                         'landing_cta_clicked', 'modal_opened',
+                         'step_viewed', 'step_next_clicked',
+                         'step_back_clicked', 'modal_closed',
+                         'add_to_cart_succeeded', 'add_to_cart_failed'
+                       ]
+                    && request.resource.data.createdAt       is timestamp
+                    && request.resource.data.keys().hasOnly([
+                         'path', 'visitorId', 'isAuthed', 'userId',
+                         'event', 'step', 'source', 'bundleSlug',
+                         'teasSelected', 'samplesSelected', 'createdAt',
+                       ])
+                    && (!('userId' in request.resource.data) || (
+                         request.resource.data.userId is string
+                         && request.resource.data.userId.size() <= 128
+                       ))
+                    && (!('step' in request.resource.data) || (
+                         request.resource.data.step is int
+                         && request.resource.data.step >= 1
+                         && request.resource.data.step <= 4
+                       ))
+                    && (!('source' in request.resource.data) || (
+                         request.resource.data.source is string
+                         && request.resource.data.source.size() <= 100
+                       ))
+                    && (!('bundleSlug' in request.resource.data) || (
+                         request.resource.data.bundleSlug is string
+                         && request.resource.data.bundleSlug.size() <= 64
+                       ))
+                    && (!('teasSelected' in request.resource.data) || (
+                         request.resource.data.teasSelected is int
+                         && request.resource.data.teasSelected >= 0
+                         && request.resource.data.teasSelected <= 7
+                       ))
+                    && (!('samplesSelected' in request.resource.data) || (
+                         request.resource.data.samplesSelected is int
+                         && request.resource.data.samplesSelected >= 0
+                         && request.resource.data.samplesSelected <= 7
+                       ));
+      allow update, delete: if false;
+    }
+
+    // /pageViews — anonymous + signed-in visitor analytics. One doc per
+    // page view. Anonymous visitors carry a client-generated visitorId
+    // (sessionStorage uuid) so admin can dedup repeat views in a session
+    // without exposing any identifying data. Read admin-only.
+    //
+    // Keeping the rule wide-open for create (no auth required) is
+    // intentional — we want anonymous browsing to track too. The
+    // schema validation + size caps limit damage from a bad actor:
+    // they can spam doc creates, but each doc is bounded to a small
+    // surface area, and the admin can retroactively clean up via a
+    // Cloud Function. If we ever see abuse, the response is to add
+    // reCAPTCHA verification client-side, not to gate behind auth.
+    match /pageViews/{viewId} {
+      allow read:   if isAdmin();
+      allow create: if request.resource.data.path        is string
+                    && request.resource.data.path.size() > 0
+                    && request.resource.data.path.size() <= 500
+                    && request.resource.data.visitorId   is string
+                    && request.resource.data.visitorId.size() <= 64
+                    && request.resource.data.createdAt   is timestamp
+                    && request.resource.data.keys().hasOnly([
+                         'path', 'visitorId', 'isAuthed', 'userId',
+                         'referrer', 'userAgent', 'createdAt',
+                       ])
+                    && (!('referrer'  in request.resource.data) || request.resource.data.referrer.size()  <= 500)
+                    && (!('userAgent' in request.resource.data) || request.resource.data.userAgent.size() <= 500)
+                    && (!('userId'    in request.resource.data) || request.resource.data.userId.size()    <= 128);
+      allow update, delete: if false;
+    }
+
+    // /rum — Real-User Monitoring (Phase 0.1). Writes come from the
+    // recordRum Cloud Function (admin SDK bypasses these rules); we
+    // therefore deny ALL client-side access here so a malicious page
+    // can't read aggregate perf data for the site or seed bogus beacons
+    // by writing directly. The function does its own validation.
+    match /rum/{rumId} {
+      allow read:  if isAdmin();
+      allow write: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // INVENTORY SUBSYSTEM
+    // See /functions/src/inventory.ts for the callable/trigger contracts
+    // and /src/features/inventory/schemas/inventory.schema.ts for shapes.
+    //
+    // Permission model:
+    //   - Public users: NEVER see anything in this section. They read
+    //     `available` + `availabilityLabel` directly off /teas/{teaId},
+    //     projected there by the onInventoryWrite trigger.
+    //   - Signed-in users (employees): read + update inventory levels.
+    //     Cannot write `status` directly — the trigger sets it. Cannot
+    //     touch logs or attempt buckets.
+    //   - Admins: full access to inventory and employees_access; can
+    //     read logs.
+    //   - Cloud Functions: bypass these rules via the Admin SDK (used by
+    //     onInventoryWrite, validateInventoryAccessCode for rate-limit
+    //     bucket writes, etc.).
+    // ─────────────────────────────────────────────────────────────────────
+
+    // Helper — restricts client writes to the safe field set. `status`
+    // is server-derived; if a client tries to send it the write fails.
+    function inventoryClientWriteAllowed() {
+      let d = request.resource.data;
+      return d.diff(resource.data).affectedKeys()
+          .hasOnly(['level', 'weight', 'updatedBy', 'updatedAt'])
+        // Level 0–10 (whole number); weight 0–2000 g (one full container
+        // = level 10) or unset.
+        && (!('level' in d) || (d.level is int && d.level >= 0 && d.level <= 10))
+        && (!('weight' in d) || d.weight == null
+            || (d.weight is number && d.weight >= 0 && d.weight <= 2000));
+    }
+
+    // v2 — same idea as inventoryClientWriteAllowed but for the item
+    // collection. Employees writing through the dashboard touch only
+    // these three fields; admins can write anything via callables /
+    // the admin path. Role gating (edit vs readonly) is enforced at
+    // the UI; rules can't see the access-code session under the
+    // shared-account model (see INVENTORY_V2_ROADMAP.md §2.3).
+    function inventoryItemClientWriteAllowed() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['quantity', 'updatedBy', 'updatedAt']);
+    }
+
+    match /inventory/{teaId} {
+      // Read: admin OR the shared inventory employee account. Customer
+      // accounts (signed in but not employees) are explicitly excluded
+      // — they must never see internal levels, weights, or audit-trail
+      // names. Public users are also excluded (they read `available` +
+      // `availabilityLabel` off /teas/{teaId} instead).
+      allow read: if isInventoryUser();
+
+      // Create: admins only (the onTeaCreate trigger creates these via
+      // the Admin SDK which bypasses rules; manual create from the UI
+      // is admin-only).
+      allow create: if isAdmin();
+
+      // Update: the inventory employee may update the level/weight
+      // subset. Admins may update any field (lets the admin fix
+      // status if a trigger ever wedged). The trigger itself uses
+      // Admin SDK and bypasses these constraints.
+      allow update: if (invEditor() && inventoryClientWriteAllowed()
+                        && request.resource.data.updatedBy == invEmployeeName())
+                    || isAdmin();
+
+      // Delete: admins only. In practice the onTeaWrite cascade handles
+      // tea-delete cleanup, but the rule mirrors create symmetry.
+      allow delete: if isAdmin();
+    }
+
+    // ── v2: inventory categories ─────────────────────────────────────
+    // Admin-defined taxonomy for non-tea inventory. Both employees and
+    // admins read (the tab strip needs to render for everyone with
+    // inventory access); only admins write. The tea category is system-
+    // owned and seeded by a Cloud Function; rules don't special-case it.
+    match /inventory_categories/{categoryId} {
+      allow read:  if isInventoryUser();
+      allow write: if isAdmin();
+    }
+
+    // ── v2: inventory items ──────────────────────────────────────────
+    // Per-item stock for non-tea categories. Same field-set restriction
+    // pattern as /inventory for tea. Create/delete admin-only; quantity
+    // updates allowed for employees through the safe field set.
+    match /inventory_items/{itemId} {
+      allow read:   if isInventoryUser();
+      allow update: if (invEditor() && inventoryItemClientWriteAllowed()
+                        && request.resource.data.updatedBy == invEmployeeName())
+                    || isAdmin();
+      allow create, delete: if isAdmin();
+    }
+
+    // ── Cooler temperature log (Vancouver Coastal Health) ────────────
+    // Coolers are configured by admins; everyone with inventory access
+    // reads them to render the log.
+    match /inventory_coolers/{coolerId} {
+      allow read:  if isAdmin() || invSession();
+      allow write: if isAdmin();
+    }
+
+    // Equipment log, append-only. Equipment (inventory_coolers) is a
+    // `cooler` (AM + PM, pass ≤ 40°F) or a `dishwasher` (once a day = DAY,
+    // pass ≥ 180°F final rinse AND sanitizerOk).
+    //   - An original reading's ID is `{date}_{coolerId}_{AM|PM|DAY}`, so a
+    //     second entry for the same slot is an UPDATE — which is denied.
+    //   - Nothing can be edited or deleted (audit trail). A correction is a
+    //     NEW entry (kind 'correction') whose correctsId points at the
+    //     original, with a required note explaining it.
+    //   - A failed check must be flagged outOfRange and carry a corrective-
+    //     action note.
+    //   - loggedBy is the signed-in employee (or the admin's email), the
+    //     timestamp is the server's, and readings can only be dated today
+    //     or yesterday (UTC, which covers the Vancouver day) — no backdating.
+    function equipmentKind(id) {
+      let eq = get(/databases/$(database)/documents/inventory_coolers/$(id)).data;
+      return ('kind' in eq) && eq.kind == 'dishwasher' ? 'dishwasher' : 'cooler';
+    }
+    function checkResultValid(d) {
+      return equipmentKind(d.coolerId) == 'dishwasher'
+        ? d.period == 'DAY' && d.sanitizerOk is bool
+          && d.outOfRange == (d.tempF < 180 || !d.sanitizerOk)
+        : d.period in ['AM', 'PM'] && !('sanitizerOk' in d)
+          && d.outOfRange == (d.tempF > 40);
+    }
+    function coolerLogFieldsValid(d) {
+      return d.keys().hasOnly(['kind', 'coolerId', 'coolerName', 'date', 'period', 'tempF', 'sanitizerOk',
+                               'outOfRange', 'note', 'loggedBy', 'loggedByUid', 'createdAt', 'correctsId'])
+        && d.keys().hasAll(['kind', 'coolerId', 'coolerName', 'date', 'period', 'tempF',
+                            'outOfRange', 'loggedBy', 'loggedByUid', 'createdAt'])
+        && d.kind in ['reading', 'correction']
+        && d.coolerId is string && exists(/databases/$(database)/documents/inventory_coolers/$(d.coolerId))
+        && d.coolerName is string && d.coolerName.size() >= 1 && d.coolerName.size() <= 60
+        && d.date is string && d.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && d.period in ['AM', 'PM', 'DAY']
+        && d.tempF is number && d.tempF >= -40 && d.tempF <= 212
+        && checkResultValid(d)
+        && (!('note' in d) || (d.note is string && d.note.size() <= 500))
+        && (!d.outOfRange || (('note' in d) && d.note.size() >= 5))
+        && d.loggedByUid == request.auth.uid
+        && d.createdAt == request.time
+        && ((invEditor() && d.loggedBy == invEmployeeName())
+            || (isAdmin() && d.loggedBy == request.auth.token.email));
+    }
+    function coolerReadingValid(logId, d) {
+      return d.kind == 'reading'
+        && !('correctsId' in d)
+        && logId == d.date + '_' + d.coolerId + '_' + d.period
+        && d.date in [ymd(request.time), ymd(request.time - duration.value(1, 'd'))];
+    }
+    function coolerCorrectionValid(d) {
+      let orig = get(/databases/$(database)/documents/cooler_temp_logs/$(d.correctsId)).data;
+      return d.kind == 'correction'
+        && d.correctsId is string
+        && exists(/databases/$(database)/documents/cooler_temp_logs/$(d.correctsId))
+        && orig.coolerId == d.coolerId && orig.date == d.date && orig.period == d.period
+        && ('note' in d) && d.note.size() >= 5;
+    }
+    match /cooler_temp_logs/{logId} {
+      allow read:   if isAdmin() || invSession();
+      allow create: if coolerLogFieldsValid(request.resource.data)
+                    && (coolerReadingValid(logId, request.resource.data)
+                        || coolerCorrectionValid(request.resource.data));
+      allow update, delete: if false;
+    }
+
+    match /employees_access/{empId} {
+      // Admins read + manage. Plaintext codes never live here — only
+      // scrypt hashes — but we still keep this admin-only because the
+      // *hash* combined with bcrypt-rainbow attacks would weaken the
+      // 4-digit space. The Cloud Function reads via Admin SDK.
+      allow read, write: if isAdmin();
+    }
+
+    match /inventory_logs/{logId} {
+      // Admins read the audit trail. Writes happen only via the
+      // onInventoryWrite / onInventoryItemWrite triggers (Admin SDK).
+      allow read:  if isAdmin();
+      allow write: if false;
+    }
+
+    match /inventory_access_attempts/{ipHash} {
+      // Server-managed rate-limit bucket. Clients have no business
+      // reading or writing this — only validateInventoryAccessCode
+      // touches it via Admin SDK.
+      allow read, write: if false;
+    }
+
+    match /rum_rate_buckets/{ipHash} {
+      // Phase 22 — per-IP rate-limit bucket for /api/rum. Same shape
+      // as inventory_access_attempts: server-only access via the
+      // Admin SDK in recordRum. Stale buckets are auto-cleaned by the
+      // Firestore TTL policy on the `expiresAt` field (one-time setup:
+      // enable TTL on this collection pointing at `expiresAt`).
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

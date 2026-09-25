@@ -1,0 +1,286 @@
+/* ============================================================
+   ELE CAFE — FOCUS & ACCESSIBILITY
+   WCAG 2.1 AA compliant keyboard navigation.
+   ============================================================
+
+   Uses the tokens declared in tokens.css:
+     --focus-color    (was --focus-ring-color)
+     --focus-width    (was --focus-ring-width)
+     --focus-offset   (was --focus-ring-offset)
+     --focus-shadow   (was --focus-ring-shadow)
+     --sp-3, --sp-5   (were --space-3, --space-5)
+     --dur-fast       (was --duration-fast)
+     --ease-decelerate, --radius, --radius-sm, --text-sm, --z-toast
+     --gold, --accent-15, --accent-20, --accent-30, --accent-text
+     --danger, --danger-bg, --input-focus
+   ============================================================ */
+
+/* ── Global :focus-visible ────────────────────────────────── */
+:focus-visible {
+  outline: var(--focus-width) solid var(--focus-color);
+  outline-offset: var(--focus-offset);
+  border-radius: var(--radius-sm);
+}
+
+/* ── Interactive elements ─────────────────────────────────── */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: var(--focus-width) solid var(--focus-color);
+  outline-offset: var(--focus-offset);
+}
+
+/* Form inputs: ring instead of outline */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: var(--input-focus, var(--gold));
+  box-shadow: 0 0 0 3px var(--accent-15);
+}
+
+/* Buttons: outline + shadow halo */
+.btn:focus-visible {
+  outline: var(--focus-width) solid var(--focus-color);
+  outline-offset: var(--focus-offset);
+  box-shadow: var(--focus-shadow);
+}
+
+/* Cards used as interactive elements */
+.card:focus-visible,
+.product-card:focus-visible,
+[role="article"]:focus-visible {
+  outline: var(--focus-width) solid var(--focus-color);
+  outline-offset: var(--focus-offset);
+}
+
+/* ── ARIA invalid ─────────────────────────────────────────── */
+input[aria-invalid="true"]:focus-visible,
+textarea[aria-invalid="true"]:focus-visible,
+select[aria-invalid="true"]:focus-visible {
+  outline: 2px solid var(--danger);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 3px var(--danger-bg);
+}
+
+/* ── Skip navigation link ───────────────────────────────────
+   Required by WCAG 2.1 SC 2.4.1 (Bypass Blocks) — keyboard
+   and screen-reader users hit this as the first focusable
+   element to skip the navbar and jump to <main>. Hidden
+   off-screen by default; slides in only on :focus-visible.
+   Phase 19: restyled from big gold CTA → discreet system
+   pill. Same functional behavior, much less visually loud
+   when it does appear. */
+.skip-nav {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 5px 11px;
+  background-color: var(--surface);
+  color: var(--midnight);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(9, 14, 18, 0.08);
+  z-index: var(--z-toast);
+  transform: translateY(-200%);
+  transition: transform var(--dur-fast) var(--ease-decelerate);
+  will-change: transform;
+}
+.skip-nav:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ── Disabled state ───────────────────────────────────────── */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+button:disabled { pointer-events: none; }
+
+/* NOTE — moved out of focus.css (previously duplicated):
+   - ::selection                             → declared once in design.css
+   - html { scroll-behavior: smooth } under
+     prefers-reduced-motion: no-preference   → declared once in design.css
+*/
+
+/* ── Focus within (parent container) ─────────────────────── */
+.focus-within:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--accent-15);
+}
+
+/* ── High contrast mode ───────────────────────────────────── */
+/* stylelint-disable color-no-hex, scale-unlimited/declaration-strict-value -- high-contrast fallback palette; these
+   intentionally override the tokens with fixed legal-brown/cream values,
+   so using the same tokens here would be circular. */
+@media (prefers-contrast: more) {
+  :root {
+    --border:       #2b2825;
+    --muted:        #3a3530;
+    --focus-width:  3px;
+    --focus-offset: 3px;
+    --focus-shadow: 0 0 0 5px var(--accent-30);
+  }
+
+  .dark {
+    --border:       #e8e4df;
+    --muted:        #d4d0cc;
+    --focus-width:  3px;
+    --focus-offset: 3px;
+  }
+
+  .btn  { border-width: 2px; }
+  .card,
+  .product-card { border-width: 2px; }
+}
+/* stylelint-enable color-no-hex, scale-unlimited/declaration-strict-value */
+
+/* ── Forced colors mode (Windows High Contrast + macOS Increase Contrast) ──
+   System colors used here are part of the CSS Forced Colors module —
+   they map to the user's system-level theme keywords. Reference:
+   https://drafts.csswg.org/css-color-4/#css-system-colors
+
+   Keywords used:
+     ButtonText / ButtonFace  — interactive elements
+     CanvasText / Canvas      — body text on default surface
+     Highlight / HighlightText — selection / focus
+     LinkText                 — anchor text
+     GrayText                 — disabled state
+
+   `forced-color-adjust: none` is reserved for cases where the brand
+   visual is structural to comprehension (a brand-colored logo). For
+   everything else we let the OS-driven palette win — that's the point
+   of forced colors. */
+/* stylelint-disable scale-unlimited/declaration-strict-value -- the
+   entire purpose of this block is to override token-based colors
+   with CSS system color keywords driven by the user's OS-level
+   forced-colors preference. Tokens are NOT appropriate here. */
+@media (forced-colors: active) {
+
+  /* Interactive surfaces — buttons and button-like elements get a
+     visible border + the system's button text color. The brand styles
+     would otherwise collapse to invisible (gold-on-cream → both flatten
+     to identical system white in HCM Black-on-White mode). */
+  .btn,
+  [role="button"],
+  button {
+    border: 2px solid ButtonText;
+  }
+
+  /* Focus indicator — Highlight is the user's chosen focus color
+     (cyan on default Windows HCM). Outline + offset makes the ring
+     readable on every surface, including dark-on-dark. */
+  :focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+
+  /* Skip-to-content — must stay visible when focused; the regular
+     gold-on-midnight pairing loses contrast in HCM. */
+  .skip-nav {
+    background-color: Highlight;
+    color: HighlightText;
+  }
+
+  /* Cards and surfaces — surface tokens collapse, but adding a
+     1px border makes card boundaries visible. */
+  .card,
+  .product-card,
+  .tea-card,
+  [class*="-card"] {
+    border: 1px solid CanvasText;
+  }
+
+  /* Modals + drawers — the overlay backdrop becomes invisible in HCM
+     because color-mix() with transparent collapses. The modal itself
+     needs a visible boundary so the user can tell where it starts. */
+  [role="dialog"],
+  .modal-content,
+  .drawer,
+  [class*="-drawer"] {
+    border: 2px solid CanvasText;
+    background: Canvas;
+  }
+  .modal-overlay,
+  .drawer-overlay,
+  [class*="-overlay"] {
+    background: Canvas;
+    opacity: 0.85;
+  }
+
+  /* Form inputs — the default field border may be a low-alpha brand
+     color that flattens to invisible. Force a CanvasText border so
+     each input is delineated. The error state uses Mark which is
+     reserved for highlighted text in HCM. */
+  .field,
+  input,
+  textarea,
+  select {
+    border: 1px solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+  [aria-invalid="true"] {
+    outline: 2px solid Mark;
+  }
+
+  /* Links — LinkText is the user's chosen link color. */
+  a {
+    color: LinkText;
+  }
+  a:visited {
+    color: VisitedText;
+  }
+
+  /* Disabled state — GrayText is the system's "this thing isn't
+     interactive right now" color. */
+  :disabled,
+  [aria-disabled="true"] {
+    color: GrayText;
+    border-color: GrayText;
+  }
+
+  /* State badges — success / warning / danger / info badges use
+     low-contrast bg+fg pairs that collapse to identical surfaces in
+     HCM. Adding a border with the system Mark / GrayText keeps them
+     distinguishable. */
+  .badge,
+  [class*="-badge"],
+  [class*="-chip"] {
+    border: 1px solid CanvasText;
+    forced-color-adjust: none;
+  }
+
+  /* Decorative elements — skeleton loaders, dividers, the gold
+     gradient sweep on the brand wordmark. These convey no semantic
+     info so they can be removed entirely in HCM. */
+  .skeleton,
+  [class*="-skeleton"],
+  .divider,
+  hr {
+    background: GrayText;
+    border-color: GrayText;
+  }
+
+  /* Currently-active nav item — without this, the user can't tell
+     which page they're on (active-state styling uses brand color). */
+  [aria-current="page"],
+  .active,
+  [data-active="true"] {
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+/* stylelint-enable scale-unlimited/declaration-strict-value */

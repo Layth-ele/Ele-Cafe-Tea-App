@@ -1,0 +1,193 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "functions": {
+    "source": "functions",
+    "_comment_predeploy": "Compile the functions TypeScript before deploy (all emails are rendered in code by functions/src/lib/emailLayout.ts).",
+    "predeploy": [
+      "npm --prefix \"$RESOURCE_DIR\" run build"
+    ],
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "*.local"
+    ]
+  },
+  "hosting": {
+    "public": "dist",
+    "_comment_predeploy": "Frontend build runs from project root. Without this, dist/ may be stale or missing when deploying from CI or a fresh clone.",
+    "predeploy": [
+      "npm --prefix \"$PROJECT_DIR\" run build"
+    ],
+    "_comment_ignore_index": "index.html is not uploaded so \"/\" falls through to the renderSeo rewrite (server-rendered homepage with live settings + tea count). The SPA shell is served as app.html (copied at build time) for every other route.",
+    "ignore": [
+      "index.html",
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "redirects": [
+      {
+        "source": "/pairings/new-pairing-2",
+        "destination": "/pairings/blueberry-walnut-danish",
+        "type": 301
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/sitemap.xml",
+        "function": "getSitemap"
+      },
+      {
+        "source": "/_health/seo",
+        "function": "seoHealth"
+      },
+      {
+        "_comment": "Phase 0.1 \u2014 RUM beacon endpoint (web-vitals from src/lib/rum.ts).",
+        "source": "/api/rum",
+        "function": "recordRum"
+      },
+      {
+        "_comment": "Phase 0.4 \u2014 Playwright auth fixture mint. The function checks ALLOW_TEST_LOGIN env and a UID whitelist; production builds with no env set will return 403. Safe to leave wired here.",
+        "source": "/api/test-login",
+        "function": "testLogin"
+      },
+      {
+        "source": "/",
+        "function": "renderSeo"
+      },
+      {
+        "source": "/tea-profile/**",
+        "function": "renderSeo"
+      },
+      {
+        "source": "/products/*",
+        "function": "renderSeo"
+      },
+      {
+        "source": "/collections/*",
+        "function": "renderSeo"
+      },
+      {
+        "source": "/cafe",
+        "function": "renderSeo"
+      },
+      {
+        "source": "/pairings/*",
+        "function": "renderSeo"
+      },
+      {
+        "source": "**",
+        "destination": "/app.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=31536000; includeSubDomains; preload"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "camera=(), microphone=(), geolocation=(), payment=(self \"https://checkout.clover.com\")"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "SAMEORIGIN"
+          }
+        ]
+      },
+      {
+        "source": "/login",
+        "headers": [
+          {
+            "key": "Cross-Origin-Opener-Policy",
+            "value": "same-origin-allow-popups"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(js|css)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/@(index|app).html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "source": "/sw.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/manifest.webmanifest",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "source": "/workbox-*.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      }
+    ]
+  },
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "storage": {
+      "port": 9199
+    },
+    "functions": {
+      "port": 5001
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "ui": {
+      "enabled": true
+    }
+  }
+}

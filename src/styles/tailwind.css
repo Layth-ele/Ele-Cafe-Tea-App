@@ -1,0 +1,113 @@
+@import 'tailwindcss' source(none);
+@source '../**/*.{js,ts,jsx,tsx}';
+
+@import 'tw-animate-css';
+
+/* Tailwind v4 draws `border` utilities in currentColor (black text →
+   black boxes on the admin cards/tables). Default every border to the
+   site's soft border token instead — Tailwind's recommended v3-compat
+   base style. Unlayered component CSS (design/*.css) still sets its own. */
+@layer base {
+  *, ::after, ::before, ::backdrop, ::file-selector-button {
+    border-color: var(--border, currentColor);
+  }
+}
+
+@theme {
+  /* Fonts */
+  --font-serif: 'Cormorant Garamond', Georgia, Cambria, serif;
+  --font-sans:  'Jost', system-ui, -apple-system, sans-serif;
+  --font-mono:  'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Palette B — Deep Midnight + Copper Gold */
+  --color-midnight-900: #090e12;
+  --color-midnight-800: #0f1c26;
+  --color-midnight-700: #1e3040;
+  --color-midnight-600: #253848;
+  --color-steel:        #4a7a9b;
+
+  --color-cream-50:  #fdfaf5;
+  --color-cream-100: #f8f4ec;
+  --color-cream-200: #f0e8d8;
+  --color-cream-300: #e4d8c4;
+
+  --color-gold:      #b8924a;
+  --color-gold-deep: #8c6830;
+  --color-gold-soft: #f5ead8;
+  --color-gold-text: #7a5828;
+
+  --color-success: #2d6e4f;
+  --color-danger:  #b83228;
+
+  /* ─── Day-7: shadcn-compatible semantic tokens ──────────────
+     The 6 components we kept in src/app/components/ui/ were written
+     against shadcn's semantic token names (bg-primary, text-foreground,
+     ring-ring, etc.). Previously none of these names were registered,
+     so those utility classes compiled to nothing — Button/Input/Select
+     in the admin Products page were rendering unstyled.
+
+     Each shadcn name now points to the canonical token from tokens.css
+     via var(). Because var() resolves lazily at the point of use, these
+     flip correctly between light and dark mode.                       */
+  --color-primary:               var(--midnight);
+  --color-primary-foreground:    var(--on-dark);
+  --color-secondary:             var(--surface-2);
+  --color-secondary-foreground:  var(--text);
+  --color-destructive:           var(--danger);
+  --color-destructive-foreground: #ffffff;
+  --color-muted:                 var(--surface-2);
+  --color-muted-foreground:      var(--muted);
+  --color-accent:                var(--accent-10);
+  --color-accent-foreground:     var(--gold-text);
+  --color-popover:               var(--surface);
+  --color-popover-foreground:    var(--text);
+  --color-card:                  var(--surface);
+  --color-card-foreground:       var(--text);
+  --color-background:            var(--bg);
+  --color-foreground:            var(--text);
+  --color-input:                 var(--border);
+  --color-input-background:      var(--surface-2);
+  --color-ring:                  var(--focus-color);
+  --color-border:                var(--border);
+
+  /* ─── Phase 1 — token-bridge for new tiers ─────────────────────────
+     Same pattern as the shadcn bridge above: map the canonical token
+     from tokens.css to the Tailwind variable name so utility classes
+     pick them up. Tokens.css remains the single source of truth. */
+
+  /* Fluid type — usable as text-xs … text-5xl */
+  --text-xs:   var(--type-xs);
+  --text-sm:   var(--type-sm);
+  --text-base: var(--type-base);
+  --text-lg:   var(--type-lg);
+  --text-xl:   var(--type-xl);
+  --text-2xl:  var(--type-2xl);
+  --text-3xl:  var(--type-3xl);
+  --text-4xl:  var(--type-4xl);
+  --text-5xl:  var(--type-5xl);
+
+  /* Elevation — usable as shadow-elev-1 … shadow-elev-4 + shadow-elev-inset */
+  --shadow-elev-1:    var(--elev-1);
+  --shadow-elev-2:    var(--elev-2);
+  --shadow-elev-3:    var(--elev-3);
+  --shadow-elev-4:    var(--elev-4);
+  --shadow-elev-inset:var(--elev-inset);
+
+  /* State color bridge — usable as bg-state-success, text-state-danger-fg, etc. */
+  --color-state-success:        var(--state-success-solid);
+  --color-state-success-bg:     var(--state-success-bg);
+  --color-state-success-fg:     var(--state-success-fg);
+  --color-state-success-border: var(--state-success-border);
+  --color-state-warning:        var(--state-warning-solid);
+  --color-state-warning-bg:     var(--state-warning-bg);
+  --color-state-warning-fg:     var(--state-warning-fg);
+  --color-state-warning-border: var(--state-warning-border);
+  --color-state-danger:         var(--state-danger-solid);
+  --color-state-danger-bg:      var(--state-danger-bg);
+  --color-state-danger-fg:      var(--state-danger-fg);
+  --color-state-danger-border:  var(--state-danger-border);
+  --color-state-info:           var(--state-info-solid);
+  --color-state-info-bg:        var(--state-info-bg);
+  --color-state-info-fg:        var(--state-info-fg);
+  --color-state-info-border:    var(--state-info-border);
+}

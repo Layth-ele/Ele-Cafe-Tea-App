@@ -1,0 +1,2409 @@
+/* ═══════════════════════════════════════════════════════════════
+   PHASE 5 STEP 4 — REDUCED MOTION BLANKET COVER
+
+   Vestibular disorders, migraine sensitivity, and motion-sickness
+   triggers make motion-driven animation actively harmful for some
+   users. Browsers expose this via `prefers-reduced-motion: reduce`
+   when the user has set the OS-level "Reduce motion" preference
+   (macOS Accessibility › Display, Windows Settings › Accessibility).
+
+   The block below is a global safety net: every animation, transition,
+   and scroll behavior collapses to instant or near-instant for these
+   users. Components with bespoke reduced-motion handling (see line
+   ~252, 631, 1209, 2026) override individual properties; this catch-
+   all picks up everything else — including future code added without
+   thinking about reduced-motion.
+
+   Rationale for `0.01ms` instead of `0`:
+     - Some libraries (sonner, framer-motion fallbacks) treat duration
+       0 as "skip the animation entirely" which can leave elements in
+       an "in-flight" state where transitionend never fires. 0.01ms
+       still triggers the event so cleanup callbacks run.
+     - !important is required to win over inline transition declarations
+       in third-party widgets (e.g. recharts tooltips).
+
+   What stays animated even with reduce-motion:
+     - Toast progress bars (sonner): library handles its own override
+       and is content-critical (the bar is the timer).
+     - Form validation state changes: not motion, just color shift.
+     - Iconography color transitions: <30ms perceptual change, no
+       motion vector.
+
+   Marquee animation specifically: the announcement bar is decorative;
+   under reduce-motion it stops dead at frame 0 (no transform).
+   Accessible alternative is the static announcement text — no info
+   loss for users who can't see motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Marquee freezes at start — no horizontal scroll, no perceived motion. */
+  .announce-track { animation: none !important; }
+  /* Skeleton pulse becomes a static muted block — content load still
+     visually distinct from rendered content, but no pulsing. */
+  .skeleton,
+  [class*="skeleton"] { animation: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NOT-FOUND PAGE — replaces 7 inline styles in
+   src/app/pages/NotFoundPage.tsx
+   ═══════════════════════════════════════════════════════════════ */
+.nfp-shell {
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  padding: var(--page-top) var(--gutter);
+}
+.nfp-content {
+  text-align: center;
+  max-width: 400px;
+}
+.nfp-icon { margin: 0 auto var(--sp-6); }
+.nfp-overline-spacing { margin-bottom: var(--sp-2); }
+.nfp-headline {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 3vw, 2.5rem);
+  font-weight: 300;
+  letter-spacing: -0.025em;
+  color: var(--midnight);
+  margin: 0 0 var(--sp-3);
+}
+.nfp-lead {
+  font-size: var(--text-ui);
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: var(--sp-8);
+}
+.nfp-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  text-decoration: none;
+}
+
+/* Footer "All Teas →" CTA — slight extra top spacing to set it apart
+   from the category list above. Replaces an inline `marginTop: 6px`. */
+.footer-link-cta { margin-top: 6px; }
+
+/* Contact page intro paragraph — single use, lives at top of /contact. */
+.contact-page-intro {
+  margin-bottom: 1.75rem;
+  color: var(--text);
+  line-height: 1.7;
+}
+
+/* Gift Builder modal — small spacing tweak above the stepper. */
+.gbm-stepper-pad { padding-top: 4px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   SHARE BUTTONS — replaces 2 inline styles + JS hover handlers in
+   src/app/components/ShareButtons.tsx
+   Demonstrates the CSS-custom-property pattern: per-button dynamic
+   values (--share-btn-size, --share-btn-bg) are passed inline,
+   everything else is a class. JS hover handlers replaced with :hover.
+   ═══════════════════════════════════════════════════════════════ */
+.share-btns-row {
+  display: flex;
+  justify-content: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.share-btn {
+  /* Defaults if the inline custom properties aren't set */
+  width: var(--share-btn-size, 40px);
+  height: var(--share-btn-size, 40px);
+  background: var(--share-btn-bg, var(--midnight));
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  transition: transform var(--dur-normal) ease, box-shadow var(--dur-normal) ease;
+}
+.share-btn:hover {
+  transform: scale(1.1) translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+/* Page loader — visible while a lazy route chunk fetches. The shell
+   takes 60vh of the viewport so route transitions don't flash white;
+   the spinner uses the existing @keyframes spin (line ~2522). */
+.page-loader-shell {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  animation: fadeIn var(--dur-slow) var(--ease-standard) both;
+}
+.page-loader-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--midnight);
+  animation: spin 700ms linear infinite;
+}
+
+/* Language toggle — flag SVG + EN/FR label below. */
+.lang-flag-svg { border-radius: 2px; overflow: hidden; }
+.lang-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.lang-toggle-label {
+  font-size: var(--text-2xs);
+  text-transform: uppercase;  /* a language code ("EN") — caps label style */
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  font-family: var(--font-sans);
+  line-height: 1;
+  color: var(--text-2);
+  transition: color var(--dur-fast);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TEA PLACEHOLDER — replaces 3 inline styles in
+   src/app/components/TeaPlaceholder.tsx
+   The label font-size is per-instance (driven by name length) and
+   flows in as --tea-placeholder-fs custom property; everything else
+   is a class.
+   ═══════════════════════════════════════════════════════════════ */
+.tea-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%);
+  overflow: hidden;
+  /* Container query lets us size the text relative to the smaller
+     dimension of the placeholder; keeps layout readable on square
+     thumbs and on wide hero images alike. */
+  container-type: size;
+}
+.tea-placeholder-svg {
+  position: absolute;
+  left: 5%; top: 5%;
+  width: 90%; height: 90%;
+  opacity: 0.22;
+  filter: blur(6px);
+  /* SVG sits behind the text — pointer-events off so the parent
+     remains interactive in case it's wrapped in a link. */
+  pointer-events: none;
+}
+.tea-placeholder-svg.is-subtle { opacity: 0.55; }
+.tea-placeholder-label {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 0 12%;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-style: italic;
+  color: var(--gold-text);
+  /* clamp(11px, --tea-placeholder-fs default 14cqmin, 48px) — the
+     middle term is overridden per-instance by the inline custom
+     property. */
+  font-size: clamp(11px, var(--tea-placeholder-fs, 14cqmin), 48px);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SONNER TOASTER — was 1 inline style block of 16 CSS variables.
+   Moved here because sonner reads these vars off its root element;
+   a class-scoped declaration produces identical runtime behavior.
+
+   Each toast variant inherits its colors from these vars. Per-toast
+   classes (ele-toast-*) live at line ~? in this file; this block
+   only sets the variable mapping.
+   ═══════════════════════════════════════════════════════════════ */
+.ele-toaster {
+  --normal-bg:      var(--surface);
+  --normal-text:    var(--text);
+  --normal-border:  var(--border);
+  /* Success — gold accent, not bright green (matches the brand) */
+  --success-bg:     var(--surface);
+  --success-text:   var(--text);
+  --success-border: var(--gold);
+  /* Error — keeps semantic red but uses our token */
+  --error-bg:       var(--surface);
+  --error-text:     var(--danger);
+  --error-border:   var(--danger);
+  /* Warning — gold-deep so it doesn't clash with success */
+  --warning-bg:     var(--surface);
+  --warning-text:   var(--gold-deep);
+  --warning-border: var(--gold-deep);
+  /* Info — muted neutral */
+  --info-bg:        var(--surface);
+  --info-text:      var(--text);
+  --info-border:    var(--midnight);
+}
+
+/* Gift Builder Step 1 — intro paragraph above the bundle grid. */
+.step1-intro {
+  font-size: var(--text-ui);
+  color: var(--text-2);
+  margin: 0 auto var(--sp-6);
+  line-height: 1.6;
+  text-align: center;
+  max-width: 520px;
+}
+
+/* Gift Builder modal footer — back button + primary action. The
+   row layout flips justify-content on step 1 (no back button so the
+   primary action sticks to the right). */
+.gbf-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.gbf-row-first { justify-content: flex-end; }
+.gbf-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background var(--dur-fast), border-color var(--dur-fast);
+}
+.gbf-back-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--text-2);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GIFT-BUILDER MESSAGE PREVIEW — replaces 5 inline styles in
+   src/app/components/gift-builder/components/MessagePreview.tsx
+   ═══════════════════════════════════════════════════════════════ */
+.msg-preview {
+  padding: var(--sp-6) 22px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  border: 1px dashed var(--border-strong);
+  position: relative;
+}
+.msg-preview-tag {
+  position: absolute;
+  top: -10px;
+  left: 14px;
+  padding: 1px var(--sp-2);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  font-family: var(--font-sans);
+}
+.msg-preview-body {
+  font-family: var(--font-serif);
+  font-style: italic;
+  color: var(--midnight);
+  line-height: 1.7;
+  font-size: 17px;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.msg-preview-text {
+  /* Preserve newlines from the textarea exactly so customers see how
+     their hand-shaped paragraphs will print. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  flex: 1;
+}
+.msg-preview-text.is-placeholder { color: var(--muted-2); }
+.msg-preview-signature {
+  text-align: right;
+  margin-top: var(--sp-2);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ORDERS PAGE — Phase 3 inline-style migration (37 → 0)
+   Replaces every style={{}} on src/app/pages/OrdersPage.tsx.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Page chrome */
+.orders-shell {
+  min-height: 100dvh;
+  background: var(--bg);
+  padding: var(--page-top) 0 var(--section-y-sm);
+}
+.orders-container {
+  width: min(92vw, 1100px);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+/* Empty/error/loading scaffolds */
+.orders-signin-empty   { min-height: 60vh; }
+.orders-skeleton-list  { display: flex; flex-direction: column; gap: 14px; }
+.orders-skeleton-row   { height: 96px; border-radius: 10px; }
+.orders-retry-btn      { margin-top: 12px; display: inline-flex; align-items: center; gap: var(--sp-1); }
+
+/* Order list */
+.orders-list { display: flex; flex-direction: column; gap: 18px; }
+
+/* Header row of an order card */
+.orders-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.orders-card-id {
+  font-family: monospace;
+  font-weight: 700;
+  font-size: var(--text-base);
+  color: var(--midnight);
+}
+.orders-card-status-pill {
+  /* The bg/color come from `meta` per status (mixed-static — only the
+     two color values are dynamic; layout and shape are constant). */
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.orders-card-date  { font-size: var(--text-xs); color: var(--muted); }
+.orders-reorder-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+/* Body grid — items / shipping / total */
+.orders-card-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: var(--sp-2);
+}
+.orders-col-items    { min-width: 180px; }
+.orders-col-shipping { min-width: 180px; }
+.orders-col-total    { min-width: 120px; }
+.orders-col-label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  margin-bottom: var(--sp-1);
+}
+.orders-item-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+  padding: 2px 0;
+}
+.orders-shipping-text { font-size: var(--text-xs); color: var(--text-2); }
+.orders-shipping-empty { color: var(--muted); }
+.orders-total-amount  { font-size: var(--text-base); font-weight: 600; }
+
+/* Notes / banners attached to an order */
+.orders-admin-note {
+  margin-top: var(--sp-2);
+  padding: var(--sp-2) 12px;
+  background: var(--gold-soft);
+  border-radius: 6px;
+  border: 1px solid var(--accent-20);
+  font-size: var(--text-xs);
+  color: var(--text-2);
+}
+.orders-rejection-note {
+  margin-top: var(--sp-2);
+  padding: var(--sp-2) 12px;
+  background: var(--danger-bg);
+  border-radius: 6px;
+  font-size: var(--text-xs);
+  color: var(--danger);
+}
+.orders-tracking-line {
+  margin-top: var(--sp-2);
+  font-size: var(--text-xs);
+  color: var(--info);
+}
+
+/* Pickup-ready banner */
+.orders-pickup-banner {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--success-bg);
+  border-radius: 8px;
+  border: 1px solid var(--success);
+}
+.orders-pickup-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--success);
+}
+.orders-pickup-body { font-size: var(--text-xs); color: var(--text-2); line-height: 1.6; }
+
+/* Generic — used in two banners + the order id callouts */
+.orders-mono { font-family: monospace; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   INFO PAGES — Phase 3 inline-style migration
+   Used by PrivacyPolicyPage, RefundPolicyPage, ShippingPolicyPage,
+   AboutPage. The "luxury gold card" pattern is the reusable bit;
+   .ip-* classes are the typography/spacing primitives.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.ip-meta {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  margin-bottom: 1.5rem;
+}
+.ip-meta-tail {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  margin-top: 2rem;
+}
+.ip-h2 {
+  font-family: var(--font-serif);
+  font-size: 1.4rem;
+  font-weight: 300;
+  color: var(--midnight);
+  margin: 0 0 0.75rem;
+}
+/* For subsequent h2s — adds top spacing for section breathing room */
+.ip-h2 + p + .ip-h2,
+.ip-h2-spaced {
+  margin: 1.75rem 0 0.75rem;
+}
+/* AboutPage's "Our Values" — slightly larger heading + more breathing
+   room than the other info pages. Preserved as a separate variant so
+   the migration is visually identical to the original. */
+.ip-h2-section {
+  font-size: 1.5rem;
+  margin: 2rem 0 0.75rem;
+}
+.ip-p {
+  margin-bottom: 1.25rem;
+}
+
+/* Luxury gold card — used for the "actionable customer block" on each
+   info page (Your Rights / Quality Guarantee / In-Store Pickup). */
+.ip-luxury-card {
+  margin: 2rem 0;
+  background: var(--gold-tint);
+  border: 1px solid rgba(212, 170, 104, 0.35);
+  border-radius: 14px;
+  padding: clamp(20px, 4vw, 32px);
+  box-shadow: 0 4px 20px rgba(212, 170, 104, 0.10),
+              0 1px 3px  rgba(0, 0, 0, 0.04);
+}
+.ip-luxury-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: clamp(16px, 3vw, 24px);
+  align-items: flex-start;
+}
+.ip-luxury-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(212, 170, 104, 0.18);
+  border: 1px solid rgba(212, 170, 104, 0.30);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--gold-deep);
+}
+.ip-luxury-title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.4rem, 3vw, 1.6rem);
+  font-weight: 300;
+  color: var(--midnight);
+  margin: 0 0 0.4rem;
+  line-height: 1.2;
+}
+.ip-luxury-eyebrow {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+  margin: 0 0 1rem;
+}
+.ip-luxury-body {
+  margin: 0 0 0.85rem;
+  line-height: 1.7;
+}
+.ip-luxury-tail {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+}
+.ip-luxury-link {
+  color: var(--gold-deep);
+  text-decoration: underline;
+}
+/* Inherits color so it matches surrounding text — used for the phone
+   number in the address footer. */
+.ip-link-inherit {
+  color: inherit;
+}
+
+/* "No refunds" notice card on RefundPolicyPage — bordered, not
+   alarming, leaves gold for the Quality Guarantee card below it. */
+.ip-notice-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--midnight-3);
+  border-radius: 10px;
+  padding: clamp(18px, 3vw, 24px);
+  margin: 1.5rem 0 2rem;
+}
+.ip-notice-h2 {
+  font-family: var(--font-serif);
+  font-size: 1.3rem;
+  font-weight: 300;
+  color: var(--midnight);
+  margin: 0 0 0.6rem;
+}
+.ip-notice-body { margin: 0 0 1.25rem; }
+.ip-notice-tail {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  margin: 0 0 0.85rem;
+  line-height: 1.6;
+}
+
+/* Sample / option pills inside the notice. Reusable across info
+   pages for short callout chips. */
+.ip-pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.ip-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--gold-tint);
+  border: 1px solid rgba(212, 170, 104, 0.30);
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  color: var(--midnight);
+}
+.ip-pill-icon {
+  color: var(--gold-deep);
+  flex-shrink: 0;
+}
+.ip-pill-em { font-weight: 600; }
+
+/* List used in ShippingPolicyPage delivery estimates. The 1.25rem
+   indent + line-height: 2 are repeated enough across content pages to
+   warrant a primitive. */
+.ip-list {
+  padding-left: 1.25rem;
+  margin-bottom: 1.25rem;
+  line-height: 2;
+}
+
+/* Larger luxury-card title variant — used by ShippingPolicyPage's
+   "In-Store Pickup" card (1.4rem → 1.7rem) versus the standard
+   .ip-luxury-title (1.4rem → 1.6rem). One rem of difference at the
+   widest breakpoint; preserved as a separate variant rather than
+   unified to avoid a visual regression on that page. */
+.ip-luxury-title-lg {
+  font-family: var(--font-serif);
+  font-size: clamp(1.4rem, 3vw, 1.7rem);
+  font-weight: 300;
+  color: var(--midnight);
+  margin: 0 0 0.4rem;
+  line-height: 1.2;
+}
+
+/* In-store pickup card — additional spacing modifier. The base luxury
+   card uses 2rem 0; pickup needs 2.5rem 0 1.5rem for visual rhythm
+   with the preceding shipping bullets. */
+.ip-luxury-card-pickup {
+  margin: 2.5rem 0 1.5rem;
+}
+
+/* Clickable address link in the pickup card. Replaces the previous
+   JS-driven onMouseEnter / onMouseLeave hover (anti-pattern flagged
+   by PHASE_3_PLAYBOOK §step-4). CSS :hover is faster, doesn't break
+   under React StrictMode, and is reduced-motion-aware via the
+   existing transition tokens. */
+.ip-pickup-address {
+  display: inline-block;
+  font-family: var(--font-serif);
+  font-size: clamp(1.05rem, 2.2vw, 1.2rem);
+  font-weight: 400;
+  color: var(--midnight);
+  text-decoration: none;
+  border-bottom: 1px dotted color-mix(in srgb, var(--gold) 50%, transparent);
+  padding-bottom: 2px;
+  margin-bottom: 0.5rem;
+  transition: color var(--dur-fast) var(--ease-standard),
+              border-color var(--dur-fast) var(--ease-standard);
+}
+.ip-pickup-address:hover {
+  color: var(--gold-deep);
+  border-bottom-color: var(--gold-deep);
+}
+
+/* Phone link inside the pickup card — softer than the address. */
+.ip-pickup-phone-wrap { margin: 0.4rem 0 0.9rem; }
+.ip-pickup-phone {
+  color: var(--text-2);
+  text-decoration: none;
+  font-size: var(--text-ui);
+}
+
+/* "Select Pickup at checkout" tail — has an inline em tag with
+   slightly heavier text color that the standard .ip-luxury-tail
+   pattern doesn't cover. Same line-height + size; just gives us a
+   class for the strong inside. */
+.ip-pickup-em { color: var(--text-2); }
+
+/* ═══════════════════════════════════════════════════════════════
+   COMBO PAIRING PAGE — replaces 36 inline styles in
+   src/app/pages/ComboPairingPage.tsx
+   The page is a public IG-share landing page for a single combo:
+   hero image with frosted overlay → "pair with our tea" callout →
+   featured-tea grid → share strip. All 36 inline styles in the file
+   were static (zero dynamic values), so a per-page block converts
+   cleanly without breaking dark-mode or theming.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Page wrapper — used 3x as a section background reset. */
+.cpp-bg { background: var(--bg); }
+
+/* Hero — full-width image with dark gradient veil and frosted card. */
+.cpp-hero {
+  position: relative;
+  width: 100%;
+  min-height: min(78vh, 720px);
+  background: var(--midnight);
+  overflow: hidden;
+}
+.cpp-hero-image {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+}
+.cpp-hero-veil {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg,
+    rgba(15,28,38,0.10) 0%,
+    rgba(15,28,38,0.55) 70%,
+    rgba(15,28,38,0.85) 100%);
+  pointer-events: none;
+}
+/* stylelint-disable color-no-hex, scale-unlimited/declaration-strict-value -- frosted-glass card over a full-bleed dark hero image; pure white maximizes contrast against the gradient veil regardless of theme */
+.cpp-hero-overlay {
+  /* Phase 26 — matches the .cg-frosted card from ComboGallery exactly
+     (the inline pairing card that appears in the carousel on the tea
+     profile page). Same horizontal layout, same backdrop blur, same
+     border-radius, same padding scale, same typography sizes, same
+     midnight price chip. Visual consistency across the two surfaces
+     where a curated pairing can appear (inline on /tea-profile/* and
+     standalone on /pairings/{slug}). */
+  position: absolute;
+  left: 50%;
+  bottom: clamp(16px, 3vw, 28px);
+  transform: translateX(-50%);
+  width: min(720px, calc(100% - 32px));
+  max-width: 720px;
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 14px;
+  padding: clamp(10px, 1.6vw, 14px) clamp(14px, 2.2vw, 22px);
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(12px, 2vw, 24px);
+  flex-wrap: wrap;
+}
+
+/* Text block — left side of the horizontal flex (mirrors .cg-frosted-text). */
+.cpp-hero-text {
+  flex: 1 1 280px;
+  min-width: 0;
+  /* Slight right-padding so the share-corner icon never collides
+     with long titles. Calc accounts for icon width (36px) + breathing
+     room (12px) only on desktop; below 720px the corner-icon is
+     hidden and we don't need to reserve space. */
+}
+@media (min-width: 721px) {
+  .cpp-hero-text { padding-right: 48px; }
+}
+
+.cpp-hero-eyebrow {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.78);
+  margin: 0 0 4px;
+}
+.cpp-hero-title {
+  font-family: var(--font-serif);
+  /* Match .cg-frosted-title exactly. */
+  font-size: clamp(1.05rem, 1.7vw, 1.3rem);
+  font-weight: 400;
+  margin: 0 0 2px;
+  letter-spacing: -0.01em;
+  color: var(--white);
+  line-height: 1.2;
+}
+/* stylelint-enable color-no-hex, scale-unlimited/declaration-strict-value */
+.cpp-hero-desc {
+  font-family: var(--font-sans);
+  /* Match .cg-frosted-desc exactly. */
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+}
+.cpp-price-chip {
+  /* Match .cg-price-chip exactly — midnight pill on the frosted card,
+     keeps brand contrast against the glass. Reverted from Phase 25's
+     hairline outline (which was a one-off; cg-frosted owns the
+     reference design). */
+  font-family: var(--font-serif);
+  font-size: clamp(1rem, 1.6vw, 1.3rem);
+  font-weight: 500;
+  color: var(--price-chip-fg);
+  white-space: nowrap;
+  padding: 5px 13px;
+  border-radius: 999px;
+  background: var(--price-chip-bg);
+  border: 1px solid var(--price-chip-bd);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+  letter-spacing: 0.01em;
+  align-self: center;
+}
+
+/* Pair-with-our-tea section — eyebrow / heading / body / CTAs / category pills.
+   Block lives further down (search ".cpp-section-pair {"); the share-button
+   utility block below is intentionally inserted here so it sits next to the
+   cpp-* group it's used by. */
+
+/* ── ShareButton component (Phase 20) ──────────────────────────────
+   Single-icon share affordance — see src/app/components/ShareButton.tsx
+   for the React side. Two variants:
+     .share-btn-icon — 40×40 circular icon button (default)
+     .share-btn-pill — labelled outline pill
+   ─────────────────────────────────────────────────────────────────── */
+.share-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  transition: background var(--dur-fast), border-color var(--dur-fast), transform var(--dur-fast);
+}
+.share-btn-icon:hover {
+  background: var(--surface-2);
+  border-color: var(--gold);
+  color: var(--gold-deep);
+}
+.share-btn-icon:active { transform: scale(0.95); }
+.share-btn-icon:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.share-btn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Mobile fix for the cpp-hero (Phase 20 → refined Phase 28).
+   On mobile the hero becomes a self-contained card: the image fills
+   the top half of the card (rounded top corners), the info section
+   sits below it on a cream surface. No more floating image + separate
+   dark midnight card below it. */
+
+/* Default share-button visibility (both viewports) */
+.cpp-hero-share         { display: none; }        /* pill — shown only ≤ 720px */
+.cpp-hero-share-corner  { display: inline-flex; } /* icon — shown only > 720px */
+
+@media (max-width: 720px) {
+  /* Hero becomes the card container itself — no absolute positioning.
+     Margin insets it from the viewport edges; overflow hidden clips
+     the image to the rounded corners. */
+  .cpp-hero {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    /* Card shell */
+    background: var(--surface);
+    margin: 0 clamp(12px, 4vw, 20px) 16px;
+    /* The base rule's width:100% plus these side margins overflowed the
+       viewport by the margin width — auto fits the card between them. */
+    width: auto;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(9, 14, 18, 0.14);
+    /* Keep breadcrumbs visible OUTSIDE the card (they live in the
+       preceding .bc-page-wrap, so no change needed there). */
+  }
+
+  /* Image — normal flow, fills the full width of the card, fixed
+     height so it looks intentional rather than the 16:9 letterbox. */
+  .cpp-hero-image {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    /* Override the LazyImage inline aspect-ratio so we control the
+       crop height on mobile. object-fit:cover inside LazyImage
+       handles the actual crop. */
+    aspect-ratio: 4 / 3;
+    height: auto;
+    flex-shrink: 0;
+  }
+
+  /* Gradient veil not needed on mobile — image + card info are
+     visually separated by the cream section. */
+  .cpp-hero-veil { display: none; }
+
+  /* Info section — flows directly below the image, cream bg,
+     dark text (inverts the desktop white-on-glass palette). */
+  .cpp-hero-overlay {
+    position: relative;
+    left: auto; right: auto; bottom: auto;
+    transform: none;
+    width: auto; max-width: none;
+    /* No negative margin trick — image and info are siblings inside
+       the same card container now. */
+    margin: 0;
+    padding: 16px 18px 20px;
+    background: transparent;   /* inherits card's var(--surface) cream */
+    color: var(--text);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  /* Typography — swap to dark-on-cream palette */
+  .cpp-hero-text  { padding-right: 0; }
+  .cpp-hero-eyebrow {
+    color: var(--gold);          /* gold on cream = brand-warm eyebrow */
+  }
+  .cpp-hero-title {
+    font-size: 1.45rem;
+    line-height: 1.15;
+    color: var(--midnight);
+  }
+  .cpp-hero-desc {
+    font-size: var(--text-ui);
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* Price chip — midnight pill already reads well on cream (high
+     contrast), keep as-is from the desktop style. */
+  .cpp-price-chip {
+    align-self: flex-start;
+    margin-top: 6px;
+  }
+
+  /* Corner share icon not needed (too small on mobile) */
+  .cpp-hero-share-corner { display: none; }
+
+  /* Pill share button — dark-on-cream variant */
+  .cpp-hero-share {
+    display: inline-flex;
+    align-self: flex-start;
+    margin-top: 10px;
+    color: var(--midnight);
+    border-color: var(--border);
+    background: transparent;
+  }
+  .cpp-hero-share:hover {
+    background: var(--surface-2);
+    border-color: var(--midnight);
+  }
+}
+
+/* Desktop+ hero — share icon sits in the top-right corner of the
+   frosted overlay panel. Phase 25: tightened position to match the
+   slimmer card padding (was clamp(20px, 3vw, 32px), now 14px). Also
+   shrunk to 36×36 from the default 40×40 so it sits more discreetly
+   in the corner. */
+@media (min-width: 721px) {
+  .cpp-hero-share-corner {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    color: var(--white);
+  }
+  .cpp-hero-share-corner:hover {
+    background: rgba(255, 255, 255, 0.26);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: var(--white);
+  }
+}
+
+.cpp-section-pair {
+  background: var(--surface);
+  padding: var(--section-y-sm) var(--gutter);
+  border-top: 1px solid var(--border);
+}
+.cpp-section-pair-inner {
+  max-width: 720px; margin: 0 auto; text-align: center;
+}
+.cpp-eyebrow-gold {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs); font-weight: 600;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold-text);
+  margin: 0 0 12px;
+}
+.cpp-section-h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+  font-weight: 300;
+  color: var(--midnight);
+  letter-spacing: -0.02em;
+  margin: 0 0 16px;
+  line-height: 1.2;
+  /* Phase 20 — long combo titles (e.g. "Spinach And Feta Strudal")
+     embedded in this heading can overflow narrow viewports if any
+     parent has horizontal overflow. Belt-and-braces: allow wrapping
+     mid-word so we never get a clipped first letter. */
+  overflow-wrap: anywhere;
+}
+.cpp-section-body {
+  font-family: var(--font-sans);
+  font-size: clamp(14px, 1.5vw, 16px);
+  color: var(--muted);
+  margin: 0 auto 28px;
+  line-height: 1.65;
+  max-width: 520px;
+}
+.cpp-cta-row {
+  display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;
+}
+/* Dark CTA — extends `.btn .btn-lg` with the dark-on-light contrast
+   needed for emphasis. Used by the main "Browse all teas" CTA both
+   on the live page and on the not-found state. */
+.cpp-cta-dark {
+  background: var(--midnight); color: var(--on-dark);
+  border: 1.5px solid var(--midnight);
+  display: inline-flex; align-items: center; gap: 8px;
+  text-decoration: none;
+}
+.cpp-cat-row {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  justify-content: center; margin-top: 20px;
+}
+/* Category pill — replaces the JS-driven hover effect in the source.
+   onMouseEnter/onMouseLeave were re-mutating .style on hover; CSS
+   :hover does the same thing without breaking under StrictMode. */
+.cpp-cat-pill {
+  font-size: var(--text-xs);
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  transition: background var(--dur-normal) var(--ease-standard),
+              color var(--dur-normal) var(--ease-standard),
+              border-color var(--dur-normal) var(--ease-standard);
+}
+.cpp-cat-pill:hover {
+  background: var(--midnight);
+  color: var(--on-dark);
+  border-color: var(--midnight);
+}
+
+/* Featured-teas grid — auto-fit minmax(220px). */
+.cpp-section-featured {
+  background: var(--bg);
+  padding: var(--section-y-sm) var(--gutter);
+  border-top: 1px solid var(--border);
+}
+.cpp-featured-inner { max-width: 1100px; margin: 0 auto; }
+.cpp-featured-h3 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.3rem, 2vw, 1.6rem);
+  font-weight: 300;
+  color: var(--midnight);
+  margin: 0 0 24px;
+  text-align: center;
+  letter-spacing: -0.01em;
+}
+.cpp-featured-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+.cpp-featured-link {
+  text-decoration: none; color: inherit; display: block;
+}
+.cpp-featured-image-mb { margin-bottom: 12px; }
+.cpp-featured-name {
+  font-family: var(--font-serif);
+  font-size: 17px; font-weight: 400;
+  color: var(--midnight);
+  margin: 0 0 4px;
+}
+.cpp-featured-price {
+  font-family: var(--font-sans);
+  font-size: var(--text-ui);
+  color: var(--muted);
+  margin: 0;
+}
+
+/* Share strip. */
+.cpp-section-share {
+  background: var(--surface);
+  padding: clamp(2rem, 3.5vw, 3rem) var(--gutter);
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+.cpp-share-eyebrow {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs); font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 16px;
+}
+
+/* Skeleton state — pulse on a flat gradient at hero height. */
+.cpp-skel-block {
+  height: 60vh;
+  background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+/* Not-found state — centered card with eyebrow / title / body / CTA. */
+.cpp-nf-main {
+  background: var(--bg);
+  min-height: 70vh;
+  display: flex; align-items: center; justify-content: center; padding: var(--page-top) var(--gutter);
+}
+.cpp-nf-inner { max-width: 480px; text-align: center; }
+.cpp-nf-title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  font-weight: 300;
+  color: var(--midnight);
+  margin: 0 0 16px;
+}
+.cpp-nf-body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 0 0 24px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CONTACT CARD — replaces 62 inline styles in
+   src/app/components/ContactCard.tsx
+   Three variants share a gold-tinted card chrome:
+     full     — luxury 3-section grid (used on /contact, hero blocks)
+     compact  — single-column stack for narrow contexts
+     inline   — bare text, no card; for footers
+   Plus a ContactSection helper (icon-circle + label) used by `full`.
+   The 6 outer-container places that accept a user `style` prop keep
+   it as a `style={style}` pass-through; the 60+ static styles below
+   become this class block.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Shared card chrome — gold-tint surface, soft border, soft shadow.
+   Padding differs between full/compact, so split into two classes
+   that share the base via composition. */
+.cc-card {
+  background: var(--gold-tint);
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+  border-radius: 14px;
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--gold) 10%, transparent),
+              0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.cc-card-full    { padding: clamp(20px, 4vw, 36px); }
+.cc-card-compact { padding: clamp(18px, 3vw, 28px); }
+
+/* Full variant — title block + grid. */
+.cc-title-block { margin-bottom: clamp(20px, 3vw, 28px); }
+.cc-eyebrow {
+  font-size: var(--text-xs); font-weight: 600;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold-deep);
+  margin: 0 0 0.4rem;
+}
+.cc-title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.5rem, 3.5vw, 2rem);
+  font-weight: 300;
+  color: var(--midnight);
+  margin: 0;
+  line-height: 1.15;
+}
+.cc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: clamp(20px, 3vw, 32px);
+}
+/* Icon color on the lucide-react svg used inside a section. */
+.cc-icon-deep { color: var(--gold-deep); }
+
+/* Address link — dotted bottom border becomes gold-deep on hover.
+   Replaces JS-driven onMouseEnter/onMouseLeave per playbook §step-4. */
+.cc-address {
+  color: var(--midnight);
+  text-decoration: none;
+  border-bottom: 1px dotted color-mix(in srgb, var(--gold) 50%, transparent);
+  padding-bottom: 1px;
+  font-size: var(--text-base);
+  line-height: 1.7;
+  transition: color var(--dur-fast) var(--ease-standard),
+              border-color var(--dur-fast) var(--ease-standard);
+  display: inline-block;
+}
+.cc-address:hover {
+  color: var(--gold-deep);
+  border-bottom-color: var(--gold-deep);
+}
+.cc-transit-hint {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  margin: 0.5rem 0 0;
+  line-height: 1.5;
+}
+
+/* Hours rows. */
+.cc-hours-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: var(--text-ui);
+  line-height: 2;
+  color: var(--text);
+}
+.cc-hours-label { color: var(--text-2); }
+.cc-hours-range { color: var(--midnight); font-variant-numeric: tabular-nums; }
+
+/* Touch links (phone / WhatsApp / Instagram) — go gold on hover.
+   Replaces JS-driven hover with CSS :hover. */
+.cc-link-touch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--midnight);
+  text-decoration: none;
+  font-size: var(--text-base);
+  line-height: 2;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+.cc-link-touch:hover { color: var(--gold-deep); }
+.cc-link-tail { color: var(--text-2); }   /* small icon to the left of the link text */
+
+/* Mail link — distinguished by color and underline. */
+.cc-link-mail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gold-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-size: var(--text-ui);
+  line-height: 2;
+}
+
+/* Response note (divider line + small muted text). */
+.cc-note {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  line-height: 1.6;
+  margin: clamp(20px, 3vw, 28px) 0 0;
+  padding-top: clamp(20px, 3vw, 28px);
+  border-top: 1px solid color-mix(in srgb, var(--gold) 18%, transparent);
+}
+
+/* Compact variant — stacked single column. */
+.cc-compact-title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.2rem, 2.5vw, 1.4rem);
+  font-weight: 300;
+  color: var(--midnight);
+  margin: 0 0 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--gold) 25%, transparent);
+}
+.cc-compact-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+.cc-compact-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.cc-compact-row-top { align-items: flex-start; }    /* address & hours have multi-line content */
+.cc-compact-icon-top {
+  color: var(--gold-deep);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.cc-compact-icon {
+  color: var(--gold-deep);
+  flex-shrink: 0;
+}
+.cc-compact-content {
+  flex: 1;
+  min-width: 0;
+}
+.cc-compact-address {
+  color: var(--midnight);
+  text-decoration: none;
+  border-bottom: 1px dotted color-mix(in srgb, var(--gold) 50%, transparent);
+  padding-bottom: 1px;
+  font-size: var(--text-ui);
+  line-height: 1.6;
+  display: inline-block;
+}
+.cc-compact-hint {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin: 0.25rem 0 0;
+}
+.cc-compact-hours {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-sm);
+  line-height: 1.7;
+  color: var(--text);
+}
+.cc-compact-hours-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.cc-compact-link {
+  color: var(--midnight);
+  text-decoration: none;
+  font-size: var(--text-ui);
+}
+.cc-compact-link-mail {
+  color: var(--gold-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-size: var(--text-ui);
+}
+.cc-compact-note {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 1rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--gold) 18%, transparent);
+}
+
+/* Inline variant — bare text, no card chrome. */
+.cc-inline-wrap {
+  font-size: var(--text-sm);
+  line-height: 1.7;
+  color: var(--text-2);
+}
+.cc-inline-p      { margin: 0 0 0.5rem; }
+.cc-inline-p-tight { margin: 0 0 0.25rem; }
+.cc-inline-p-last { margin: 0; }
+.cc-inline-link-address {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted currentColor;
+}
+.cc-inline-link {
+  color: inherit;
+  text-decoration: none;
+}
+.cc-inline-link-mail {
+  color: var(--gold-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cc-inline-note {
+  margin: 0.75rem 0 0;
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+/* ContactSection helper — icon-in-circle + serif label. */
+.cc-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 0.75rem;
+}
+.cc-section-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--gold) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.cc-section-label {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 400;
+  color: var(--midnight);
+  margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CART DRAWER — replaces 62 inline styles in
+   src/app/components/CartDrawer.tsx
+   Slide-in cart panel from the right with a backdrop, a free-shipping
+   progress bar, an items list (regular + bundle items), and a
+   subtotal/checkout footer. The 5 mixed-static styles convert to
+   data-attribute toggles or CSS custom properties so the JSX no
+   longer needs `style={{}}` for any of them.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Backdrop — full-viewport blur veil. Open state toggled via
+   data-open so JSX never sets opacity/pointer-events inline. */
+.cd-backdrop {
+  position: fixed; inset: 0;
+  background: color-mix(in srgb, var(--midnight) 45%, transparent);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: var(--z-drawer);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-slow) var(--ease-standard);
+}
+.cd-backdrop[data-open='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Drawer panel — fixed-right column with iOS-safe dvh and a
+   spring-easing slide-in. */
+.cd-panel {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: min(420px, 100vw);
+  height: 100dvh;
+  /* Phase 9.7.2 — safe-area-inset for iPhone notch (top) +
+     iOS home indicator (bottom) + landscape right edge. The cart
+     drawer is right-pinned full-height; identical protection to
+     .notif-panel above. */
+  padding-top:    max(env(safe-area-inset-top), 0px);
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  padding-right:  max(env(safe-area-inset-right), 0px);
+  background: var(--surface);
+  z-index: var(--z-drawer-panel);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  border-left: 1px solid var(--border);
+  /* Closed: fully invisible — no shadow bleeding in at the right edge.
+     visibility flips only after the slide-out finishes. */
+  visibility: hidden;
+  transition:
+    transform var(--dur-xslow) var(--ease-spring),
+    box-shadow var(--dur-xslow) var(--ease-spring),
+    visibility 0s linear var(--dur-xslow);
+}
+.cd-panel[data-open='true'] {
+  visibility: visible;
+  transition:
+    transform var(--dur-xslow) var(--ease-spring),
+    box-shadow var(--dur-xslow) var(--ease-spring),
+    visibility 0s;
+  box-shadow: -8px 0 40px color-mix(in srgb, var(--midnight) 18%, transparent);
+  /* Phase 9.3 — adds --cd-drag-x to the resting translateX(0). On
+     gesture-down the value is the live pointer offset; on release
+     it's reset to 0 (with the transition re-enabled) so the panel
+     springs home or animates out. */
+  transform: translateX(var(--cd-drag-x, 0px));
+}
+/* During an active touch drag, skip the spring transition so the
+   panel tracks the finger 1:1 — anything else feels laggy and
+   non-deterministic. Re-enabled the moment data-dragging flips back
+   to 'false' on pointerup, which gives us the spring-back animation
+   for free. */
+.cd-panel[data-dragging='true'] {
+  transition: none;
+}
+
+/* Header — title + counter + close button. */
+.cd-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.cd-header-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.cd-header-title {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--midnight);
+}
+.cd-header-count {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Free-shipping bar. The fill width comes from a CSS custom property
+   --cd-progress (set inline as the only legitimate dynamic value).
+   Color flips via [data-complete='true']. */
+.cd-ship-wrap {
+  padding: 10px 22px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  flex-shrink: 0;
+}
+.cd-ship-msg {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+.cd-ship-msg-success {
+  color: var(--success);
+  font-weight: 500;
+}
+.cd-ship-msg-amount {
+  color: var(--text);
+  font-weight: 500;
+}
+.cd-ship-track {
+  height: 2px;
+  background: var(--surface-3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.cd-ship-fill {
+  height: 100%;
+  width: var(--cd-progress, 0%);
+  background: var(--midnight);
+  border-radius: 2px;
+  transition: width var(--dur-xslow) var(--ease-standard);
+}
+.cd-ship-fill[data-complete='true'] {
+  background: var(--success);
+}
+
+/* Items list scroller. */
+.cd-items {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Phase 9.1 — query container so cart-line internal layout
+     adapts to the container's width, not the viewport's. Same
+     element renders in CartDrawer (~340px) and CartPage
+     (~600-1000px); container queries let us reflow without
+     duplicating the markup. */
+  container-type: inline-size;
+  container-name: cart-list;
+}
+
+/* Empty state — icon + heading + body + CTA. */
+.cd-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  text-align: center;
+  height: 100%;
+  gap: 16px;
+}
+.cd-empty-h {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 300;
+  color: var(--midnight);
+  margin-bottom: 6px;
+}
+.cd-empty-p {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  line-height: 1.6;
+}
+.cd-empty-browse-mt { margin-top: 4px; }
+
+/* Items list inner wrap (was an inline `padding: 0`). */
+.cd-list { padding: 0; }
+
+/* Regular cart-item row — image + info + price/remove. The border
+   between siblings comes from :not(:last-child) so the JS no longer
+   has to compute idx vs items.length - 1. */
+.cd-item-row {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 12px;
+  padding: 16px 22px;
+  align-items: center;
+  transition: background var(--dur-fast) var(--ease-standard);
+}
+.cd-list > .cd-item-row:not(:last-child),
+.cd-list > .cd-bundle-row:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+}
+.cd-item-image {
+  width: 56px;
+  flex-shrink: 0;
+}
+.cd-item-info { min-width: 0; }
+.cd-item-name {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--midnight);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cd-item-each {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Quantity stepper — three button-shaped cells, square mid display. */
+.cd-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: 8px;
+}
+.cd-stepper-cell {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  transition: background var(--dur-fast) var(--ease-standard);
+}
+.cd-stepper-cell-l {
+  border-right: none;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.cd-stepper-cell-r {
+  border-left: none;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.cd-stepper-display {
+  width: 32px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text);
+  background: var(--surface);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Right column — line-item price + remove link. */
+.cd-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.cd-item-price {
+  font-size: var(--text-ui);
+  font-weight: 600;
+  color: var(--midnight);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.cd-remove-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  padding: 2px 0;
+  transition: color var(--dur-fast) var(--ease-standard);
+  font-family: var(--font-sans);
+}
+
+/* Phase 9.1 — Wide-container layout for cart lines. When the list
+   container is wider than 480px (e.g. in the CartPage on tablet+
+   desktop) the line gets a roomier presentation: larger product
+   image, more horizontal padding, and the right-column items
+   (price + remove) sit alongside instead of stacking. The drawer
+   stays in its compact mode because its container is ~340px wide.
+   Same JSX, different layout — that's the container-query win. */
+@container cart-list (min-width: 480px) {
+  .cd-item-row {
+    grid-template-columns: 80px 1fr auto;
+    gap: 16px;
+    padding: 20px 28px;
+  }
+  .cd-item-image {
+    width: 80px;
+  }
+  .cd-item-name {
+    font-size: var(--text-xs);
+  }
+}
+
+/* Footer — subtotal rows, total line, CTAs. */
+.cd-footer {
+  padding: 20px 22px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--surface);
+}
+.cd-subtotals {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.cd-subtotal-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+}
+.cd-subtotal-label { color: var(--muted); }
+.cd-subtotal-value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.cd-total-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.cd-total-label {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--midnight);
+}
+.cd-total-value {
+  font-family: var(--font-serif);
+  font-size: 1.55rem;
+  font-weight: 300;
+  color: var(--midnight);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.cd-shipping-note {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-bottom: 16px;
+  letter-spacing: 0.01em;
+}
+
+/* Checkout primary CTA — solid midnight on cream/dark text. */
+.cd-cta-primary {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  background: var(--midnight);
+  color: var(--on-dark);
+  text-align: center;
+  text-decoration: none;
+  border-radius: var(--radius);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: background var(--dur-normal) var(--ease-standard);
+  margin-bottom: 10px;
+}
+.cd-cta-secondary {
+  display: block;
+  width: 100%;
+  padding: 11px;
+  background: none;
+  color: var(--muted);
+  text-align: center;
+  text-decoration: none;
+  border-radius: var(--radius);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  transition: border-color var(--dur-normal) var(--ease-standard),
+              color var(--dur-normal) var(--ease-standard);
+}
+
+/* Bundle cart item — gift card layout with disclosure for "what's
+   inside". The wrapper takes the same :not(:last-child) border rule
+   as cd-item-row above. */
+.cd-bundle-row {
+  padding: 14px 22px;
+}
+.cd-bundle-grid {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  gap: 12px;
+  align-items: flex-start;
+}
+.cd-bundle-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--gold-soft);
+  color: var(--gold-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.cd-bundle-info { min-width: 0; }
+.cd-bundle-name {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--midnight);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+}
+.cd-bundle-recipient {
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  margin: 2px 0 0;
+  font-style: italic;
+}
+.cd-bundle-count {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin: 2px 0 0;
+}
+.cd-bundle-price {
+  font-size: var(--text-ui);
+  font-weight: 600;
+  color: var(--midnight);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+}
+
+/* Disclosure trigger + chevron. The chevron flips via data-open so
+   the JSX no longer sets transform inline. */
+.cd-disclosure {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-top: 10px;
+  padding: 4px 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-family: var(--font-sans);
+}
+.cd-disclosure-chev {
+  transform: rotate(0deg);
+  transition: transform var(--dur-normal) var(--ease-standard);
+}
+.cd-disclosure-chev[data-open='true'] {
+  transform: rotate(180deg);
+}
+
+/* Disclosure body — soft surface card with sub-lists. */
+.cd-disclosure-body {
+  margin-top: 8px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  line-height: 1.6;
+}
+.cd-msg-block { margin-top: 10px; }
+.cd-msg-label {
+  display: block;
+  font-size: var(--text-2xs);
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.cd-msg-value {
+  font-family: var(--font-serif);
+  font-style: italic;
+  color: var(--midnight);
+}
+
+/* Bundle remove-button row (right-aligned). */
+.cd-bundle-remove-row {
+  margin-top: 6px;
+  text-align: right;
+}
+
+/* BundleSubList — inline title:items pair. */
+.cd-sublist { margin-bottom: 6px; }
+.cd-sublist-title {
+  font-size: var(--text-2xs);
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--muted);
+  margin-right: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CREDIT WIDGET — replaces 34 inline styles in
+   src/app/components/CreditWidget.tsx
+   The widget already had a few component-level classes (.credit-card,
+   .credit-card-head, .credit-progress-bar/fill, .credit-stat,
+   .credit-balance, .section-card-icon). This block adds the rest so
+   the file no longer touches `style={{}}` for any static value.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Loading skeleton — fixed height card. */
+.cw-skel {
+  height: 200px;
+  border-radius: var(--radius-xl);
+}
+
+/* Compact pill — when the widget is rendered inline (e.g. nav). */
+.cw-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: var(--gold-soft);
+  border: 1px solid var(--accent-20);
+  color: var(--gold-text);
+}
+.cw-compact-val {
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+/* Header sub-pieces — beside the .section-card-icon and .credit-balance. */
+.cw-head-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.cw-head-name {
+  font-size: var(--text-ui);
+  font-weight: 600;
+  color: var(--midnight);
+  margin-bottom: 2px;
+}
+.cw-head-rate {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.cw-head-right {
+  text-align: right;
+}
+.cw-head-points {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Progress section. */
+.cw-progress-section {
+  padding: var(--sp-5) var(--sp-6);
+  border-bottom: 1px solid var(--border);
+}
+.cw-progress-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.cw-progress-label {
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  font-weight: 500;
+}
+.cw-progress-redeemable {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--success);
+}
+.cw-progress-togo {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+/* The fill width is the only legitimate dynamic; passes via
+   --cw-progress (a percentage like "73%"). */
+.cw-progress-fill-dyn {
+  width: var(--cw-progress, 0%);
+}
+
+/* Redeem section + tier buttons. */
+.cw-redeem-section {
+  padding: var(--sp-5) var(--sp-6);
+  border-bottom: 1px solid var(--border);
+}
+.cw-redeem-eyebrow {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+.cw-tier-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  background: var(--midnight);
+  color: var(--on-dark);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  transition: background var(--dur-fast) var(--ease-standard),
+              transform var(--dur-instant) var(--ease-standard);
+}
+/* Replaces the JS-driven onMouseEnter/onMouseLeave hover (playbook §4). */
+.cw-tier-btn:hover:not(:disabled) {
+  background: var(--midnight-2);
+}
+.cw-tier-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Stats row (already had .credit-stat / .credit-stat-val classes; this
+   adds the small caption underneath each stat). */
+.cw-stats-row {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+.cw-stat-cap {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+/* Expiry notice strip — soft warning surface. */
+.cw-expiry {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: var(--sp-4) var(--sp-6);
+  background: var(--warning-bg);
+}
+.cw-expiry-icon {
+  color: var(--warning);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.cw-expiry-msg {
+  font-size: var(--text-xs);
+  color: var(--warning);
+  line-height: 1.6;
+}
+
+/* Checkout credit selector (CreditSelector). */
+.cw-sel-wrap {
+  background: var(--gold-soft);
+  border: 1px solid var(--accent-20);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4) var(--sp-5);
+}
+.cw-sel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.cw-sel-icon { color: var(--gold-text); }
+.cw-sel-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+.cw-sel-applied-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cw-sel-applied-msg {
+  font-size: var(--text-sm);
+  color: var(--success);
+  font-weight: 600;
+}
+.cw-sel-remove {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.cw-sel-tier-btn {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  background: var(--midnight);
+  color: var(--on-dark);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.cw-sel-tier-btn:hover { background: var(--midnight-2); }
+.cw-sel-footnote {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COMMAND PALETTE — Phase 4.3
+   Drop-in classes for src/app/components/CommandPalette.tsx.
+   The cmdk library renders a Dialog → Input + List (Group → Item);
+   our classes give it the project's tokens-driven look + focus
+   semantics. Keyboard nav and a11y semantics come from cmdk; visual
+   chrome comes from this block.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* The dialog backdrop + panel. cmdk renders a button+role-combobox
+   wrapper at the top so we style this as a portal-positioned modal
+   rather than inline. */
+.cmd-dialog {
+  position: fixed;
+  top: 12vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(640px, calc(100vw - 32px));
+  max-height: min(60vh, 600px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elev-4);
+  z-index: var(--z-top);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: cp-fade-in var(--dur-normal) var(--ease-standard);
+}
+@keyframes cp-fade-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* Backdrop: cmdk renders a sibling overlay with [cmdk-overlay] attr.
+   Covers the viewport behind the panel. */
+[cmdk-overlay] {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--midnight) 35%, transparent);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: var(--z-top);
+  animation: cp-overlay-fade var(--dur-normal) var(--ease-standard);
+}
+@keyframes cp-overlay-fade {
+  from { opacity: 0; } to { opacity: 1; }
+}
+
+/* Search input at the top of the panel. */
+.cmd-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.cmd-input-icon { color: var(--muted); flex-shrink: 0; }
+.cmd-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--text);
+}
+.cmd-input::placeholder { color: var(--muted); }
+.cmd-input-kbd {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+/* Scroller for the result list. cmdk gives us Command.List; we add
+   the overflow + padding. */
+.cmd-list {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 0 8px;
+}
+.cmd-empty {
+  padding: 32px 18px;
+  text-align: center;
+  color: var(--muted);
+  font-size: var(--text-ui);
+}
+
+/* Group heading. */
+.cmd-group [cmdk-group-heading] {
+  padding: 10px 18px 4px;
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Each result item — icon + label + optional hint + tail chevron. */
+.cmd-item {
+  display: grid;
+  grid-template-columns: 18px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 18px;
+  cursor: pointer;
+  font-size: var(--text-ui);
+  color: var(--text);
+  transition: background var(--dur-fast) var(--ease-standard);
+}
+/* cmdk sets data-selected='true' on the keyboard-highlighted item
+   AND on hover. The visual treatment is intentionally subtle —
+   a soft tint, not a saturated highlight, so the palette stays
+   calm at speed. */
+.cmd-item[data-selected='true'] {
+  background: var(--surface-2);
+  color: var(--midnight);
+}
+.cmd-item-icon {
+  color: var(--muted);
+  display: inline-flex;
+}
+.cmd-item[data-selected='true'] .cmd-item-icon { color: var(--gold-deep); }
+.cmd-item-label {
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.cmd-item-hint {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-style: italic;
+}
+.cmd-item-tail {
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-standard);
+}
+.cmd-item[data-selected='true'] .cmd-item-tail { opacity: 1; }
+
+/* Reduced-motion: skip the entrance animations entirely. */
+@media (prefers-reduced-motion: reduce) {
+  .cmd-dialog,
+  [cmdk-overlay] {
+    animation: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BREADCRUMBS — Phase 4.2
+   Inline horizontal list with dot or chevron separators. Used on
+   non-top-level pages: /products/:cat, /tea-profile/:cat/:slug,
+   /orders/:id, /account, /admin/*.
+   ═══════════════════════════════════════════════════════════════ */
+.bc-nav {
+  margin: 0 0 16px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.bc-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bc-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.bc-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  min-width: 24px;
+  justify-content: center;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+.bc-link:hover { color: var(--gold-deep); }
+.bc-current {
+  color: var(--text);
+  font-weight: 500;
+}
+.bc-sep {
+  color: var(--muted);
+  opacity: 0.6;
+  user-select: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   VIEW TRANSITIONS — Phase 4.5
+   Native cross-fade between routes (the View Transitions API).
+   These are GLOBAL pseudo-elements applied to the document root
+   when navigateWithTransition() wraps a navigation.
+   ═══════════════════════════════════════════════════════════════ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--dur-normal);
+  animation-timing-function: var(--ease-standard);
+}
+::view-transition-old(root) {
+  animation-name: vt-fade-out;
+}
+::view-transition-new(root) {
+  animation-name: vt-fade-in;
+}
+@keyframes vt-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes vt-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
+
+/* Breadcrumb wrapper inside ProductsPage — centers the trail above
+   the page header at the same horizontal padding as the rest of the
+   page chrome. */
+.bc-page-wrap {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--sp-3) var(--gutter) 0;
+}
+
+/* Shared-element view-transition for the tea-image — Phase 4.5.
+   The image carries `view-transition-name: tea-img-{id}` on both
+   /products (card) and /tea-profile (hero). The browser captures
+   the from-rect on the outgoing page and the to-rect on the
+   incoming page, then animates between them. Smooth crossfade +
+   morph by default; we just tighten the timing to match our
+   motion scale (so it feels coordinated with the rest of the app). */
+::view-transition-old(tea-img-*),
+::view-transition-new(tea-img-*) {
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease-emphasized, var(--ease-standard));
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(tea-img-*),
+  ::view-transition-new(tea-img-*) {
+    animation: none;
+  }
+}
+

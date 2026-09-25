@@ -1,0 +1,991 @@
+/* ============================================================
+   ELE CAFÉ — DESIGN TOKENS  v2
+   Single source of truth for every value used in the app.
+   ============================================================ */
+
+:root {
+  /* ── Primitive colour scale ───────────────────────────────────
+     Phase 1.1: each token is declared TWICE on consecutive lines.
+     The first line is the sRGB hex (fallback); the second is the
+     perceptually-uniform OKLCH equivalent. Browsers that support
+     OKLCH (~97% globally as of 2026) use the second value because
+     the cascade picks the last valid declaration; older browsers
+     ignore the OKLCH line and fall back to the hex.
+
+     The OKLCH values were derived from the existing hex ladder via
+     `node scripts/oklch-derive.mjs` — a mathematically exact
+     conversion, so the visual output is identical on supporting
+     browsers. The migration's value is FORWARD: any future palette
+     tweak (a darker gold, a cooler ink) can now be expressed by
+     changing L/C/H by a uniform amount and the ladder stays
+     proportional. With hex you'd eyeball every step. */
+  /* stylelint-disable declaration-block-no-duplicate-custom-properties --
+     deliberate hex-then-oklch fallback pattern documented above. */
+  --_ink-900:       #090e12;
+  --_ink-900:       oklch(16.03% 0.0117 242.45);
+  --_ink-800:       #0f1c26;
+  --_ink-800:       oklch(21.96% 0.0269 242.55);
+  --_ink-700:       #1e3040;
+  --_ink-700:       oklch(30.12% 0.0376 246.26);
+  --_ink-600:       #253848;
+  --_ink-600:       oklch(33.17% 0.0376 244.68);
+  --_ink-500:       #2e4458;
+  --_ink-500:       oklch(37.73% 0.0441 246.69);
+  --_ink-400:       #3a5468;
+  --_ink-400:       oklch(43.34% 0.0457 242.17);
+  --_steel-400:     #4a7a9b;
+  --_steel-400:     oklch(55.9% 0.0733 239.92);
+  --_steel-300:     #6a9ab8;
+  --_steel-300:     oklch(66.33% 0.0683 236.62);
+  --_steel-200:     #8ab8d8;
+  --_steel-200:     oklch(76.12% 0.0672 239.12);
+
+  --_cream-50:      #fdfaf5;
+  --_cream-50:      oklch(98.6% 0.0073 80.72);
+  --_cream-100:     #f8f4ec;
+  --_cream-100:     oklch(96.8% 0.0114 84.58);
+  --_cream-200:     #f0e8d8;
+  --_cream-200:     oklch(93.3% 0.023 84.59);
+  --_cream-300:     #e4d8c4;
+  --_cream-300:     oklch(88.65% 0.0299 80.65);
+  --_cream-400:     #d0c0a8;
+  --_cream-400:     oklch(81.47% 0.0374 78.07);
+
+  --_gold-200:      #e8d490;
+  --_gold-200:      oklch(87.09% 0.0894 93.64);
+  --_gold-300:      #d4c080;
+  --_gold-300:      oklch(81% 0.0857 92.74);
+  --_gold-400:      #c8aa60;
+  --_gold-400:      oklch(74.88% 0.0998 87.88);
+  --_gold-500:      #b8924a;
+  --_gold-500:      oklch(68.08% 0.1013 81.62);
+  --_gold-600:      #a07838;
+  --_gold-600:      oklch(59.94% 0.0954 76.87);
+  --_gold-700:      #8c6830;
+  --_gold-700:      oklch(54.24% 0.0863 76.13);
+  --_gold-800:      #7a5828;
+  --_gold-800:      oklch(48.62% 0.0784 73.45);
+  /* stylelint-enable declaration-block-no-duplicate-custom-properties */
+
+  /* ── Tea category colours ─────────────────────────────────── */
+  --tea-green-bg:   #6abf6b;
+  --tea-black-bg:   #3e3e3e;
+  --tea-rooibos-bg: #e07b6d;
+  --tea-herbal-bg:  #b48bf0;
+  --tea-oolong-bg:  #87b7d5;
+  --tea-flower-bg:  #f4a3c4;
+  --tea-fruit-bg:   #ff9f61;
+  --tea-white-bg:   #f0ece6;
+  --tea-category-text: #1a1a1a;
+
+  /* ── Semantic surface tokens ──────────────────────────────── */
+  --bg:         var(--_cream-50);
+  --surface:    #ffffff;
+  --surface-2:  var(--_cream-100);
+  --surface-3:  var(--_cream-200);
+  --surface-4:  var(--_cream-300);
+
+  /* ── Text ─────────────────────────────────────────────────── */
+  --ink:        #090e12;             /* alias of --_ink-900 — deepest text */
+  --text:       #1a2530;
+  --text-2:     #2e3d4c;
+  --text-3:     #445566;
+  --muted:      #5a7088;
+  --muted-2:    #7a90a8;
+  --on-dark:    #f0e8d8;
+  --on-dark-2:  rgba(240,232,216,0.65);
+  --on-dark-3:  rgba(240,232,216,0.38);
+
+  /* R3 file4 — extra alpha tiers in the --on-dark palette so design.css
+     can stop hardcoding `rgba(240,232,216,N)`. Named by the alpha *2
+     digits — `--on-dark-95` = 0.95, `--on-dark-9` = 0.9, etc. The
+     existing --on-dark-2 (0.65) and --on-dark-3 (0.38) keep their
+     legacy "tier index" names; new tiers use the alpha-as-name
+     convention because the tier metaphor breaks down past 3 stops.
+
+     IMPORTANT distinction vs --cream-N below:
+     The --on-dark-N family FLIPS in dark mode (RGB swaps to dark) so
+     buttons whose own background flips with the theme keep readable
+     text. If you want a LITERAL cream that stays cream regardless of
+     theme — typically because the surface beneath is fixed-dark
+     (admin sidebar, .dark selectors with transparent buttons over
+     a dark page bg) — use --cream-N or --on-admin-N instead. */
+  --on-dark-95: rgba(240,232,216,0.95);
+  --on-dark-9:  rgba(240,232,216,0.90);
+  --on-dark-85: rgba(240,232,216,0.85);
+  --on-dark-7:  rgba(240,232,216,0.70);
+  --on-dark-55: rgba(240,232,216,0.55);
+  --on-dark-22: rgba(240,232,216,0.22);
+  --on-dark-2-bd: rgba(240,232,216,0.20);  /* low-alpha border on .dark surfaces */
+
+  /* R3 file4 — LITERAL cream palette that does NOT flip in dark mode.
+     Use inside `.dark .x` rules where the surface beneath is the dark
+     page background and you want the cream value to STAY cream. The
+     RGB triple is the same as --on-dark above (240,232,216) but these
+     tokens do not have a dark-mode override, so var() resolution gives
+     the same value in both themes. */
+  --cream-95:    rgba(240,232,216,0.95);
+  --cream-9:     rgba(240,232,216,0.90);
+  --cream-85:    rgba(240,232,216,0.85);
+  --cream-7:     rgba(240,232,216,0.70);
+  --cream-55:    rgba(240,232,216,0.55);
+  --cream-38:    rgba(240,232,216,0.38);
+  --cream-22:    rgba(240,232,216,0.22);
+  --cream-2-bd:  rgba(240,232,216,0.20);
+  --cream-04-bg: rgba(240,232,216,0.04);
+
+  /* R3 file4 — "always cream, never flips" palette. Use on surfaces
+     whose background is FIXED dark regardless of theme (admin sidebar,
+     announcement marquee, modal headers with .modal-close-dark, etc.).
+     The on-dark-N palette above flips RGB on dark mode for buttons
+     whose own background flips with the theme; this palette stays
+     constant because the surface beneath does too. RGB (245,240,232)
+     is the slightly warmer cream we use for these scopes — same family
+     as --on-dark (240,232,216) but a notch lighter so it reads well
+     against the deep navy used for non-flipping surfaces. */
+  --on-admin-95: rgba(245,240,232,0.95);
+  --on-admin-9:  rgba(245,240,232,0.90);
+  --on-admin-75: rgba(245,240,232,0.75);
+  --on-admin-55: rgba(245,240,232,0.55);
+  --on-admin-10: rgba(245,240,232,0.10);
+  --on-admin-05: rgba(245,240,232,0.05);
+
+  /* R3 file4 — translucent white for borders/backgrounds on dark
+     surfaces. RGB(255,255,255) is the same in both themes, so these
+     don't need a dark-mode override. */
+  --white-15: rgba(255,255,255,0.15);
+  --white-10: rgba(255,255,255,0.10);
+  --white-08: rgba(255,255,255,0.08);
+  --white-05: rgba(255,255,255,0.05);
+  --white-04: rgba(255,255,255,0.04);
+  --white-16: rgba(255,255,255,0.16);  /* modal-close-dark hover */
+
+  /* R3 file4 — tea-tag colours (badges layered over plant photography).
+     Foreground stays light-cream / mint regardless of theme because the
+     tag's own dark green/navy background is fixed. */
+  --tea-tag-fg:       rgba(240,232,216,0.90);
+  --tea-tag-green-fg: rgb(225,242,225);          /* solid; alpha=1 */
+  --tea-tag-bg:       rgba(15,28,38,0.82);       /* deep navy at 0.82 */
+  --tea-tag-green-bg: rgba(35,75,38,0.85);       /* deep emerald at 0.85 */
+
+  /* R3 file4 — accent (gold) at additional alpha. Existing tiers run
+     03/10/15/20/30; we needed 50 for the admin-sidebar-sub label. */
+  --accent-50:    rgba(184,146,74,0.50);
+
+  /* ── Border ───────────────────────────────────────────────── */
+  --border:        #ddd5c8;
+  --border-strong: #c8b898;
+  --border-2:      #c8bfb0;             /* design.css alias — slightly warmer */
+  --color-border:  #ddd5c8;   /* alias — kept for legacy */
+  --divider:       #c8b898;
+
+  /* ── Brand ────────────────────────────────────────────────── */
+  --midnight:     var(--_ink-800);
+  --midnight-2:   var(--_ink-700);
+  --midnight-3:   var(--_ink-600);
+  --steel:        var(--_steel-400);
+
+  --gold:         var(--_gold-500);
+  --gold-text:    var(--_gold-800);
+  --gold-hover:   var(--_gold-600);
+  --gold-deep:    var(--_gold-700);
+  --gold-soft:    #f5ead8;
+  /* Café menu flavour / purée chips — pastel of the flavour + readable ink.
+     Pastel chips with dark ink read on both light and dark pages, so the
+     dark theme keeps these values. */
+  --flavour-vanilla:        #f6ebcd;  --flavour-vanilla-ink:     #6b5420;
+  --flavour-caramel:        #efd0a0;  --flavour-caramel-ink:     #6a3f0e;
+  --flavour-maple:          #e7b77f;  --flavour-maple-ink:       #5c2c08;
+  --flavour-strawberry:     #f8c4cc;  --flavour-strawberry-ink:  #8a1a2c;
+  --flavour-rose:           #f7d2dd;  --flavour-rose-ink:        #8a2c4b;
+  --flavour-lavender:       #e2d5f4;  --flavour-lavender-ink:    #4c3578;
+  --flavour-hazelnut:       #e3cdb4;  --flavour-hazelnut-ink:    #573619;
+  --flavour-gingerbread:    #e9c29a;  --flavour-gingerbread-ink: #633510;
+  --flavour-mango:          #ffdc96;  --flavour-mango-ink:       #6f4300;
+  --flavour-peach:          #ffd3bd;  --flavour-peach-ink:       #883813;
+  /* Café menu boards (CafeMenuBoard) — one accent per drink family */
+  --menu-coffee:       #5b3a1e;
+  --menu-coffee-soft:  #f3e9df;
+  --menu-matcha:       #3f6b35;
+  --menu-matcha-soft:  #e8f0e1;
+  --menu-hojicha:      #8a5530;
+  --menu-hojicha-soft: #f5e8dc;
+  --gold-tint:    rgba(184,146,74,0.08);
+
+  --accent-text:  #1a0e04;
+  --accent-03:    rgba(184,146,74,0.03);
+  --accent-10:    rgba(184,146,74,0.10);
+  --accent-15:    rgba(184,146,74,0.15);
+  --accent-20:    rgba(184,146,74,0.20);
+  --accent-30:    rgba(184,146,74,0.30);
+
+  /* R3 file4 — secondary accent used by AdminAnalytics's "Custom Range"
+     active button. Distinct from the gold accent palette so the
+     custom-period state reads as different (not just emphasised). */
+  --accent-purple: #534ab7;
+
+  /* ── Status ───────────────────────────────────────────────── */
+  --success:      #2d6e4f;
+  --success-2:    #4cba82;                /* brighter alt — design.css */
+  --success-bg:   #e8f5ed;
+  --success-border: #a8d8b8;
+  --warning:      #c47d0a;                /* Day-6: matches design.css — amber tone */
+  --warning-bg:   #fef3c7;
+  --warning-border: #e8b880;
+  --danger:       #b83228;
+  --danger-bg:    #fdeeed;
+  --danger-border: #e8a8a0;
+  --info:         var(--_steel-400);
+  --info-bg:      #e8f2f8;
+  --info-border:  #b8d8e8;
+
+  /* On-{state}-solid foregrounds — the text/icon color that goes ON a
+     solid-fill state surface (a solid green Toast, a solid red CTA, etc.).
+     Verified against contrast-check.mjs: each pair clears WCAG AA. These
+     close the structural-completeness gap called out in the Phase 0-6 audit:
+     state surfaces had bg + border + solid but no on-solid foreground. */
+  --on-success-solid: #ffffff;       /* on #2d6e4f → 6.08:1 (AA) */
+  --on-warning-solid: #1f1300;       /* on #c47d0a → 7.40:1 (AAA) */
+  --on-danger-solid:  #ffffff;       /* on #b83228 → 5.96:1 (AA) */
+  --on-info-solid:    #ffffff;       /* on #4a7a9b → 4.51:1 (AA) */
+
+  /* ── Tea profile — section-specific decorative tints ──────
+     Used by detail / serving / brew cards on the tea page.
+     Kept here (not in design.css) so dark-mode values live
+     with light values in one place.                            */
+  --detail-bg:      #e8f4fd;        /* soft sky blue    */
+  --detail-border:  #b8d9f0;
+  --serving-bg:     #f0f4ff;        /* soft lavender    */
+  --serving-border: #c5d0f5;
+
+  /* R3 file4 — semantic icons for the tea profile detail sections.
+     These mirror the existing `.lucide-leaf / .lucide-flower-2 /
+     .lucide-flame` palette in design.css (theme-invariant decorative
+     icons) but are tokenised so the inline `style={{color:'#e74c3c'}}`
+     usages in TeaProfilePage can reference them. The "ph" prefix
+     stands for "profile-highlight" and reflects the className the
+     spans use (`.ph-icon`). */
+  --ph-icon-leaf:    #2ecc71;       /* benefits — emerald   */
+  --ph-icon-flower:  #7f8c8d;       /* ingredients — slate  */
+  --ph-icon-coffee:  #795548;       /* caffeine — coffee    */
+  --ph-icon-fire:    #e74c3c;       /* antioxidants/origin/regions — coral red */
+
+  /* ── Elevation / Shadow ───────────────────────────────────── */
+  /* Day-6 consolidated: these are the values that were live via
+     design.css cascade. Design.css no longer redeclares them.    */
+  --shadow-xs:    0 1px 3px rgba(9,14,18,0.06), 0 1px 2px rgba(9,14,18,0.04);
+  --shadow-sm:    0 2px 8px rgba(9,14,18,0.08), 0 1px 3px rgba(9,14,18,0.05);
+  --shadow-md:    0 4px 16px rgba(9,14,18,0.10), 0 2px 6px rgba(9,14,18,0.06);
+  --shadow-lg:    0 8px 32px rgba(9,14,18,0.13), 0 3px 10px rgba(9,14,18,0.08);
+  --shadow-xl:    0 20px 60px rgba(9,14,18,0.16), 0 6px 20px rgba(9,14,18,0.10);
+  --shadow-gold:  0 4px 20px rgba(184,146,74,0.22);
+  /* Note: --shadow (unsuffixed) intentionally omitted — was defined by
+     design.css as `rgba(...)` not as a complete shadow string, which made
+     `box-shadow: var(--shadow)` invalid everywhere it was used. No live
+     usage of var(--shadow) remains in the codebase. */
+
+  /* ── Border radius ────────────────────────────────────────── */
+  /* Day-6 consolidated: --radius-xs/xl/2xl updated to design.css values */
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius:      8px;      /* default — inputs, small buttons */
+  --radius-md:   10px;     /* medium buttons */
+  --radius-lg:   14px;     /* cards */
+  --radius-xl:   20px;     /* modals, large cards */
+  --radius-2xl:  28px;
+  --radius-full: 9999px;
+
+  /* ── Typography ───────────────────────────────────────────── */
+  --font-serif:   'Cormorant Garamond', 'Georgia', serif;
+  --font-sans:    'Jost', 'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Inventory stock-state surfaces (cards + table rows). */
+  --inv-low-tint:    rgba(199, 138, 26, 0.08);
+  --inv-low-border:  rgba(199, 138, 26, 0.45);
+  --inv-out-tint:    rgba(184, 50, 40, 0.07);
+  --inv-out-border:  rgba(184, 50, 40, 0.4);
+  --inv-ok-tint:     rgba(30, 111, 71, 0.06);
+  --inv-ok-border:   rgba(30, 111, 71, 0.35);
+
+  /* Readability floor: nothing renders below --text-2xs (11px).
+     Use these tokens for every font-size — never raw px — so the
+     whole site's small text can be tuned from here. */
+  --text-2xs:    11px;   /* micro labels, tags, uppercase eyebrows */
+  --text-xs:     12px;   /* captions, meta, badges */
+  --text-sm:     13px;   /* secondary text */
+  --text-ui:     14px;   /* controls, dense body copy */
+  --text-base:   15px;
+  --text-md:     16px;
+  --text-lg:     18px;
+  --text-xl:     20px;
+  --text-2xl:    24px;
+  --text-3xl:    30px;
+  --text-4xl:    36px;
+
+  --leading-tight:  1.2;
+  --leading-snug:   1.4;
+  --leading-normal: 1.65;
+  --leading-relaxed: 1.85;
+
+  --tracking-tight:  -0.03em;
+  --tracking-normal: 0;
+  --tracking-wide:   0.04em;
+  --tracking-wider:  0.08em;
+  --tracking-widest: 0.18em;
+
+  /* ── Spacing scale (4px base) ─────────────────────────────── */
+  /* Day-6 consolidated: px values matching design.css — equivalent to
+     the previous rem values at default 16px root, but deliberately px so
+     spacing stays constant regardless of user font-size preferences.    */
+  --sp-0:  0;
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+  --sp-20: 80px;
+  --sp-24: 96px;
+
+  /* ── Page layout rhythm ───────────────────────────────────── */
+  /* ONE set of layout spacings for every page, so screens line up like
+     an app: same side gutter everywhere, same gap under the navbar,
+     same section rhythm. Phone → tablet → desktop via clamp():
+       --gutter        16px @ ≤400 · ~31px @ 768 · 48px desktop
+       --page-top      gap between the navbar and a page's first content
+       --section-y     space between major homepage-style sections
+       --section-y-sm  tighter sections / page bottoms
+       --card-pad      inner padding of page-level cards (auth, forms)
+       --fs-page-title the H1 of every page (not product names/heroes) */
+  --gutter:        clamp(16px, 4vw, 48px);
+  --page-top:      clamp(20px, 3.5vw, 40px);
+  --section-y:     clamp(40px, 7vw, 112px);
+  --section-y-sm:  clamp(28px, 4.5vw, 64px);
+  --card-pad:      clamp(20px, 4vw, 40px);
+  --fs-page-title: clamp(1.75rem, 1.3rem + 2vw, 2.75rem);
+
+  /* ── Animation ────────────────────────────────────────────── */
+  /* Day-6 consolidated: --dur-slow updated 350 → 380ms, aliases added
+     for design.css's naming (--dur-base == --dur-normal,
+     --ease-in-out == --ease-standard, --ease-out == --ease-decelerate) */
+  --dur-instant:  80ms;
+  --dur-fast:     150ms;
+  --dur-normal:   220ms;
+  --dur-base:     220ms;   /* alias — same as --dur-normal */
+  --dur-slow:     380ms;
+  --dur-xslow:    480ms;
+  --dur-enter:    480ms;   /* alias — same as --dur-xslow */
+
+  --ease-linear:      linear;
+  --ease-standard:    cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in-out:      cubic-bezier(0.4, 0, 0.2, 1);       /* alias */
+  --ease-decelerate:  cubic-bezier(0, 0, 0.2, 1);
+  --ease-out:         cubic-bezier(0.22, 1, 0.36, 1);     /* design.css spec */
+  --ease-accelerate:  cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring:      cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-bounce:      cubic-bezier(0.34, 1.10, 0.64, 1);
+
+  /* ── Z-index ladder ─────────────────────────────────────────
+     Single source of truth for layering. NEVER hard-code z-index
+     numbers in components — always reference one of these tokens.
+     The numeric gaps (200 → 250 → 300, etc.) are deliberate so we
+     can interleave new tiers without renumbering existing ones.
+
+     Stacking order, lowest to highest:
+       below      (-1)   — pseudo-elements behind content
+       base       ( 0)   — default flow
+       raised     ( 1)   — cards / hover-elevated content
+       sticky     (200)  — navbar, sticky table headers
+       dropdown   (250)  — Radix selects, autocomplete
+       overlay    (300)  — generic dimmers (admin date picker etc.)
+       drawer     (400)  — cart / nav drawer scrim
+       drawer-pnl (410)  — cart / nav drawer panel itself
+       modal      (800)  — modal scrim
+       modal-pnl  (900)  — modal panel itself
+       notif      (950)  — notification side-panel (above modals so a
+                            payment-arrived alert doesn't disappear
+                            behind an order-detail modal)
+       notif-pnl  (960)  — notification panel content
+       toast     (1000)  — Sonner toasts (top of everything app-side)
+       top       (9999)  — DevTools / emergency overrides only
+  */
+  --z-below:        -1;
+  --z-base:          0;
+  --z-raised:        1;
+  --z-0:             0;     /* legacy alias of --z-base — keep for back-compat */
+  --z-10:           10;
+  --z-20:           20;
+  --z-sticky:      200;
+  --z-dropdown:    250;
+  --z-overlay:     300;
+  --z-drawer:      400;
+  --z-drawer-panel: 410;
+  --z-modal:       800;
+  --z-modal-panel: 900;
+  --z-notification:      950;
+  --z-notification-panel: 960;
+  --z-toast:      1000;
+  --z-top:        9999;
+
+  /* ── Layout ───────────────────────────────────────────────── */
+  /* Phase 8 CLS fix: reserve the full fixed header height from the
+     first paint so body content never jumps when the navbar toggles
+     between hero/compact states or when the announcement strip is
+     present. The fixed shell is 52px announcement + up to ~80px
+     navbar = ~132px total. We prefer a small amount of stable extra
+     top space over repeated layout shifts during scroll and load.
+
+     Responsive: on tablet (<1024px) the navbar shrinks to a single
+     row (~92px including announcement). On phone (<768px) it shrinks
+     further (~80px). Setting --nav-height responsively here closes
+     the dead-space gap users see between the navbar and page
+     content on small screens (reported May 2026). */
+  --nav-height:      132px;
+  --nav-height-hero: clamp(88px,18vh,160px);
+  --content-max:     1280px;
+  --content-mid:     900px;
+  --content-sm:      680px;
+  --content-xs:      440px;
+
+  /* ── Breakpoints ──────────────────────────────────────────────
+     CSS does not let you use var() inside @media queries — the
+     spec landed in CSS Values 5 but no browser ships it yet. So
+     these tokens are purely DOCUMENTATIONAL (they declare the
+     canonical values) and JS can read them via getComputedStyle
+     for matchMedia-based logic. CSS authors should still hand-write
+     the @media query but copy the value from below.
+
+       --bp-xs:   380px   small mobile (cramped phone)
+       --bp-sm:   480px   mobile / tall phone
+       --bp-md:   768px   tablet portrait
+       --bp-lg:  1024px   tablet landscape / small laptop
+       --bp-xl:  1280px   desktop / max content width
+
+     One-off breakpoints exist in places where the design REQUIRES
+     a non-canonical breakpoint (e.g. 880px = navbar collapse driven
+     by logo+nav+cart icon widths, 1023px = the inverse of bp-lg
+     to avoid an off-by-one). When you write a one-off, leave a
+     "breakpoint reason" comment so the next reader knows it is
+     intentional, not drift.
+  */
+  --bp-xs:    380px;
+  --bp-sm:    480px;
+  --bp-md:    768px;
+  --bp-lg:   1024px;
+  --bp-xl:   1280px;
+
+  /* ── Focus ring ───────────────────────────────────────────── */
+  --focus-color:  var(--gold);
+  --focus-width:  2px;
+  --focus-offset: 3px;
+  --focus-shadow: 0 0 0 4px var(--accent-20);
+  --input-focus:  var(--gold);
+
+  /* ── Footer — locally-scoped tokens ──────────────────────────
+     Used only by .footer* rules in design.css. Previously declared
+     in a separate :root block inside design.css; moved here so there
+     is exactly one :root in the whole app.
+
+     Alpha values were measured against axe-core 4.11 in pass 14:
+     0.32 alpha computed to #555b60 over #0c1827 = 2.59:1 (FAIL).
+     0.65 alpha computes to ~#968f7b over #0c1827 = ~5.4:1 (PASS).
+     If you change the cream base or the bg-2 value, run the a11y
+     suite to re-validate — the alpha math doesn't survive a
+     hue/value shift in either token.                              */
+  --ft-bg:       #0f1e2d;              /* warmer navy than global bg */
+  --ft-bg-2:     #0c1827;              /* perks strip — darker       */
+  --ft-border:   rgba(255,255,255,0.08);
+  --ft-text-hi:  rgba(240,232,216,0.92);
+  --ft-text-md:  rgba(240,232,216,0.78);  /* was 0.62 — bumped for AA on small text */
+
+  /* ── Price chip — used in ComboGallery and any future "price tag"
+     pill on top of imagery. Light mode = dark midnight bg + white
+     text (highest contrast against bright pastry photos). Dark mode
+     flips this further down so the chip stays the most visible
+     element on the slide regardless of mode. */
+  --price-chip-bg: #1a2937;             /* slightly lifted off pure midnight  */
+  --price-chip-fg: #ffffff;             /* always-white text in light mode    */
+  --price-chip-bd: rgba(255,255,255,0.10);
+  --ft-text-lo:  rgba(240,232,216,0.65);  /* was 0.32 — was below AA threshold      */
+  --ft-gold:     rgba(184,146,74,1);
+  --ft-gold-bg:  rgba(184,146,74,0.12);
+  --ft-gold-bd:  rgba(184,146,74,0.22);
+
+  /* ═══════════════════════════════════════════════════════════════
+     PHASE 1 — DESIGN TOKENS v3
+     Motion · Elevation · Density · Fluid Type · State · Data-viz
+     Added by the UI/UX enterprise roadmap.
+
+     Reading order:
+       1. Motion        — durations + easings + distances
+       2. Elevation     — composable shadow tiers
+       3. Density       — comfortable vs dense via [data-density]
+       4. Fluid type    — clamp() type scale for responsive sizing
+       5. State surfaces— success/warning/danger/info each in 4 vars
+       6. Data-viz      — sequential, divergent, qualitative palettes
+
+     All flip with theme via the .dark block further down.
+     ═══════════════════════════════════════════════════════════════ */
+
+  /* ── 1. Motion ────────────────────────────────────────────────────
+     Duration + easing tokens already exist further up in this file
+     (see "Animation" section: --dur-instant/fast/normal/slow/xslow,
+     and --ease-linear/standard/decelerate/out/accelerate/spring/bounce).
+     Phase 1 doesn't redeclare them — that would create a second source
+     of truth, which the README forbids. The Phase 1 contribution to
+     motion is the reduced-motion override at the bottom of this file
+     that collapses every duration to 1ms automatically.
+
+     Distance tokens (how FAR things move) — these are new because
+     the existing motion system covered duration but not displacement.
+     Use:
+       transform: translateX(var(--dist-md));
+  */
+  --dist-sm:  4px;
+  --dist-md: 16px;
+  --dist-lg: 32px;
+
+  /* ── 2. Elevation ─────────────────────────────────────────────────
+     Composable shadow tiers for the four common needs:
+       --elev-1   subtle (cards at rest)
+       --elev-2   default (cards on hover, inputs on focus)
+       --elev-3   raised (popovers, dropdowns)
+       --elev-4   floating (modals, drawers)
+       --elev-inset pressed/sunken (active button, inset input)
+
+     Built using the existing --ink-* primitives so dark mode shadows
+     are subtler automatically. Falls back to existing --shadow-*
+     tokens for code that hasn't migrated yet. */
+  --elev-1:    0 1px 2px 0 rgba(9,14,18,0.06);
+  --elev-2:    0 2px 8px -2px rgba(9,14,18,0.10), 0 1px 2px 0 rgba(9,14,18,0.06);
+  --elev-3:    0 8px 24px -4px rgba(9,14,18,0.12), 0 2px 6px -2px rgba(9,14,18,0.08);
+  --elev-4:    0 24px 48px -8px rgba(9,14,18,0.16), 0 4px 8px -2px rgba(9,14,18,0.08);
+  --elev-inset: inset 0 1px 2px 0 rgba(9,14,18,0.08);
+
+  /* ── 3. Density ───────────────────────────────────────────────────
+     The base values here are the "comfortable" defaults used by every
+     customer-facing surface. The admin tree opts into dense via
+       <div data-density="dense">…</div>
+     applied at the AdminLayout root — see further down for the
+     [data-density="dense"] override block. */
+  --row-h:        44px;          /* WCAG AAA hit-target floor */
+  --row-h-md:     40px;
+  --row-h-sm:     32px;
+  --pad-x:        16px;
+  --pad-y:        12px;
+  --gap:          12px;
+
+  /* ── 4. Fluid typography ──────────────────────────────────────────
+     clamp(min, preferred, max) — preferred is rem + vw so the size
+     scales smoothly between min and max. Generated to match a 1.250
+     ratio at 320px viewport and a 1.333 ratio at 1440px viewport
+     (utopia.fyi pattern). The existing --text-size-adjust: 100% from
+     R3 layout audit prevents iOS landscape from breaking the clamp.
+
+     Use directly in CSS:
+       h1 { font-size: var(--type-3xl); }
+     or via the Tailwind bridge in tailwind.css → @theme. */
+  --type-xs:   clamp(0.75rem, 0.71rem + 0.18vw, 0.85rem);
+  --type-sm:   clamp(0.875rem, 0.83rem + 0.21vw, 0.95rem);
+  --type-base: clamp(1rem, 0.94rem + 0.27vw, 1.10rem);
+  --type-lg:   clamp(1.125rem, 1.04rem + 0.40vw, 1.25rem);
+  --type-xl:   clamp(1.25rem, 1.13rem + 0.55vw, 1.50rem);
+  --type-2xl:  clamp(1.5rem, 1.30rem + 0.91vw, 2.00rem);
+  --type-3xl:  clamp(1.875rem, 1.55rem + 1.50vw, 2.75rem);
+  --type-4xl:  clamp(2.25rem, 1.70rem + 2.50vw, 3.75rem);
+  --type-5xl:  clamp(3.0rem, 2.00rem + 4.50vw, 5.00rem);
+
+  /* Line heights paired with the type scale. Tight for headlines,
+     relaxed for body. */
+  --lh-tight:  1.15;
+  --lh-snug:   1.30;
+  --lh-normal: 1.50;
+  --lh-relaxed:1.65;
+
+  /* ── 5. State surfaces ────────────────────────────────────────────
+     Each state has FOUR vars: bg (subtle background pill), fg (text
+     color on that bg), border (outlined alert), solid (full-color CTA).
+     The existing --success / --danger / --warning tokens map into
+     "solid" here, so this is additive — old code keeps working.
+
+     Naming pattern: --state-{role}-{variant}
+       Variants: bg | fg | border | solid                       */
+  --state-success-bg:     rgba(45,110,79,0.12);
+  --state-success-fg:     #1f5037;
+  --state-success-border: rgba(45,110,79,0.32);
+  --state-success-solid:  #2d6e4f;
+
+  --state-warning-bg:     rgba(196,141,40,0.14);
+  --state-warning-fg:     #6e4d12;
+  --state-warning-border: rgba(196,141,40,0.34);
+  --state-warning-solid:  #c48d28;
+
+  --state-danger-bg:      rgba(184,50,40,0.10);
+  --state-danger-fg:      #7d1e16;
+  --state-danger-border:  rgba(184,50,40,0.30);
+  --state-danger-solid:   #b83228;
+
+  --state-info-bg:        rgba(74,122,155,0.12);
+  --state-info-fg:        #2c4d68;
+  --state-info-border:    rgba(74,122,155,0.30);
+  --state-info-solid:     #4a7a9b;
+
+  --state-neutral-bg:     rgba(45,68,88,0.06);
+  --state-neutral-fg:     var(--text-2);
+  --state-neutral-border: var(--border);
+  --state-neutral-solid:  var(--midnight);
+
+  /* ── 6. Data-viz palette ──────────────────────────────────────────
+     For AdminAnalytics and any future chart work. Three palettes:
+
+       Sequential — single hue, light → dark — for ordinal magnitude.
+                    (e.g. "engagement intensity", "stock level")
+       Divergent  — two hues meeting at a neutral midpoint — for
+                    above/below baseline (revenue vs target).
+       Qualitative — 8 distinguishable hues — for categorical data
+                    (tea categories). Hand-tuned to be deuteranopia-
+                    safe via simulated palettes; final colorblind
+                    audit pending in Phase 1.9.
+
+     All hex values are listed individually rather than computed via
+     color-mix so AdminAnalytics charts (Recharts, Chart.js, etc.)
+     can read them via getComputedStyle. */
+  --viz-seq-1:  #f0e8d8;
+  --viz-seq-2:  #e4c89c;
+  --viz-seq-3:  #d4a874;
+  --viz-seq-4:  #c08850;
+  --viz-seq-5:  #a06830;
+  --viz-seq-6:  #7a4818;
+  --viz-seq-7:  #4a2808;
+
+  --viz-div-neg-3: #b83228;
+  --viz-div-neg-2: #d46050;
+  --viz-div-neg-1: #e89888;
+  --viz-div-mid:   #ede4d6;
+  --viz-div-pos-1: #98c0a8;
+  --viz-div-pos-2: #58a080;
+  --viz-div-pos-3: #2d6e4f;
+
+  --viz-qual-1: #2d6e4f;   /* deep green   */
+  --viz-qual-2: #b8924a;   /* gold         */
+  --viz-qual-3: #4a7a9b;   /* steel blue   */
+  --viz-qual-4: #b83228;   /* danger red   */
+  --viz-qual-5: #6f4ea1;   /* lavender     */
+  --viz-qual-6: #d68850;   /* amber-orange */
+  --viz-qual-7: #4a8a8a;   /* teal         */
+  --viz-qual-8: #8c4a6e;   /* mulberry     */
+
+  /* ── Fixed-palette tokens ─────────────────────────────────────
+     Same value in light AND dark mode (not overridden in .dark).
+     Named homes for colours that were hard-coded in design.css, so
+     the palette is managed here without changing any rendering. */
+  --white:              #ffffff;
+  --gold-light:         #d4aa70;   /* focus ring on dark surfaces */
+  --admin-sidebar-bg:   #0c1a26;
+  --admin-sidebar-text: #f5ede0;
+  /* Inventory status text (in stock / low / out) */
+  --status-ok-text:     #1e6f47;
+  --status-warn-text:   #9c6c12;
+  --status-bad-text:    #a02b22;
+  /* Tea category colours — inventory group headers + category swatches */
+  --cat-tea:            #2a3849;
+  --cat-black:          #3d1a1a;
+  --cat-green:          #2d6a4f;
+  --cat-white:          #8d99ae;
+  --cat-oolong:         #6b4c2a;
+  --cat-rooibos:        #b5451b;
+  --cat-herbal:         #386641;
+  --cat-flower:         #c77dff;
+  --cat-fruit:          #e07a5f;
+  /* Card-network brand colours (accepted-cards badges at checkout) */
+  --brand-visa:         #1a1f71;
+  --brand-amex:         #2e77bc;
+  --brand-mc-red:       #eb001b;
+  --brand-mc-yellow:    #f79e1b;
+}
+
+/* ── Dark mode ─────────────────────────────────────────────── */
+/* Day-6 consolidated: every dark-mode token override the app needs lives
+   here. design.css no longer redeclares .dark { ... } for tokens — it
+   only carries component-scoped rules like `.dark .nav-root { ... }`.   */
+.dark {
+  color-scheme: dark;
+
+  /* Backgrounds — dark but not pitch-black.
+     v9: page bg + surface ladder bumped ~10 RGB points lighter
+     after user feedback that the previous values felt heavy. The
+     spacing between bg and each surface step is preserved so cards
+     and panels still layer cleanly above the page. */
+  --bg:        #1a2530;
+  --surface:   #21303d;
+  --surface-2: #2a3a4a;
+  --surface-3: #324558;
+  --surface-4: #3b5266;
+
+  /* Text — contrast-tuned */
+  --ink:       #f5f0ea;
+  --text:      #eee8dc;
+  --text-2:    #ccc4b4;
+  --text-3:    #a8a098;
+  --muted:     #8aa0b4;
+  --muted-2:   #6a8898;
+
+  /* Borders */
+  --border:        #2a3d50;
+  --border-strong: #2e4458;
+  --border-2:      #1f2e3c;
+  --color-border:  #2a3d50;
+  --divider:       #2e4458;
+
+  /* Midnight flips: in dark mode "midnight" becomes a LIGHT colour so a
+     `.btn-dark` button is visible against the dark surface. --on-dark
+     flips with it so text on that button stays readable.                */
+  --midnight:   #e8e0d4;
+  --midnight-2: #ccc4b4;
+  --midnight-3: #b0a898;
+  --on-dark:    #111820;
+  --on-dark-2:  rgba(17,24,32,0.65);
+  --on-dark-3:  rgba(17,24,32,0.38);
+
+  /* R3 file4 — dark-mode flips of the new alpha tiers. RGB triple
+     swaps to the dark-mode --on-dark base (17,24,32) so a `.btn-dark`
+     button (which becomes a LIGHT-coloured button in dark mode) keeps
+     readable text. Admin/cream/white tokens above stay constant — they
+     intentionally don't flip because the surfaces they sit on are
+     fixed-dark regardless of theme. */
+  --on-dark-95: rgba(17,24,32,0.95);
+  --on-dark-9:  rgba(17,24,32,0.90);
+  --on-dark-85: rgba(17,24,32,0.85);
+  --on-dark-7:  rgba(17,24,32,0.70);
+  --on-dark-55: rgba(17,24,32,0.55);
+  --on-dark-22: rgba(17,24,32,0.22);
+  --on-dark-2-bd: rgba(17,24,32,0.20);
+
+  /* R3 file4 — accent-50 in dark uses the brighter accent palette
+     (212,170,104) just like accent-{03,10,15,20,30} above. */
+  --accent-50:  rgba(212,170,104,0.50);
+
+  /* Gold — brighter in dark for contrast */
+  --gold:         #d4aa68;
+  --gold-text:    #e4bc78;
+  --gold-deep:    #c49a58;
+  --gold-hover:   #e4bc78;
+  --gold-soft:    rgba(212,170,104,0.14);
+  --menu-coffee:       #d2a679;
+  --menu-coffee-soft:  rgba(210,166,121,0.14);
+  --menu-matcha:       #9ccc86;
+  --menu-matcha-soft:  rgba(156,204,134,0.14);
+  --menu-hojicha:      #e0a877;
+  --menu-hojicha-soft: rgba(224,168,119,0.14);
+  --gold-tint:    rgba(212,170,104,0.06);
+
+  --accent-03:  rgba(212,170,104,0.03);
+  --accent-10:  rgba(212,170,104,0.10);
+  --accent-15:  rgba(212,170,104,0.15);
+  --accent-20:  rgba(212,170,104,0.22);
+  --accent-30:  rgba(212,170,104,0.30);
+
+  /* R3 file4 — purple accent brightened slightly for dark surface. */
+  --accent-purple: #6a60d4;
+
+  /* Price chip flips: light cream bg + dark text in dark mode.
+     Maintains "the chip is the brightest thing on the slide" no
+     matter which theme is active. */
+  --price-chip-bg: #f0e8d8;
+  --price-chip-fg: #111820;
+  --price-chip-bd: rgba(0,0,0,0.10);
+
+  /* Status — all brighter/more saturated for legibility on dark surface */
+  --success:    #52c882;
+  --success-bg: rgba(82,200,130,0.14);
+  --success-border: rgba(82,200,130,0.30);
+  --warning:    #f5a020;
+  --warning-bg: rgba(245,160,32,0.14);
+  --warning-border: rgba(245,160,32,0.30);
+  --danger:     #f06050;
+  --danger-bg:  rgba(240,96,80,0.14);
+  --danger-border: rgba(240,96,80,0.30);
+  --info:       #60a0c8;
+  --info-bg:    rgba(96,160,200,0.14);
+  --info-border: rgba(96,160,200,0.30);
+
+  /* On-{state}-solid for dark mode — solids are brighter pastels here,
+     so the foreground flips to ink for contrast. Verified ≥ 4.5:1 AA. */
+  --on-success-solid: #0a1a12;       /* on #52c882 */
+  --on-warning-solid: #1f1300;       /* on #f5a020 */
+  --on-danger-solid:  #ffffff;       /* on #f06050 */
+  --on-info-solid:    #06121d;       /* on #60a0c8 */
+
+  /* Tea-profile decorative tints — muted for dark surface */
+  --detail-bg:      rgba(138,184,216,0.08);
+  --detail-border:  rgba(138,184,216,0.22);
+  --serving-bg:     rgba(165,175,230,0.08);
+  --serving-border: rgba(165,175,230,0.22);
+
+  /* Shadows — deeper opacity for dark mode legibility */
+  --shadow-xs:  0 1px 2px rgba(0,0,0,0.25);
+  --shadow-sm:  0 1px 4px rgba(0,0,0,0.30), 0 2px 8px rgba(0,0,0,0.20);
+  --shadow-md:  0 4px 16px rgba(0,0,0,0.40), 0 8px 32px rgba(0,0,0,0.30);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,0.50), 0 16px 48px rgba(0,0,0,0.35);
+  --shadow-xl:  0 16px 48px rgba(0,0,0,0.60), 0 32px 80px rgba(0,0,0,0.40);
+  --shadow-gold: 0 4px 20px rgba(212,170,104,0.15);
+
+  /* ── Phase 1 elevation flips ────────────────────────────────────
+     Dark-mode shadows are subtler — black on black is invisible.
+     Pure black at higher alpha gives a "floating" feel without the
+     muddy gray that color-mix(black, ink, …) would produce. */
+  --elev-1:    0 1px 2px 0 rgba(0,0,0,0.35);
+  --elev-2:    0 2px 8px -2px rgba(0,0,0,0.45), 0 1px 2px 0 rgba(0,0,0,0.30);
+  --elev-3:    0 8px 24px -4px rgba(0,0,0,0.55), 0 2px 6px -2px rgba(0,0,0,0.30);
+  --elev-4:    0 24px 48px -8px rgba(0,0,0,0.65), 0 4px 8px -2px rgba(0,0,0,0.30);
+  --elev-inset: inset 0 1px 2px 0 rgba(0,0,0,0.35);
+
+  /* ── Phase 1 state surface flips ─────────────────────────────────
+     Brighter foregrounds and slightly more saturated bgs for dark
+     legibility. Mirrors the existing dark-mode pattern for
+     --success / --warning / --danger / --info above. */
+  --state-success-bg:     rgba(82,200,130,0.14);
+  --state-success-fg:     #7adfa6;
+  --state-success-border: rgba(82,200,130,0.32);
+  --state-success-solid:  #52c882;
+
+  --state-warning-bg:     rgba(245,160,32,0.14);
+  --state-warning-fg:     #f5b850;
+  --state-warning-border: rgba(245,160,32,0.32);
+  --state-warning-solid:  #f5a020;
+
+  --state-danger-bg:      rgba(240,96,80,0.12);
+  --state-danger-fg:      #f5907f;
+  --state-danger-border:  rgba(240,96,80,0.32);
+  --state-danger-solid:   #f06050;
+
+  --state-info-bg:        rgba(96,160,200,0.12);
+  --state-info-fg:        #88c0e0;
+  --state-info-border:    rgba(96,160,200,0.32);
+  --state-info-solid:     #60a0c8;
+
+  --state-neutral-bg:     rgba(240,232,216,0.06);
+  --state-neutral-fg:     var(--text-2);
+  --state-neutral-border: var(--border);
+  --state-neutral-solid:  var(--midnight);
+
+  /* ── Phase 1 data-viz flips ──────────────────────────────────────
+     The qualitative palette stays largely the same (the hues are
+     chosen to be theme-agnostic). The sequential and divergent
+     palettes flip orientation: in dark mode, the "low" end of a
+     sequential is the darkest (background-coloured) and the "high"
+     end is the brightest, opposite of light mode. */
+  --viz-seq-1:  #1a2530;
+  --viz-seq-2:  #3a3328;
+  --viz-seq-3:  #5a4830;
+  --viz-seq-4:  #806038;
+  --viz-seq-5:  #a07840;
+  --viz-seq-6:  #c89855;
+  --viz-seq-7:  #e8c080;
+
+  --viz-div-neg-3: #f06050;
+  --viz-div-neg-2: #d48070;
+  --viz-div-neg-1: #b09088;
+  --viz-div-mid:   #2e3a44;
+  --viz-div-pos-1: #88a898;
+  --viz-div-pos-2: #5ac08a;
+  --viz-div-pos-3: #2dd87f;
+
+  /* Qualitative — slightly brighter for dark surface */
+  --viz-qual-1: #52c882;
+  --viz-qual-2: #d4aa68;
+  --viz-qual-3: #6ba4c8;
+  --viz-qual-4: #f06050;
+  --viz-qual-5: #9c80c8;
+  --viz-qual-6: #e8a070;
+  --viz-qual-7: #6abcbc;
+  --viz-qual-8: #c0708e;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PHASE 1 — Density override
+   Apply with <element data-density="dense"> at any subtree root.
+   AdminLayout uses this to make tables and forms tighter without
+   cherry-picking sizes per-component.
+   ═══════════════════════════════════════════════════════════════════ */
+[data-density="dense"] {
+  --row-h:    32px;
+  --row-h-md: 28px;
+  --row-h-sm: 24px;
+  --pad-x:    12px;
+  --pad-y:     8px;
+  --gap:       8px;
+}
+
+[data-density="comfortable"] {
+  --row-h:    52px;
+  --row-h-md: 44px;
+  --row-h-sm: 36px;
+  --pad-x:    20px;
+  --pad-y:    14px;
+  --gap:      14px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PHASE 1 — Reduced motion override (system-driven)
+   Collapses all duration tokens to 1ms and easings to linear when the
+   user has prefers-reduced-motion: reduce set at the OS level.
+   Components that use --dur-* and --ease-* automatically respect the
+   preference; no per-component branch needed.
+
+   Note: this targets the EXISTING motion tokens declared in the main
+   :root block (--dur-instant/fast/normal/slow/xslow + --ease-* family).
+   Phase 1 didn't introduce a parallel motion namespace.
+   ═══════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-instant: 1ms;
+    --dur-fast:    1ms;
+    --dur-normal:  1ms;
+    --dur-base:    1ms;
+    --dur-slow:    1ms;
+    --dur-xslow:   1ms;
+    --dur-enter:   1ms;
+    --ease-linear:     linear;
+    --ease-standard:   linear;
+    --ease-in-out:     linear;
+    --ease-decelerate: linear;
+    --ease-out:        linear;
+    --ease-accelerate: linear;
+    --ease-spring:     linear;
+    --ease-bounce:     linear;
+  }
+}
+
+/* R3 file4 architectural: previously this file ALSO declared a
+   prefers-contrast: more block with --border: #8a7858 / --muted: #3a3530
+   while focus.css declared the SAME tokens with DIFFERENT values
+   (--border: #2b2825 / --muted: #3a3530). Cascade order let focus.css
+   win silently — but the README's "single source of truth" rule forbids
+   parallel declarations. Resolution: focus.css owns the
+   `@media (prefers-contrast: more)` token overrides because it sits in
+   the a11y scope; the README explicitly carves out that exception.
+   This block was the wrong source of truth and has been removed.
+   See src/styles/focus.css for the canonical contrast-mode tokens. */
+
+.no-transition * { transition: none !important; }
+
+/* Responsive nav-height — collapse the body padding-top to match
+   the actual navbar shrinkage on small screens. Without these
+   overrides, the body reserves 132px on mobile but the navbar is
+   ~80px → 50px of dead space between the navbar and the first
+   content card. */
+@media (max-width: 1024px) {
+  :root { --nav-height: 96px; }
+}
+@media (max-width: 768px) {
+  :root { --nav-height: 80px; }
+}
+@media (max-width: 480px) {
+  :root { --nav-height: 72px; }
+}

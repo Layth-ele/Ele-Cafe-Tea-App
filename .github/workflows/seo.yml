@@ -1,0 +1,144 @@
+name: SEO contract tests
+
+# Verifies the SEO contract — JSON-LD schemas, canonicals, sitemap,
+# robots.txt — against a locally-built preview of THIS branch's code.
+#
+# Why a separate workflow from lighthouse-ci.yml:
+#   The Lighthouse workflow audits scores (Performance, SEO category
+#   aggregate). This workflow audits the CONTRACT: specific JSON-LD
+#   field values, exact canonical URLs, sitemap XML structure, and
+#   the /gifts OfferCatalog schema after React hydration. Different
+#   failure modes, different fix-paths, different owners.
+#
+# What the tests actually check (tests/seo/):
+#   smoke.spec.ts        — raw HTTP, no JS execution:
+#     • Sitemap is reachable, valid XML, includes tea-profile URLs
+#     • robots.txt allows crawlers, disallows /admin and /health
+#     • Tea profile Product JSON-LD has all required fields
+#     • Tea profile BreadcrumbList JSON-LD hierarchy is correct
+#     • Category pages emit canonical at /products/{cat}
+#     • Homepage emits LocalBusiness + WebSite + SearchAction JSON-LD
+#     • seoHealth endpoint reports status
+#     • LCP <img> is preloaded when available
+#     • Offer schema includes shipping + return policy
+#     • CollectionPage ItemList JSON-LD on /collections pages
+#   gifts-hydrated.spec.ts — full browser, JS executed:
+#     • /gifts emits WebPage + OfferCatalog JSON-LD after hydration
+#     • All bundle offers have priceCurrency: CAD
+#
+# Server strategy:
+#   playwright.seo.config.ts boots `vite preview --port 4173`
+#   automatically when TEST_BASE_URL contains "localhost". The
+#   `webServer` block waits for the server to respond before
+#   handing off to Playwright, so there is no sleep/retry needed.
+#
+# Concurrency:
+#   Cancel in-progress runs on the same branch — only the latest
+#   commit's SEO contract matters.
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'index.html'
+      - 'public/**'
+      - 'functions/src/**'
+      - 'firebase.json'
+      - 'vite.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'pnpm-lock.yaml'
+      - 'tests/seo/**'
+      - 'playwright.seo.config.ts'
+      - '.github/workflows/seo.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'index.html'
+      - 'public/**'
+      - 'functions/src/**'
+      - 'firebase.json'
+      - 'vite.config.ts'
+      - 'tests/seo/**'
+      - 'playwright.seo.config.ts'
+      - '.github/workflows/seo.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: seo-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  seo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ── Build ──────────────────────────────────────────────────────────
+      # Placeholder Firebase values let the bundle build without failing.
+      # None of these reach the network: the preview server serves the
+      # static dist/ output and the SEO tests hit raw HTML / JSON-LD —
+      # no Firebase SDK calls are made during the test run.
+      - name: Build production bundle
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY:              ci-build-only
+          VITE_FIREBASE_AUTH_DOMAIN:          ci.firebaseapp.com
+          VITE_FIREBASE_PROJECT_ID:           ci-project
+          VITE_FIREBASE_APP_ID:               1:000:web:abc
+          VITE_FIREBASE_STORAGE_BUCKET:       ci.appspot.com
+          VITE_FIREBASE_MESSAGING_SENDER_ID:  '000'
+          # Must match the port vite preview will use (4173) so any
+          # absolute URL the build bakes in (SITE_BASE) is correct.
+          VITE_SITE_BASE: http://localhost:4173
+
+      # ── Playwright ────────────────────────────────────────────────────
+      # Cache browser binaries between runs. Key on the lock file so a
+      # Playwright version bump invalidates the cache automatically.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-seo-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/pnpm-lock.yaml') }}
+
+      - name: Install Playwright browsers
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (cached browsers)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      # ── Run SEO tests ─────────────────────────────────────────────────
+      # Setting TEST_BASE_URL to localhost tells playwright.seo.config.ts
+      # to activate the `webServer` block, which starts `vite preview`
+      # on port 4173 and waits for it before running any test.
+      # dist/ already exists from the build step above.
+      - name: Run SEO contract tests
+        run: npm run test:seo
+        env:
+          CI: true
+          TEST_BASE_URL: http://localhost:4173
+
+      # ── Artifacts ─────────────────────────────────────────────────────
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-seo-${{ github.run_id }}
+          path: playwright-report-seo/
+          retention-days: 14

@@ -1,0 +1,8 @@
+/* Ele Café — 4 imports only. Everything else deleted.
+   Fonts are loaded directly from main.tsx via @fontsource so they
+   don't go through a CSS @import indirection (which would block
+   render on a separate CSS round-trip). */
+@import './tokens.css';
+@import './tailwind.css';
+@import './focus.css';
+@import './design.css';

@@ -1,0 +1,84 @@
+name: Chromatic (Storybook visual review)
+
+# Phase 2 of the UI/UX roadmap. Builds Storybook on every PR and
+# uploads it to Chromatic, which snapshots every story across every
+# variant + theme + viewport and produces a visual diff. Reviewers
+# approve changes in Chromatic's UI before merge.
+#
+# This is COMPLEMENTARY to the page-level Playwright visual regression
+# suite (`visual-regression.yml`):
+#   - Playwright catches changes that affect rendered pages.
+#   - Chromatic catches changes that affect components in isolation —
+#     including variants no current page renders.
+# Together they cover both the "what shipped" and "what could ship".
+#
+# Setup required (one-time):
+#   1. Sign up at chromatic.com, create a project, copy the project token.
+#   2. Add it as a GitHub repo secret named CHROMATIC_PROJECT_TOKEN.
+#   Without the secret, this workflow no-ops on PRs from forks (which
+#   don't have access to secrets) and skips on non-forks too.
+
+on:
+  pull_request:
+    paths:
+      - 'src/**/*.{tsx,ts,css,mdx}'
+      - 'src/styles/**'
+      - '.storybook/**'
+      - 'package.json'
+      - '.github/workflows/chromatic.yml'
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: chromatic-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chromatic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Only run if the project token is configured. Forks won't have it;
+    # they'll see the workflow skip cleanly.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Chromatic uses git history to compute the diff baseline.
+          # Without full history, every PR is treated as a first-time
+          # baseline build (and uses 2x the snapshot budget).
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Publish to Chromatic
+        uses: chromaui/action@v11
+        with:
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          # Build a fresh Storybook in the action — keeps the workflow
+          # self-contained, no need for a separate build job.
+          buildScriptName: build-storybook
+          # exitZeroOnChanges: surface diffs but don't block merge from
+          # the workflow. Reviewers approve in Chromatic's UI; that's
+          # the merge gate, not this exit code.
+          exitZeroOnChanges: true
+          # Skip if no story files changed in this PR — saves snapshot
+          # budget on PRs that only touch backend / config / docs.
+          onlyChanged: true
+        env:
+          # Chromatic's Storybook build needs the same env Vite would
+          # require for a normal build (firebase env etc.). Use
+          # placeholders — Storybook stories don't actually call
+          # Firebase, but vite.config.ts validates env at build time.
+          VITE_FIREBASE_API_KEY: "ci-placeholder"
+          VITE_FIREBASE_AUTH_DOMAIN: "ci.example.com"
+          VITE_FIREBASE_PROJECT_ID: "ci-placeholder"
+          VITE_FIREBASE_APP_ID: "ci-placeholder"

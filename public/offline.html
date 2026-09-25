@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<!--
+  offline.html — Phase 8.6 of the UI/UX roadmap.
+
+  Served by the service worker when a navigation request fails AND no
+  cached version of the requested page exists. This is the deepest
+  fallback in the cache chain:
+
+    1. Service worker tries network (NetworkFirst for navigations).
+    2. Network fails → tries the cache for the exact URL.
+    3. Cache miss → tries the SPA shell (index.html cached as the
+       app shell).
+    4. Shell unavailable → THIS PAGE.
+
+  Why a static HTML file (not a React route):
+    - When step 4 fires, the JS bundle isn't available either.
+      A React route would 404 immediately. We need a hand-written
+      HTML page that needs nothing but its own bytes.
+    - workbox precaches this file in the same install pass as the
+      rest of the assets — it's always there when needed.
+
+  Design constraints:
+    - All styles inline (no external <link>).
+    - No JavaScript (we may be in a SW-failure scenario).
+    - Brand-aligned but minimal — gold accent, midnight ink.
+    - Respects prefers-color-scheme so we don't blind a dark-mode
+      user.
+    - Lists a few "things you can still do" anchors that point at
+      cached primary routes — the SW WILL serve those from cache
+      even without network, since they're precached.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fdfaf5" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f1c26" media="(prefers-color-scheme: dark)">
+  <title>You're offline · Ele Café</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+  <style>
+    :root {
+      --bg: #fdfaf5;
+      --ink: #0f1c26;
+      --muted: rgba(15, 28, 38, 0.65);
+      --accent: #c69e5a;
+      --surface: #ffffff;
+      --border: rgba(15, 28, 38, 0.12);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f1c26;
+        --ink: #f5f0ea;
+        --muted: rgba(245, 240, 234, 0.65);
+        --accent: #d4b078;
+        --surface: #1a2935;
+        --border: rgba(245, 240, 234, 0.16);
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+                   Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      min-height: 100vh;
+    }
+
+    .offline-shell {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: max(env(safe-area-inset-top), 48px) 24px
+              max(env(safe-area-inset-bottom), 48px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .offline-icon {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 24px;
+      stroke: var(--accent);
+      stroke-width: 1.5;
+      fill: none;
+    }
+
+    h1 {
+      font-size: 28px;
+      line-height: 1.2;
+      margin: 0 0 12px;
+      font-weight: 600;
+    }
+
+    .lede {
+      font-size: 17px;
+      line-height: 1.5;
+      color: var(--muted);
+      margin: 0 0 32px;
+    }
+
+    .links {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      list-style: none;
+      margin: 0 0 24px;
+    }
+    .links li {
+      margin: 0;
+    }
+    .links li + li {
+      border-top: 1px solid var(--border);
+    }
+    .links a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 4px;
+      color: var(--ink);
+      text-decoration: none;
+      font-size: 16px;
+    }
+    .links a:hover,
+    .links a:focus-visible {
+      color: var(--accent);
+      outline: none;
+    }
+    .links a:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 4px;
+      border-radius: 4px;
+    }
+    .links-icon {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      flex-shrink: 0;
+    }
+
+    .retry-btn {
+      width: 100%;
+      padding: 14px 24px;
+      background: var(--accent);
+      /* Phase 7 a11y fix — was #ffffff which gave 2.48:1 contrast on
+         gold (#c69e5a), failing WCAG AA's 4.5:1 minimum for normal
+         text. Switching to ink (#0f1c26) on gold gives ~6.7:1 which
+         passes AA and matches the .btn-add / .btn-primary token pair
+         used elsewhere in the design system. Caught by the local axe
+         snapshot run (scripts/local-a11y-snapshot.mjs). */
+      color: var(--ink);
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: filter 120ms ease-out;
+    }
+    .retry-btn:hover,
+    .retry-btn:focus-visible {
+      filter: brightness(1.05);
+      outline: none;
+    }
+    .retry-btn:focus-visible {
+      outline: 2px solid var(--ink);
+      outline-offset: 2px;
+    }
+
+    .small {
+      margin-top: 24px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="offline-shell" role="main">
+    <svg class="offline-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M3 3l18 18M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.58 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01" />
+    </svg>
+
+    <h1>You&rsquo;re offline</h1>
+    <p class="lede">
+      The page you tried to reach isn&rsquo;t cached. Check your connection
+      and try again — or browse one of the pages saved on your device.
+    </p>
+
+    <ul class="links" aria-label="Cached pages available offline">
+      <li>
+        <a href="/">
+          <svg class="links-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M3 12l9-9 9 9M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10" />
+          </svg>
+          Home
+        </a>
+      </li>
+      <li>
+        <a href="/products">
+          <svg class="links-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M20 7L12 3 4 7v10l8 4 8-4V7zM4 7l8 4 8-4M12 11v10" />
+          </svg>
+          Browse teas
+        </a>
+      </li>
+      <li>
+        <a href="/cart">
+          <svg class="links-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h7.7a2 2 0 0 0 2-1.6L21 8H6M9 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM20 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" />
+          </svg>
+          Your cart
+        </a>
+      </li>
+      <li>
+        <a href="/orders">
+          <svg class="links-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+          </svg>
+          Your orders
+        </a>
+      </li>
+    </ul>
+
+    <a href="/" class="retry-btn" aria-label="Try loading the page again">
+      Try again
+    </a>
+
+    <p class="small">
+      Browsing offline shows you the most recent version we saved.
+      For live stock and prices, reconnect when you can.
+    </p>
+  </main>
+</body>
+</html>

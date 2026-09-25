@@ -1,0 +1,13 @@
+{
+  "name": "ele-cafe-scripts",
+  "version": "1.0.0",
+  "description": "Admin scripts — run once during project setup",
+  "scripts": {
+    "seed": "node seed.js",
+    "seed:reset": "node seed.js --overwrite",
+    "seed:dry": "node seed.js --dry-run"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

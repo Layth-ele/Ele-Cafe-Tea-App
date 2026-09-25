@@ -1,0 +1,2226 @@
+/* ═══════════════════════════════════════════════════════════════
+   INVENTORY — Turn 2: access modal + page placeholder.
+   See src/features/inventory/components/InventoryAccessModal.tsx
+   and src/app/pages/InventoryPage.tsx for the React side.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Access modal — full-screen overlay since the guard blocks the
+       whole page until validated. Backdrop is dark so it reads as a
+       gate, not a polite dialog. Cannot be dismissed by clicking out. */
+/* ════════════════════════════════════════════════════════════════════════
+   Inventory ACCESS MODAL — refactored for v2
+   Goals:
+     - Reliably centered in every viewport (including iOS dynamic
+       viewport with the address bar in motion)
+     - Modern visual treatment: softer shadow, generous spacing,
+       larger cells with clean focus rings
+     - 44px+ tap targets on small screens
+     - No layout shift between phases (entering / submitting / success)
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Fullscreen overlay. Uses `inset: 0` + grid centering (more
+   predictable than flex for unusual viewport ratios). dvh accounts
+   for iOS Safari's dynamic chrome — vh measures the largest viewport,
+   which can leave content cut off when the address bar shows. */
+.iam-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-top);
+  display: grid;
+  place-items: center;
+  padding: clamp(16px, 4vw, 32px);
+  /* Two-layer background: subtle radial highlight from the top
+     centerpoint plus a near-opaque dark wash. The wash uses the
+     midnight token so it harmonizes with brand colors. */
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.06), transparent 55%),
+    rgba(10, 14, 20, 0.92);
+  -webkit-backdrop-filter: blur(20px) saturate(125%);
+  backdrop-filter: blur(20px) saturate(125%);
+  animation: fadeIn var(--dur-normal) var(--ease-standard);
+  /* min-height: 100dvh prevents the overlay from collapsing on
+     short content viewports (zoomed in iOS Safari). */
+  min-height: 100dvh;
+}
+
+/* The card itself. Centered horizontally by the grid above, with
+   max-width capped for tablet/desktop. Padding scales with viewport.
+   Animation slides up + fades in to give a polished entrance. */
+.iam-panel {
+  position: relative;
+  z-index: var(--z-raised);
+  width: 100%;
+  max-width: 440px;
+  /* dvh = dynamic viewport height; respects browser chrome motion. */
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  padding: clamp(24px, 4vw, 36px) var(--gutter);
+  background: var(--surface);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 32px 80px -16px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
+  text-align: center;
+  animation: iamPanelIn var(--dur-slow, 400ms) var(--ease-standard);
+}
+
+/* Smooth entrance — fade + slight upward translate. */
+@keyframes iamPanelIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+/* Shake on wrong code. Reuses fieldShake keyframe (defined elsewhere
+   in this file). Lives on the panel so the whole card moves together. */
+.iam-panel[data-phase='error'] {
+  animation: fieldShake 0.5s var(--ease-standard);
+}
+
+/* Lock-icon at the top of the panel — replaces the visual void above
+   the title in the previous design. Lives in markup as a small
+   decorative SVG-like circle; if no icon element is rendered, the
+   :empty selector hides this slot entirely so nothing breaks. */
+.iam-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--gold-tint);
+  color: var(--gold-deep);
+}
+.iam-icon:empty { display: none; }
+
+.iam-title {
+  margin: 0 0 8px;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: clamp(1.35rem, 2.6vw, 1.75rem);
+  color: var(--midnight);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.iam-sub {
+  margin: 0 0 28px;
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  line-height: 1.55;
+  max-width: 32ch;
+  margin-inline: auto;
+}
+
+/* 4-digit code cells — larger, more touchable, with clear focus rings.
+   Centered horizontally; gap scales with viewport. */
+.iam-cells {
+  display: flex;
+  justify-content: center;
+  gap: clamp(8px, 2vw, 14px);
+  margin: 0 auto 20px;
+}
+
+.iam-cell {
+  width: clamp(54px, 14vw, 64px);
+  height: clamp(64px, 16vw, 72px);
+  padding: 0;
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: clamp(24px, 6vw, 30px);
+  font-weight: 500;
+  color: var(--midnight);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  transition:
+    border-color var(--dur-fast) var(--ease-standard),
+    background var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.iam-cell::-webkit-outer-spin-button,
+.iam-cell::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.iam-cell:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--border) 50%, var(--gold) 50%);
+}
+.iam-cell:focus {
+  outline: none;
+  border-color: var(--gold);
+  background: var(--surface);
+  box-shadow: 0 0 0 4px var(--gold-tint);
+  transform: translateY(-1px);
+}
+.iam-cell:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+/* When a digit is entered, gently emphasize the filled state. */
+.iam-cell:not(:placeholder-shown, :focus) {
+  background: var(--surface);
+  border-color: color-mix(in srgb, var(--border) 50%, var(--midnight) 25%);
+}
+
+/* Tighten further on the smallest phones (iPhone SE class). */
+@media (max-width: 360px) {
+  .iam-panel { padding: 20px 16px; border-radius: 14px; }
+  .iam-cells { gap: 6px; }
+}
+
+/* Reserved feedback row — fixed height so the panel doesn't jump
+   when an error appears or clears. */
+.iam-feedback {
+  min-height: 22px;
+  margin-bottom: 20px;
+  font-size: var(--text-sm);
+  color: var(--danger);
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.iam-submit {
+  display: inline-block;
+  width: 100%;
+  padding: 14px 20px;
+  background: var(--midnight);
+  color: var(--surface);
+  border: none;
+  border-radius: 12px;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  min-height: 48px;
+  transition:
+    transform var(--dur-fast) var(--ease-standard),
+    background var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
+}
+.iam-submit:hover:not(:disabled) {
+  background: var(--midnight-2);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.35);
+}
+.iam-submit:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+.iam-submit:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+.iam-submit:disabled {
+  background: var(--surface-4);
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+
+/* Success state — replaces the form body briefly before the guard
+   unmounts the modal. Same overall card shape; just different
+   content. */
+.iam-success {
+  padding: 8px 0 4px;
+}
+.iam-success-emoji {
+  font-size: 56px;
+  line-height: 1;
+  margin-bottom: 16px;
+}
+.iam-success-name {
+  margin: 0 0 6px;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: clamp(1.5rem, 3.5vw, 2rem);
+  color: var(--midnight);
+  letter-spacing: -0.01em;
+}
+.iam-success-sub {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+
+/* Honor user preference; no entrance animations when reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .iam-overlay,
+  .iam-panel {
+    animation: none;
+  }
+  .iam-panel[data-phase='error'] { animation: none; }
+  .iam-cell,
+  .iam-submit { transition: none; }
+}
+
+/* ── Auth boot splash — minimal session-resolution loader ─────────── */
+.auth-boot {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-top, 100);
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+}
+.auth-boot-spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid var(--surface-3);
+  border-top-color: var(--gold);
+  animation: authBootSpin 0.9s linear infinite;
+}
+@keyframes authBootSpin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-boot-spinner { animation-duration: 2s; }
+}
+
+/* ── Inventory page placeholder (Turn 2 destination) ────────────── */
+.ip-root {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: clamp(24px, 5vw, 48px) var(--gutter);
+}
+.ip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: clamp(24px, 4vw, 40px);
+  flex-wrap: wrap;
+}
+.ip-title {
+  margin: 0 0 6px;
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: clamp(1.75rem, 4vw, 2.4rem);
+  color: var(--midnight);
+  letter-spacing: -0.015em;
+}
+.ip-greeting {
+  margin: 0;
+  font-size: var(--text-ui);
+  color: var(--text-2);
+}
+.ip-signout {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.ip-signout:hover { background: var(--surface); color: var(--midnight); }
+.ip-signout:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.ip-stub-card {
+  padding: clamp(24px, 4vw, 40px);
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+.ip-stub-title {
+  margin: 0 0 12px;
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: clamp(1.2rem, 2.4vw, 1.5rem);
+  color: var(--midnight);
+}
+.ip-stub-body {
+  margin: 0 0 16px;
+  font-size: var(--text-ui);
+  line-height: 1.6;
+  color: var(--text-2);
+}
+.ip-stub-sub {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INVENTORY — Turn 3: table, row controls, filters.
+   Used by both /inventory (employee) and /admin/inventory (admin).
+   Class prefixes:
+     .inv-*           — table + row + controls
+     .invf-*          — tea filters (13-staff-inventory-nav.css)
+     .inv-status-*    — status badge variants
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Page header (above the table) lives in the existing .ip-* / .adm-page-*
+   styles — only adding the .ip-table wrapper here for spacing. */
+.ip-table {
+  margin-top: clamp(16px, 3vw, 24px);
+}
+
+@media (max-width: 720px) {
+  .ip-root {
+    max-width: 100%;
+    padding: 18px 14px 28px;
+  }
+
+  .ip-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .ip-title {
+    font-size: clamp(1.45rem, 7vw, 2rem);
+  }
+
+  .ip-greeting {
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .ip-signout {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: var(--text-ui);
+  }
+
+  .ip-table {
+    margin-top: 14px;
+  }
+
+  .inv-table-wrap {
+    border: none;
+    background: transparent;
+    overflow: visible;
+  }
+
+  .inv-table,
+  .inv-table thead,
+  .inv-table tbody,
+  .inv-table tr,
+  .inv-table th,
+  .inv-table td {
+    display: block;
+  }
+
+  .inv-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .inv-table {
+    display: grid;
+    gap: 12px;
+  }
+
+  .inv-row {
+    padding: 14px 14px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 10px 24px -18px rgba(0, 0, 0, 0.22);
+  }
+
+  .inv-table td {
+    border-bottom: none;
+    padding: 0;
+  }
+
+  .inv-row td + td {
+    margin-top: 12px;
+  }
+
+  .inv-cell-name {
+    min-width: 0;
+    margin-bottom: 4px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .inv-name-wrap {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .inv-name-thumb {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .inv-name {
+    font-size: var(--text-base);
+    line-height: 1.35;
+  }
+
+  .inv-cat {
+    font-size: var(--text-xs);
+  }
+
+  .inv-cell-level,
+  .inv-cell-status,
+  .inv-cell-weight,
+  .inv-cell-state {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(74px, 94px) 1fr;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .inv-cell-level::before,
+  .inv-cell-status::before,
+  .inv-cell-weight::before,
+  .inv-cell-state::before {
+    content: attr(data-label);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    padding-top: 2px;
+  }
+
+  .inv-level-wrap {
+    gap: 10px;
+  }
+
+  .inv-level-num {
+    min-width: 20px;
+    font-size: var(--text-sm);
+  }
+
+  .inv-status-badge {
+    justify-self: start;
+  }
+
+  .inv-weight-input {
+    width: 100%;
+    max-width: none;
+    padding: 10px 12px;
+    font-size: var(--text-md);
+  }
+
+  .inv-save {
+    font-size: var(--text-xs);
+  }
+
+  .inv-loading,
+  .inv-empty,
+  .inv-error {
+    padding: 18px 16px;
+    font-size: var(--text-sm);
+  }
+}
+
+/* ── Filters row ─────────────────────────────────────────────────── */
+
+.inv-groups {
+  display: grid;
+  gap: 14px;
+}
+
+.inv-group {
+  border-radius: var(--radius-lg);
+}
+
+.inv-group-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: rgba(250, 245, 235, 0.96);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--dur-fast), border-color var(--dur-fast);
+}
+.inv-group-head:hover { filter: brightness(1.04); }
+.inv-group-head:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.inv-group-head-left {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inv-group-name {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+.inv-group-meta {
+  font-size: var(--text-xs);
+  color: rgba(250, 245, 235, 0.84);
+}
+
+.inv-group-chev {
+  flex-shrink: 0;
+  font-size: var(--text-2xl);
+  line-height: 1;
+  color: rgba(250, 245, 235, 0.92);
+}
+
+.inv-group-head[data-group-color='white'] {
+  color: var(--midnight);
+}
+
+.inv-group-head[data-group-color='white'] .inv-group-meta,
+.inv-group-head[data-group-color='white'] .inv-group-chev {
+  color: var(--text-2);
+}
+
+/* Category backgrounds — pulled out of inline `style={{ background }}`
+   so the file no longer trips the react/forbid-dom-props lint rule.
+   Colors mirror `src/data/categories.ts`. If you change a hex there,
+   change it here too. */
+.inv-group-head[data-group-color='black']   { background: var(--cat-black); }
+.inv-group-head[data-group-color='green']   { background: var(--cat-green); }
+.inv-group-head[data-group-color='white']   { background: var(--cat-white); }
+.inv-group-head[data-group-color='oolong']  { background: var(--cat-oolong); }
+.inv-group-head[data-group-color='rooibos'] { background: var(--cat-rooibos); }
+.inv-group-head[data-group-color='herbal']  { background: var(--cat-herbal); }
+.inv-group-head[data-group-color='flower']  { background: var(--cat-flower); }
+.inv-group-head[data-group-color='fruit']   { background: var(--cat-fruit); }
+
+.inv-group .inv-table-wrap {
+  margin-top: 10px;
+}
+
+/* ── Table ───────────────────────────────────────────────────────── */
+.inv-table-wrap {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.inv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+}
+.inv-table thead {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.inv-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.inv-table td {
+  padding: 14px 16px;
+  font-size: var(--text-ui);
+  color: var(--midnight);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.inv-table tbody tr:last-child td { border-bottom: none; }
+
+.inv-row[data-saving='true'] td { opacity: 0.85; }
+
+/* Tea cell — thumb + name + category. */
+.inv-cell-name { min-width: 220px; }
+.inv-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.inv-name-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.inv-name {
+  font-weight: 500;
+  color: var(--midnight);
+  line-height: 1.2;
+}
+.inv-cat {
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+/* Level slider cell. */
+.inv-cell-level { min-width: 160px; }
+.inv-level-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.inv-level-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--surface-2);
+  border-radius: 2px;
+  outline: none;
+}
+.inv-level-slider:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 6px;
+}
+.inv-level-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--gold);
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.inv-level-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--gold);
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.inv-level-slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.inv-level-num {
+  min-width: 24px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--midnight);
+}
+
+/* Status badge — color-coded per the roadmap: green / amber / red. */
+.inv-cell-status { min-width: 130px; }
+.inv-status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.inv-status-badge[data-status='in_stock'] {
+  background: rgba(34, 139, 87, 0.12);
+  color: var(--status-ok-text);
+}
+.inv-status-badge[data-status='low_stock'] {
+  background: rgba(199, 138, 26, 0.14);
+  color: var(--status-warn-text);
+}
+.inv-status-badge[data-status='out_of_stock'] {
+  background: rgba(184, 50, 40, 0.12);
+  color: var(--status-bad-text);
+}
+
+/* Weight input. */
+.inv-cell-weight { min-width: 110px; }
+.inv-weight-input {
+  width: 90px;
+  padding: 7px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-ui);
+  color: var(--midnight);
+  font-variant-numeric: tabular-nums;
+  transition: border-color var(--dur-fast);
+}
+.inv-weight-input::placeholder { color: var(--muted); }
+/* :focus-visible for keyboard-only ring; consistent with the rest of
+   the Turn 3 focus rules. */
+.inv-weight-input:focus-visible {
+  outline: none;
+  border-color: var(--gold);
+}
+.inv-weight-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Save state column — narrow, indicator-only. */
+.inv-cell-state { min-width: 90px; }
+.inv-save {
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.inv-save--saving { color: var(--muted); }
+.inv-save--saved  { color: var(--status-ok-text); }
+.inv-save--error  { color: var(--danger); cursor: help; }
+
+/* Loading / empty / error placeholder cards. */
+.inv-loading,
+.inv-empty,
+.inv-error {
+  padding: clamp(20px, 3vw, 32px);
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  font-family: var(--font-sans);
+  color: var(--text-2);
+  font-size: var(--text-ui);
+}
+.inv-error {
+  background: rgba(184, 50, 40, 0.06);
+  border-color: rgba(184, 50, 40, 0.25);
+  border-style: solid;
+  color: var(--danger);
+}
+.inv-empty-sub {
+  margin-top: 8px;
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+/* Narrow viewport — stack the filter row vertically. */
+@media (max-width: 560px) {
+
+  .inv-name-thumb { width: 32px; height: 32px; }
+}
+
+/* Reduced motion — disable subtle saving-row opacity transition. */
+@media (prefers-reduced-motion: reduce) {
+  .inv-row[data-saving='true'] td { opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EMPLOYEES — Turn 4: admin page for managing inventory access.
+   Class prefix: .emp-*
+   ═══════════════════════════════════════════════════════════════ */
+
+.emp-page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* ── List table ─────────────────────────────────────────────────── */
+.emp-list-wrap {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.emp-list {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+}
+.emp-list thead {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.emp-list th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.emp-list td {
+  padding: 14px 16px;
+  font-size: var(--text-ui);
+  color: var(--midnight);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.emp-list tbody tr:last-child td { border-bottom: none; }
+.emp-list tr[data-active='false'] td { opacity: 0.6; }
+
+.emp-cell-name { font-weight: 500; }
+.emp-cell-status { min-width: 110px; }
+.emp-cell-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.emp-status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.emp-status-badge[data-active='true'] {
+  background: rgba(34, 139, 87, 0.12);
+  color: var(--status-ok-text);
+}
+.emp-status-badge[data-active='false'] {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+/* Per-row action buttons. Stacked into a row, separated by hairline. */
+.emp-action {
+  margin-left: 8px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+}
+.emp-action:hover {
+  background: var(--surface-2);
+  color: var(--midnight);
+}
+.emp-action:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.emp-action:disabled { opacity: 0.5; cursor: not-allowed; }
+.emp-action-danger:hover {
+  background: rgba(184, 50, 40, 0.08);
+  color: var(--danger);
+  border-color: rgba(184, 50, 40, 0.4);
+}
+
+/* ── Loading / empty / error placeholders ───────────────────────── */
+.emp-loading,
+.emp-empty,
+.emp-error {
+  padding: clamp(20px, 3vw, 32px);
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  font-family: var(--font-sans);
+  color: var(--text-2);
+  font-size: var(--text-ui);
+}
+.emp-error {
+  background: rgba(184, 50, 40, 0.06);
+  border-color: rgba(184, 50, 40, 0.25);
+  border-style: solid;
+  color: var(--danger);
+}
+.emp-empty-sub {
+  margin-top: 8px;
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+/* ── Modal (create / rotate / confirm-delete) ───────────────────── */
+.emp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(20, 24, 32, 0.72);
+  /* Safari + iOS require the -webkit- prefix; convention from
+     existing modals in the file (lines 528, 704, 2430). */
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: fadeIn var(--dur-normal) var(--ease-standard);
+}
+.emp-panel {
+  width: min(460px, 100%);
+  padding: 28px 24px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.4);
+}
+.emp-title {
+  margin: 0 0 8px;
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: clamp(1.4rem, 3vw, 1.8rem);
+  color: var(--midnight);
+}
+.emp-sub {
+  margin: 0 0 20px;
+  font-size: var(--text-ui);
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.emp-sub code {
+  padding: 1px 5px;
+  background: var(--surface-2);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.emp-field {
+  display: block;
+  margin-bottom: 16px;
+}
+.emp-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-2);
+}
+.emp-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-ui);
+  color: var(--midnight);
+  transition: border-color var(--dur-fast);
+}
+.emp-input:focus-visible {
+  outline: none;
+  border-color: var(--gold);
+}
+.emp-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+/* Larger / monospace for the 4-digit code field. Tabular numerals
+   so the typed digits don't shift width as the user types. */
+.emp-input-code {
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+
+.emp-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.emp-btn {
+  padding: 9px 18px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-ui);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast), opacity var(--dur-fast);
+}
+.emp-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.emp-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.emp-btn-primary {
+  background: var(--midnight);
+  color: var(--surface);
+}
+.emp-btn-primary:hover:not(:disabled) {
+  /* --midnight-2 is the canonical hover token used by .btn-dark
+     elsewhere in this file. The earlier draft referenced a non-
+     existent --midnight-700 which silently fell back to base
+     midnight (no visible hover). */
+  background: var(--midnight-2);
+}
+
+.emp-btn-ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-2);
+}
+.emp-btn-ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--midnight);
+}
+
+.emp-btn-danger {
+  background: var(--danger);
+  color: var(--surface);
+}
+.emp-btn-danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Employee list — responsive layout.
+
+   Desktop / tablet (≥640px): regular table layout, three columns.
+   Mobile (<640px): each row becomes a card. Name + role badge on
+   top, status pill below, action buttons in a tidy 3-button row at
+   the bottom. The data-label attributes on each <td> drive the
+   inline labels inside the card.
+   ──────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .emp-list-wrap { border: none; border-radius: 0; }
+
+  /* Hide the table-header row — it's redundant in card view. */
+  .emp-list thead { display: none; }
+
+  /* Each <tr> becomes a card. */
+  .emp-list,
+  .emp-list tbody,
+  .emp-list tr {
+    display: block;
+    width: 100%;
+  }
+  .emp-list tr {
+    background: var(--surface);
+    border: 1px solid var(--cream-2-bd);
+    border-radius: 12px;
+    margin-bottom: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+  }
+  .emp-list tr[data-active='false'] { opacity: 0.72; }
+
+  /* Cells stack vertically with internal label/value rows. */
+  .emp-list td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-2) 0;
+    border-bottom: none;
+    font-size: var(--text-sm);
+  }
+  .emp-list td::before {
+    content: attr(data-label);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-3);
+    flex-shrink: 0;
+  }
+
+  /* Name cell: hide the auto-label (data-label="Employee" would
+     repeat info), bump the name typography, drop role badge to its
+     own row below the name for readability. */
+  .emp-cell-name {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px !important;
+    padding-top: 0;
+    padding-bottom: var(--sp-3);
+    border-bottom: 1px solid var(--cream-2-bd);
+    margin-bottom: var(--sp-2);
+  }
+  .emp-cell-name::before { display: none; }
+  .emp-cell-name .emp-name {
+    font-size: var(--text-base, 16px);
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.2;
+  }
+  .emp-cell-name .emp-role-badge {
+    margin-left: 0;
+  }
+
+  /* Status cell: clean side-by-side label + pill. */
+  .emp-cell-status { min-width: 0; }
+
+  /* Actions cell: full-width 3-button row at the bottom. Each
+     button is equally sized and ≥44px tall for thumbs. The Delete
+     button takes its danger styling but doesn't dominate. */
+  .emp-cell-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: stretch;
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--cream-2-bd);
+    margin-top: var(--sp-2);
+    gap: var(--sp-2);
+  }
+  .emp-cell-actions::before { display: none; }
+  .emp-cell-actions .emp-action {
+    flex: 1 1 0;
+    margin: 0;
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: var(--text-sm);
+    white-space: nowrap;
+  }
+}
+
+/* Phone (≤380px) — extra compact: stack action buttons full-width
+   so each gets its own row and the labels read clearly. */
+@media (max-width: 380px) {
+  .emp-page-head { flex-direction: column; align-items: stretch; }
+  .emp-cell-actions { flex-direction: column; }
+  .emp-cell-actions .emp-action {
+    flex: 1 1 100%;
+    min-height: 44px;
+    font-size: var(--text-sm);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AUDIT LOG — Turn 5: /admin/inventory/logs viewer.
+   Class prefixes: .ial-* (inventory audit log)
+                   .ai-*  (admin inventory page additions)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Header row on the admin inventory page — adds the audit-log link. */
+.ai-page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.ai-log-link {
+  align-self: center;
+  padding: 8px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-2);
+  text-decoration: none;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.ai-log-link:hover {
+  background: var(--surface);
+  color: var(--midnight);
+}
+.ai-log-link:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ── Audit log table ───────────────────────────────────────────── */
+.ial-table-wrap {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  /* iOS momentum scrolling — without this, horizontal scroll on the
+     audit log table feels stuttery on iPhones. Modern Safari supports
+     it natively without the prefix, but the prefix is still needed
+     for older iOS Safari that admins might be using on legacy iPads. */
+  -webkit-overflow-scrolling: touch;
+}
+.ial-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+}
+.ial-table thead {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.ial-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.ial-table td {
+  padding: 14px 16px;
+  font-size: var(--text-ui);
+  color: var(--midnight);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.ial-table tbody tr:last-child td { border-bottom: none; }
+
+.ial-cell-when {
+  white-space: nowrap;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.ial-cell-who { font-weight: 500; }
+.ial-cell-tea { color: var(--midnight); }
+
+/* Level-change cell: previous → new with a colored delta */
+.ial-cell-level {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ial-level-num {
+  display: inline-block;
+  min-width: 18px;
+  text-align: center;
+  font-weight: 600;
+}
+.ial-level-arrow {
+  display: inline-block;
+  margin: 0 6px;
+  color: var(--muted);
+}
+.ial-level-delta {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.ial-level-delta[data-direction='up'] {
+  background: rgba(34, 139, 87, 0.12);
+  color: var(--status-ok-text);
+}
+.ial-level-delta[data-direction='down'] {
+  background: rgba(184, 50, 40, 0.12);
+  color: var(--status-bad-text);
+}
+.ial-level-delta[data-direction='flat'] {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+/* Status transition (badge → badge). Re-uses the .inv-status-badge
+   color palette (Turn 3) for visual consistency across pages. */
+.ial-cell-status { min-width: 200px; }
+.ial-status-transition {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ial-arrow {
+  color: var(--muted);
+}
+.ial-status-badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.ial-status-badge[data-status='in_stock'] {
+  background: rgba(34, 139, 87, 0.12);
+  color: var(--status-ok-text);
+}
+.ial-status-badge[data-status='low_stock'] {
+  background: rgba(199, 138, 26, 0.14);
+  color: var(--status-warn-text);
+}
+.ial-status-badge[data-status='out_of_stock'] {
+  background: rgba(184, 50, 40, 0.12);
+  color: var(--status-bad-text);
+}
+
+/* Pager + end marker. */
+.ial-pager {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+.ial-load-more {
+  padding: 10px 24px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-ui);
+  color: var(--midnight);
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+.ial-load-more:hover:not(:disabled) {
+  background: var(--surface);
+}
+.ial-load-more:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.ial-load-more:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ial-end {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Loading / empty / error placeholders. */
+.ial-loading,
+.ial-empty,
+.ial-error {
+  padding: clamp(20px, 3vw, 32px);
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  font-family: var(--font-sans);
+  color: var(--text-2);
+  font-size: var(--text-ui);
+}
+.ial-error {
+  background: rgba(184, 50, 40, 0.06);
+  border-color: rgba(184, 50, 40, 0.25);
+  border-style: solid;
+  color: var(--danger);
+}
+.ial-empty-sub {
+  margin-top: 8px;
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.ial-empty-sub code {
+  padding: 1px 5px;
+  background: var(--surface);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+/* Narrow viewport — drop the level-cell delta padding + stack badges */
+@media (max-width: 560px) {
+  .ial-table th, .ial-table td { padding: 10px 12px; font-size: var(--text-sm); }
+  .ial-level-delta { margin-left: 6px; }
+  /* On mobile, drop the desktop 200px floor — let the status column
+     size to its content. Status badges + arrow are ~135px naturally,
+     freeing ~65px for the other four columns and reducing how far
+     the table has to scroll horizontally. */
+  .ial-cell-status { min-width: 0; }
+  .ai-page-head { flex-direction: column; align-items: stretch; }
+  .ai-log-link { align-self: flex-start; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PDF EXPORT BUTTONS — Turn 6: appear in the /admin/inventory header.
+   Class prefix: .ai-pdf-* + .ai-actions group container.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Wrapper for everything to the right of the page title (audit-log
+   link + PDF buttons). Flexes them onto one row on desktop, stacks
+   on mobile via the existing .ai-page-head { flex-direction: column }
+   rule. */
+.ai-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* The three PDF buttons sit together as a visual group. Border-
+   radius is shared (first/last child) so they read as a segmented
+   control rather than three loose buttons. */
+.ai-pdf-group {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.ai-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+  white-space: nowrap;
+}
+.ai-pdf-btn:last-child { border-right: none; }
+.ai-pdf-btn:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--midnight);
+}
+.ai-pdf-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: -1px; /* inset so it doesn't overlap the group border */
+}
+.ai-pdf-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ai-pdf-btn[aria-busy='true'] {
+  color: var(--midnight);
+}
+
+/* On mobile, the segmented-control look starts feeling cramped at
+   3 buttons across a 343px content width. Switch to a vertical
+   stack and make each button full-width. */
+@media (max-width: 560px) {
+  .ai-pdf-group {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+  .ai-pdf-btn {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px;
+    font-size: var(--text-sm);
+    justify-content: flex-start;
+  }
+  .ai-pdf-btn:last-child { border-bottom: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WISHLIST OOS PROMPT — Turn 6: appears under the Sold Out CTA on
+   TeaProfilePage. Two states (default = invite, saved = confirmation).
+   Class prefix: .tpf-oos-prompt
+   ═══════════════════════════════════════════════════════════════ */
+
+.tpf-oos-prompt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  color: var(--midnight);
+}
+.tpf-oos-prompt svg { flex-shrink: 0; color: var(--gold); }
+
+/* The "saved" variant uses a green-ish tint so users at-a-glance see
+   that they're already wishlisted, distinguishable from the
+   action-invite variant. */
+.tpf-oos-prompt-saved {
+  background: rgba(34, 139, 87, 0.07);
+  border-color: rgba(34, 139, 87, 0.25);
+}
+.tpf-oos-prompt-saved svg { color: var(--status-ok-text); }
+
+/* Two-line text content: title on top, supporting line below. */
+.tpf-oos-prompt-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.35;
+  min-width: 0;          /* allows the secondary line to truncate cleanly */
+}
+.tpf-oos-prompt-text strong {
+  font-size: var(--text-ui);
+  font-weight: 600;
+}
+.tpf-oos-prompt-text span {
+  font-size: var(--text-xs);
+  color: var(--text-2);
+}
+
+/* Primary action: the "Notify me" button when not yet wishlisted. */
+.tpf-oos-prompt-primary {
+  padding: 8px 14px;
+  background: var(--midnight);
+  color: var(--on-dark);
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--dur-fast);
+  white-space: nowrap;
+}
+.tpf-oos-prompt-primary:hover {
+  background: var(--midnight-2);
+}
+.tpf-oos-prompt-primary:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* Secondary action: "Remove" when already wishlisted — quieter than
+   the primary so the saved-state isn't dominated by a "remove" button. */
+.tpf-oos-prompt-secondary {
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+  white-space: nowrap;
+}
+.tpf-oos-prompt-secondary:hover {
+  background: var(--surface);
+  color: var(--midnight);
+}
+.tpf-oos-prompt-secondary:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* Mobile: stack the layout vertically. The action button gets full
+   width — easier to tap, especially under fat-fingers. */
+@media (max-width: 480px) {
+  .tpf-oos-prompt {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
+  }
+  .tpf-oos-prompt-text { width: 100%; }
+  .tpf-oos-prompt-primary,
+  .tpf-oos-prompt-secondary {
+    width: 100%;
+    padding: 10px 14px;
+    text-align: center;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   INVENTORY v2 — CATEGORY TABS (ict-*), FORM MODALS (ifm-*),
+   ITEM TABLE (iit-*), ITEM ROW (iir-*), STEPPER (ist-*),
+   READONLY BANNER (irb-*), ROLE SELECTOR (rsel-*)
+   ────────────────────────────────────────────────────────────────────────
+   No inline styles in any consuming component. Every dynamic value
+   (color slot, active state, etc.) flows through data-attributes
+   selected here. Colors come from tokens.css; spacing from --sp-*.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── Category color slots ──────────────────────────────────────────────
+   Each non-tea category gets one of eight slots assigned by
+   setInventoryCategory. The tea system category uses 'color-tea'.
+   These exact selectors back-load both the category-nav dot (.icn-dot)
+   and the small color swatch (.ifm-color-swatch). */
+.icn-link[data-color='color-tea'] .icn-dot,
+.ifm-color-swatch[data-color='color-tea']  { background: var(--cat-tea); }
+.icn-link[data-color='color-1'] .icn-dot,
+.ifm-color-swatch[data-color='color-1']    { background: var(--cat-herbal); }
+.icn-link[data-color='color-2'] .icn-dot,
+.ifm-color-swatch[data-color='color-2']    { background: var(--cat-oolong); }
+.icn-link[data-color='color-3'] .icn-dot,
+.ifm-color-swatch[data-color='color-3']    { background: var(--cat-rooibos); }
+.icn-link[data-color='color-4'] .icn-dot,
+.ifm-color-swatch[data-color='color-4']    { background: var(--cat-green); }
+.icn-link[data-color='color-5'] .icn-dot,
+.ifm-color-swatch[data-color='color-5']    { background: var(--cat-white); }
+.icn-link[data-color='color-6'] .icn-dot,
+.ifm-color-swatch[data-color='color-6']    { background: var(--cat-flower); }
+.icn-link[data-color='color-7'] .icn-dot,
+.ifm-color-swatch[data-color='color-7']    { background: var(--cat-fruit); }
+.icn-link[data-color='color-8'] .icn-dot,
+.ifm-color-swatch[data-color='color-8']    { background: var(--cat-black); }
+
+/* ── Form modal shell (used by Category + Item form modals) ──────── */
+.ifm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  background: rgba(15, 25, 35, 0.55);
+  backdrop-filter: blur(3px);
+}
+.ifm-panel {
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 14px;
+  padding: var(--sp-6);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.ifm-title { margin: 0; font-size: var(--text-lg, 18px); font-weight: 600; }
+.ifm-sub   { margin: 0; color: var(--text-2); font-size: var(--text-sm); line-height: 1.45; }
+
+.ifm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.ifm-field--grow   { flex: 1 1 auto; }
+.ifm-field--narrow { flex: 0 0 140px; }
+.ifm-row {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.ifm-label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+.ifm-label-hint {
+  font-weight: 400;
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+.ifm-help {
+  font-size: var(--text-xs);
+  color: var(--text-3);
+  line-height: 1.35;
+}
+.ifm-input {
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: 8px;
+  border: 1px solid var(--cream-2-bd);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  min-height: 40px;
+}
+.ifm-input-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.ifm-input:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.ifm-input:disabled,
+.ifm-input[readonly] { background: var(--surface-2); cursor: not-allowed; opacity: 0.7; }
+
+.ifm-color-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: var(--sp-2);
+}
+.ifm-color-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.ifm-color-radio {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.ifm-color-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  transition: transform 120ms ease, border-color 120ms ease;
+}
+.ifm-color-radio:checked + .ifm-color-swatch { border-color: var(--gold); transform: scale(1.08); }
+.ifm-color-radio:focus-visible + .ifm-color-swatch { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.ifm-error {
+  padding: var(--sp-3);
+  border-radius: 8px;
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+  font-size: var(--text-sm);
+}
+
+.ifm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+@media (max-width: 480px) {
+  .ifm-panel { padding: var(--sp-4); }
+  .ifm-field--narrow { flex: 1 1 100%; }
+  .ifm-color-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ── Item table (iit-*) ──────────────────────────────────────────── */
+.iit-wrap { width: 100%; }
+.iit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  flex-wrap: wrap;
+}
+.iit-head-title    { margin: 0; font-size: var(--text-base, 16px); font-weight: 600; }
+.iit-head-sub      { margin: 2px 0 0; font-size: var(--text-xs); color: var(--text-3); }
+.iit-head-actions  { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.iit-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: 8px;
+  border: 1px solid var(--cream-2-bd);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  min-height: 36px;
+}
+.iit-add-btn:hover        { background: var(--surface-3); }
+.iit-add-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+/* Phase 15 — hard-delete variant of the category-action button.
+   Used by AdminInventory's "Delete category" affordance to signal
+   that this is the irreversible-path action vs the soft "Archive". */
+.iit-add-btn--danger {
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- deeper red than --danger to differentiate hard-delete from soft archive */
+  color: #b3261e;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- matching deep-red border */
+  border-color: #b3261e;
+  font-weight: 600;
+}
+.iit-add-btn--danger:hover {
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- inverted danger pill on hover */
+  background: #b3261e;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- white text inside the inverted pill */
+  color: var(--white);
+}
+
+.iit-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--cream-2-bd); }
+
+/* Phase 19 — Summary chip row (replaces the per-category search input
+   on non-tea categories). Each chip is a small status-coded pill. The
+   container wraps gracefully on narrow screens. */
+.iit-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+  font-family: var(--font-sans);
+}
+.iit-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+.iit-summary-chip--total {
+  background: var(--surface);
+  color: var(--midnight);
+  font-weight: 600;
+}
+.iit-summary-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.iit-summary-chip--ok .iit-summary-dot {
+  background: var(--success);
+}
+.iit-summary-chip--ok {
+  color: var(--success);
+  background: var(--success-bg);
+  border-color: transparent;
+}
+.iit-summary-chip--warn .iit-summary-dot {
+  background: var(--gold-deep);
+}
+.iit-summary-chip--warn {
+  color: var(--gold-deep);
+  background: var(--gold-soft);
+  border-color: transparent;
+}
+.iit-summary-chip--danger .iit-summary-dot {
+  background: var(--danger);
+}
+.iit-summary-chip--danger {
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-color: transparent;
+}
+
+.iit-table { width: 100%; border-collapse: collapse; }
+.iit-table th,
+.iit-table td {
+  padding: var(--sp-3);
+  border-bottom: 1px solid var(--cream-2-bd);
+  text-align: left;
+  vertical-align: middle;
+}
+.iit-table thead th {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-2);
+  background: var(--surface-2);
+}
+.iit-table tbody tr:last-child td { border-bottom: none; }
+
+.iit-empty {
+  padding: var(--sp-8) var(--sp-4);
+  text-align: center;
+  border: 1px dashed var(--cream-2-bd);
+  border-radius: 10px;
+  color: var(--text-2);
+}
+.iit-empty p              { margin: 0 0 var(--sp-2); }
+.iit-empty-sub            { font-size: var(--text-sm); color: var(--text-3); }
+.iit-loading              { padding: var(--sp-6); text-align: center; color: var(--text-2); }
+
+/* ── Item row (iir-*) ────────────────────────────────────────────── */
+.iir-name-wrap   { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.iir-name-thumb  {
+  width: 36px; height: 36px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--surface-2);
+  flex-shrink: 0;
+}
+.iir-name        { font-weight: 500; }
+.iir-meta        { font-size: var(--text-xs); color: var(--text-3); margin-top: 2px; }
+.iir-actions     { display: flex; gap: var(--sp-2); justify-content: flex-end; }
+.iir-action {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--cream-2-bd);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+.iir-action:hover         { background: var(--surface-2); color: var(--text); }
+.iir-action:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.iir-action--danger       { color: var(--danger); border-color: var(--danger-border); }
+.iir-action--danger:hover { background: var(--danger-bg); }
+/* Phase 15 — hard-delete variant. Distinct visual weight from
+   --danger (archive) so admins can tell the two destructive
+   actions apart at a glance. */
+.iir-action--delete {
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- deeper red than --danger to differentiate hard-delete from soft archive */
+  color: #b3261e;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- matching deep-red border to pair with the text colour */
+  border-color: #b3261e;
+  font-weight: 600;
+}
+.iir-action--delete:hover {
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- inverted danger pill on hover */
+  background: #b3261e;
+  /* stylelint-disable-next-line color-no-hex, scale-unlimited/declaration-strict-value -- white text inside the inverted pill */
+  color: var(--white);
+}
+.iir-row[data-saving='true'] td { opacity: 0.85; }
+
+/* ── Stepper (ist-*) ─────────────────────────────────────────────── */
+.ist-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.ist-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid var(--cream-2-bd);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-lg);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.ist-btn:hover:not(:disabled) { background: var(--surface-2); }
+.ist-btn:focus-visible        { outline: 2px solid var(--gold); outline-offset: 1px; }
+.ist-btn:disabled             { opacity: 0.4; cursor: not-allowed; }
+.ist-input {
+  width: 64px;
+  text-align: center;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--cream-2-bd);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  min-height: 36px;
+}
+.ist-input:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.ist-input:disabled      { background: var(--surface-2); opacity: 0.7; cursor: not-allowed; }
+.ist-unit {
+  font-size: var(--text-xs);
+  color: var(--text-3);
+  margin-left: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 768px) {
+  .ist-btn   { width: 44px; height: 44px; font-size: var(--text-xl); }
+  .ist-input { width: 72px; min-height: 44px; font-size: var(--text-base, 14px); }
+}
+
+/* ── Read-only banner (irb-*) ────────────────────────────────────── */
+.irb {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: flex-start;
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-4);
+  border-radius: 10px;
+  background: var(--gold-tint);
+  border: 1px solid rgba(184, 146, 74, 0.32);
+  color: var(--gold-text);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+.irb-icon  { flex-shrink: 0; margin-top: 2px; }
+.irb-body  { flex: 1 1 auto; min-width: 0; }
+.irb-title { font-weight: 600; margin: 0 0 2px; color: var(--gold-text); }
+.irb-text  { margin: 0; color: var(--text-2); }
+
+/* ── Role selector (rsel-*) — modern card-style radio ──────────────
+   Each option is a full-width card. The selected card gets a gold
+   border, tinted background, and a check mark inside its indicator.
+   Cards stack vertically (legible on mobile, reads as a clear
+   choice on desktop). */
+.rsel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.rsel-legend {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rsel-hint {
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--text-3);
+}
+.rsel-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.rsel-option {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: 12px;
+  border: 1.5px solid var(--cream-2-bd);
+  background: var(--surface);
+  cursor: pointer;
+  min-height: 56px;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease;
+}
+.rsel-option:hover {
+  background: var(--surface-2);
+  border-color: color-mix(in srgb, var(--cream-2-bd) 50%, var(--gold) 50%);
+}
+.rsel-option-radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+.rsel-option[data-checked] {
+  border-color: var(--gold);
+  background: var(--gold-tint);
+  box-shadow: 0 0 0 1px var(--gold);
+}
+.rsel-option:has(.rsel-option-radio:focus-visible) {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+.rsel-option-indicator {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;            /* checkbox-style square w/ rounded corners */
+  border: 2px solid var(--cream-2-bd);
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  margin-top: 2px;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.rsel-option[data-checked] .rsel-option-indicator {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--white);
+}
+.rsel-option-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.rsel-option-label {
+  font-size: var(--text-base, 15px);
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+}
+.rsel-option[data-checked] .rsel-option-label {
+  color: var(--gold-text);
+}
+.rsel-option-desc {
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--text-3);
+  line-height: 1.4;
+}
+.rsel-option[data-checked] .rsel-option-desc {
+  color: var(--gold-text);
+  opacity: 0.85;
+}
+
+/* Reduce-motion users get no transitions. */
+@media (prefers-reduced-motion: reduce) {
+  .rsel-option,
+  .rsel-option-indicator { transition: none; }
+}
+
+/* Role badge in the employee list */
+.emp-role-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.emp-role-badge[data-role='readonly'] {
+  background: var(--gold-tint);
+  color: var(--gold-text);
+}
+
+@media (max-width: 480px) {
+  .rsel-options { flex-direction: column; align-items: stretch; }
+}
+
+/* ── Page header (admin inventory has tabs + actions) ───────────── */
+.ai-page-head--tabs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.ai-page-head--tabs .ai-actions {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+/* Inline text-link styled button — used in empty-state recovery
+   prompts where a hyperlink reads better than a chunky button. */
+.iit-empty-link {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--gold-text);
+  text-decoration: underline;
+  font: inherit;
+  cursor: pointer;
+}
+.iit-empty-link:hover         { color: var(--gold-deep); }
+.iit-empty-link:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 3px; }
+
+/* ════════════════════════════════════════════════════════════════════
+   LAST-UPDATE BANNER (lub-*)
+   Compact info strip at the top of every inventory table showing
+   when the category was last touched and by whom (Vancouver time).
+   ════════════════════════════════════════════════════════════════════ */
+.lub {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: var(--sp-4);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  border: 1px solid transparent;
+}
+.lub-icon { flex-shrink: 0; opacity: 0.8; }
+.lub-text { min-width: 0; }
+.lub-when { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
+.lub-who  { color: var(--text); font-weight: 500; }
+.lub[data-state='empty'] { background: transparent; border-color: var(--cream-2-bd); border-style: dashed; }
+.lub[data-state='empty'] .lub-text { color: var(--text-3); font-style: italic; }
+
+@media (max-width: 480px) {
+  .lub {
+    display: flex;       /* spans full width on phones for legibility */
+    width: 100%;
+  }
+}
+

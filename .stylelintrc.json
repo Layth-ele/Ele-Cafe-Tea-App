@@ -1,0 +1,98 @@
+{
+  "plugins": ["stylelint-declaration-strict-value"],
+  "extends": ["stylelint-config-standard"],
+  "rules": {
+    "color-no-hex": [true, {
+      "message": "Use a token from tokens.css instead of a hex literal (e.g. var(--midnight), var(--gold))."
+    }],
+
+    "declaration-property-value-disallowed-list": {
+      "transition": ["/\\ball\\b/"],
+      "transition-property": ["/\\ball\\b/"],
+      "/^transition/": ["/\\ball\\b/"]
+    },
+
+    "scale-unlimited/declaration-strict-value": [
+      [
+        "/color$/",
+        "background-color",
+        "border-color",
+        "outline-color",
+        "fill",
+        "stroke"
+      ],
+      {
+        "ignoreValues": [
+          "transparent",
+          "currentColor",
+          "inherit",
+          "initial",
+          "unset",
+          "none",
+          "Highlight",
+          "HighlightText",
+          "ButtonText",
+          "ButtonFace",
+          "Canvas",
+          "CanvasText",
+          "LinkText",
+          "VisitedText",
+          "Mark",
+          "MarkText"
+        ],
+        "message": "This property must use a CSS variable from tokens.css (e.g. var(--text), var(--border))."
+      }
+    ],
+
+    "custom-property-pattern": [
+      "^_?[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      {
+        "message": "Expected custom property in kebab-case. Leading underscore allowed for private palette tokens (--_ink-900, etc.)."
+      }
+    ],
+    "custom-property-empty-line-before": null,
+    "declaration-empty-line-before": null,
+    "declaration-block-no-redundant-longhand-properties": null,
+    "declaration-block-single-line-max-declarations": null,
+    "import-notation": null,
+    "no-invalid-position-at-import-rule": null,
+    "color-hex-length": null,
+    "no-duplicate-selectors": null,
+    "selector-class-pattern": null,
+    "no-descending-specificity": null,
+    "keyframes-name-pattern": null,
+    "alpha-value-notation": null,
+    "color-function-notation": null,
+    "hue-degree-notation": null,
+    "media-feature-range-notation": null,
+    "shorthand-property-no-redundant-values": null,
+    "comment-empty-line-before": null,
+    "rule-empty-line-before": null,
+    "at-rule-empty-line-before": null,
+    "length-zero-no-unit": null,
+    "value-keyword-case": null,
+    "function-name-case": null,
+    "property-no-vendor-prefix": null,
+    "no-empty-source": null,
+    "at-rule-no-unknown": [true, {
+      "ignoreAtRules": ["theme", "source", "tailwind", "apply", "variants", "responsive", "screen", "layer", "plugin", "config", "utility"]
+    }]
+  },
+
+  "overrides": [
+    {
+      "files": ["**/tokens.css", "**/tailwind.css"],
+      "rules": {
+        "color-no-hex": null,
+        "scale-unlimited/declaration-strict-value": null
+      }
+    }
+  ],
+
+  "ignoreFiles": [
+    "node_modules/**/*",
+    "dist/**/*",
+    ".vite/**/*",
+    "coverage/**/*"
+  ]
+}

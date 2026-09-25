@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(grep -vE \"^\\\\s*$|dist/|ensuring required API|Loaded environment\")",
+      "Bash(curl -s -o /dev/null -w \"testLogin live → HTTP %{http_code}\\\\n\" \"https://us-central1-ele-cafe-d7237.cloudfunctions.net/testLogin?uid=playwright-test-admin\")",
+      "Bash(python3 -c ' *)"
+    ]
+  }
+}

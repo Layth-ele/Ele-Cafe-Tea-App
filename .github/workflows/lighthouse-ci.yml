@@ -1,0 +1,192 @@
+name: Lighthouse CI
+
+# Why this workflow exists:
+#   Operations & monitoring layer for the SEO infrastructure. Runs
+#   Lighthouse against the deployed site after every merge to main and
+#   on a nightly schedule, asserting thresholds for Performance, SEO,
+#   Accessibility, and Best Practices. Also runs on every PR against a
+#   locally-built preview, gating merges if the new build would regress.
+#
+#   Catches regressions like:
+#     • a deploy that bloats the JS bundle (Performance drops)
+#     • someone adding a noindex meta tag by accident (SEO drops)
+#     • a third-party script breaking accessibility (a11y drops)
+#     • mixed-content / insecure-resource regressions (Best Practices)
+#
+# Two distinct jobs:
+#   1. lighthouse-pr   — runs on every PR, against a local preview of
+#                        the dist build. Uses lighthouserc.json. Hard-
+#                        fails the merge if budgets break. This is the
+#                        regression gate — Phase 5 step 1 of the perf
+#                        roadmap.
+#   2. lighthouse-live — runs on push to main + nightly schedule,
+#                        against the deployed site. Catches drift from
+#                        Firebase Hosting / CDN / RUM differences that
+#                        local lab can't see.
+#
+# Configuration:
+#   PR job     reads thresholds from /lighthouserc.json
+#   Live job   override-targets via LIGHTHOUSE_ASSERTION_BASE_URL repo
+#              variable (Settings → Variables, default https://elecafe.ca)
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'index.html'
+      - 'public/**'
+      - 'vite.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'pnpm-lock.yaml'
+      - 'lighthouserc.json'
+      - '.github/workflows/lighthouse-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'index.html'
+      - 'public/**'
+      - 'functions/src/**'
+      - 'firebase.json'
+      - 'vite.config.ts'
+      - 'package.json'
+      - '.github/workflows/lighthouse-ci.yml'
+  schedule:
+    # Nightly run — catches regressions from third-party CDN/Firebase
+    # changes that don't surface during normal CI.
+    - cron: '0 7 * * *'   # 07:00 UTC = midnight Vancouver
+  workflow_dispatch: {}
+
+concurrency:
+  group: lighthouse-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── PR-time gate ─────────────────────────────────────────────────────────
+  # Runs against a locally-built preview of THIS PR's code. This is the
+  # real regression gate — catches perf/a11y drops BEFORE they merge.
+  lighthouse-pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        # The .env values here are placeholder strings used only so the
+        # build doesn't bail. They never reach the network — Lighthouse
+        # runs the static dist/ output without any backend wiring.
+        run: |
+          cat > .env <<'EOF'
+          VITE_FIREBASE_API_KEY=ci-build-only
+          VITE_FIREBASE_AUTH_DOMAIN=ci.firebaseapp.com
+          VITE_FIREBASE_PROJECT_ID=ci-project
+          VITE_FIREBASE_APP_ID=1:000:web:abc
+          VITE_FIREBASE_STORAGE_BUCKET=ci.appspot.com
+          VITE_FIREBASE_MESSAGING_SENDER_ID=000
+          VITE_SITE_BASE=http://localhost:4173
+          EOF
+          npm run build
+
+      - name: Run Lighthouse CI against preview
+        # lhci reads lighthouserc.json from repo root. It boots `npm run
+        # preview`, waits for the "Local:" line, hits the URLs in the
+        # config, and asserts against the budgets. Non-zero exit fails
+        # the job → fails the PR.
+        run: npx lhci autorun
+
+      # Phase 8 — Synthetic RUM gate (proxy for 8.7.1 + 8.7.2).
+      # Runs 10 throttled iterations per route, asserts P75 LCP < 2000ms,
+      # P75 CLS < 0.1, P75 filter-chip interaction latency < 150ms.
+      # Mirrors the RUM thresholds from 0-12.md so the lab signal aligns
+      # with the field gate. Runs AFTER lhci so the lhci preview server
+      # is still running (the perf config reuses :4173).
+      - name: Install Playwright browser (chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Synthetic RUM gate (P75 LCP/INP/CLS under throttling)
+        env:
+          BASE_URL: http://localhost:4173
+        run: npm run test:perf:synthetic
+
+      - name: Upload synthetic perf results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-perf-${{ github.event.pull_request.number }}
+          path: /tmp/synthetic-perf-results.json
+          retention-days: 14
+
+      - name: Upload Lighthouse PR reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-pr-${{ github.event.pull_request.number }}
+          path: .lighthouseci/
+          retention-days: 14
+
+  # ── Post-deploy live-site smoke test ─────────────────────────────────────
+  # Different concern from the PR gate: catches regressions that only show
+  # up against the real CDN / Firebase Hosting / external dependencies.
+  lighthouse-live:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli@0.14.x
+
+      - name: Run Lighthouse on key SEO routes
+        env:
+          BASE_URL: ${{ vars.LIGHTHOUSE_ASSERTION_BASE_URL || 'https://elecafe.ca' }}
+        run: |
+          # Audit the routes that matter most for SEO:
+          #   /                        homepage
+          #   /products                catalog
+          #   /products/black          category
+          #   /tea-profile/black/assam tea profile (rich Product schema)
+          #   /collections/organic     programmatic SEO
+          #
+          # Thresholds tightened in Phase 5 of the perf roadmap. Live-site
+          # numbers are typically a few points lower than lab (real CDN,
+          # real third parties), so we hold perf at 0.90 here vs the PR
+          # gate's 0.95. a11y stays at 1.00 either way.
+          lhci autorun \
+            --collect.url="$BASE_URL/" \
+            --collect.url="$BASE_URL/products" \
+            --collect.url="$BASE_URL/products/black" \
+            --collect.url="$BASE_URL/tea-profile/black/assam" \
+            --collect.url="$BASE_URL/collections/organic" \
+            --collect.numberOfRuns=2 \
+            --collect.settings.preset=desktop \
+            --assert.preset=lighthouse:no-pwa \
+            --assert.assertions.categories:performance=0.90 \
+            --assert.assertions.categories:seo=0.95 \
+            --assert.assertions.categories:accessibility=1.00 \
+            --assert.assertions.categories:best-practices=0.95 \
+            --upload.target=temporary-public-storage
+
+      - name: Upload Lighthouse reports as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: .lighthouseci/
+          retention-days: 14

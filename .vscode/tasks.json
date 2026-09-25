@@ -1,0 +1,47 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "npm install and build (root + functions)",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-lc",
+				"export NVM_DIR=\"$HOME/.nvm\"; . \"$NVM_DIR/nvm.sh\"; nvm use 22 >/dev/null; cd /Users/laythalshblawi/Documents/new/Ele_Cafe && npm install --no-fund --no-audit && cd functions && npm install --no-fund --no-audit && cd .. && npm run build && cd functions && npm run build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "build root and functions with Node 22",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-lc",
+				"export NVM_DIR=\"$HOME/.nvm\"; . \"$NVM_DIR/nvm.sh\"; nvm use 22 >/dev/null; export VITE_FIREBASE_API_KEY=dummy VITE_FIREBASE_AUTH_DOMAIN=dummy.firebaseapp.com VITE_FIREBASE_PROJECT_ID=dummy-project VITE_FIREBASE_APP_ID=1:123:web:dummy; cd /Users/laythalshblawi/Documents/new/Ele_Cafe && npm run build && cd functions && npm run build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "build root (captured)",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-lc",
+				"set -e; export NVM_DIR=\"$HOME/.nvm\"; . \"$NVM_DIR/nvm.sh\"; nvm use 22 >/dev/null; export VITE_FIREBASE_API_KEY=dummy VITE_FIREBASE_AUTH_DOMAIN=dummy.firebaseapp.com VITE_FIREBASE_PROJECT_ID=dummy-project VITE_FIREBASE_APP_ID=1:123:web:dummy; cd /Users/laythalshblawi/Documents/new/Ele_Cafe; npm run build > /tmp/ele-cafe-root-build.log 2>&1; status=$?; tail -n 80 /tmp/ele-cafe-root-build.log; exit $status"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		}
+	]
+}

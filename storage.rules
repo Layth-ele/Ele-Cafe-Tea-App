@@ -1,0 +1,75 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin()    { return request.auth != null && request.auth.token.role == 'admin'; }
+    function isOwner(uid) { return request.auth != null && request.auth.uid == uid; }
+
+    function isImage()   { return request.resource.contentType.matches('image/.*'); }
+    function isUnder5MB(){ return request.resource.size < 5 * 1024 * 1024; }
+    function isAdminImageUpload() { return isAdmin() && isImage() && isUnder5MB(); }
+
+    // Tea product images + combo gallery images
+    match /teas/{allPaths=**} {
+      allow read:   if true;
+      allow create: if isAdminImageUpload();
+      allow update: if isAdminImageUpload();
+      allow delete: if isAdmin();
+    }
+
+    // Store branding — logo, favicon, footer logo
+    match /branding/{filename} {
+      allow read:   if true;
+      allow create: if isAdminImageUpload();
+      allow update: if isAdminImageUpload();
+      allow delete: if isAdmin();
+    }
+
+    // Category banner images
+    match /categories/{filename} {
+      allow read:   if true;
+      allow create: if isAdminImageUpload();
+      allow update: if isAdminImageUpload();
+      allow delete: if isAdmin();
+    }
+
+    // User profile photos (64kb limit for avatars)
+    match /users/{uid}/{filename} {
+      allow read:   if isSignedIn() && isOwner(uid);
+      allow create: if isSignedIn() && isOwner(uid) && isImage() && isUnder5MB();
+      allow update: if isSignedIn() && isOwner(uid) && isImage() && isUnder5MB();
+      allow delete: if isSignedIn() && isOwner(uid);
+    }
+
+    // Gift builder images
+    match /gifts/{giftId}/{filename} {
+      allow read:   if isSignedIn();
+      allow create: if isAdminImageUpload();
+      allow update: if isAdminImageUpload();
+      allow delete: if isAdmin();
+    }
+
+    // Combo Gallery — global "pairs with our tea" images uploaded from
+    // AdminSettings. Public read (rendered to every visitor on tea
+    // profile pages); admin-only write/delete; standard 5 MB image cap.
+    match /comboGallery/{filename} {
+      allow read:   if true;
+      allow create: if isAdminImageUpload();
+      allow update: if isAdminImageUpload();
+      allow delete: if isAdmin();
+    }
+
+    // Admin-only assets
+    match /admin/{filename} {
+      allow read:  if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Deny everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

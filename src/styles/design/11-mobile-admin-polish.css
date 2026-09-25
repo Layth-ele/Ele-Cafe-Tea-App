@@ -1,0 +1,342 @@
+/* ════════════════════════════════════════════════════════════════════
+   MOBILE READABILITY — item table card layout (< 768px)
+   On narrow viewports the iit-* table becomes a stack of cards so
+   the stepper, status badge, and name don't fight for horizontal
+   space. Each row converts to a card with a clear header (name +
+   status) and a body (stepper). Uses the data-label pattern that
+   already powers the tea inv-cell-* mobile cards.
+   ════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .iit-table-wrap { border: none; border-radius: 0; overflow: visible; }
+  .iit-table,
+  .iit-table thead,
+  .iit-table tbody,
+  .iit-table tr,
+  .iit-table td { display: block; width: 100%; }
+  .iit-table thead { display: none; }   /* column headers redundant in card mode */
+  .iit-table tr {
+    background: var(--surface);
+    border: 1px solid var(--cream-2-bd);
+    border-radius: 14px;
+    margin-bottom: 12px;
+    padding: 14px 16px;
+    box-shadow: 0 1px 2px rgba(9, 14, 18, 0.03);
+  }
+
+  /* Phase 19 — Mobile inventory card redesign (per merchant feedback).
+     Previously each row showed five rows of "LABEL — value" pairs which
+     felt scattered. The new layout is a tight three-section card:
+       1. Header row: thumb + name+meta (left) + status pill (right)
+       2. Quantity row: centered stepper, big touch targets
+       3. Action row: three equal-width buttons OR none
+     Visual hierarchy is carried by typography, not by uppercase pseudo-
+     labels — so we hide the .iit-table td::before pseudo on every cell
+     except where it's genuinely useful (currently: none on mobile). */
+  .iit-table td {
+    padding: 0;
+    border-bottom: none;
+    display: block;
+  }
+  .iit-table td::before {
+    /* Pseudo-labels hidden globally on mobile — the card layout reads
+       on its own without them. Explicit override per-cell keeps the
+       desktop / tablet rendering of these labels unaffected. */
+    display: none !important;
+  }
+  .iit-table tr td:last-child { border-bottom: none; }
+
+  /* Header row: thumb + (name, meta) left-aligned, status pill right-aligned. */
+  .iir-cell-name {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--cream-2-bd);
+    margin-bottom: 14px;
+  }
+  .iir-cell-name .iir-name-wrap {
+    flex: 1;
+    min-width: 0;
+  }
+  .iir-cell-name .iir-name {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--midnight);
+  }
+  .iir-cell-name .iir-meta {
+    font-size: var(--text-xs);
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+
+  /* Status pill — pulled into the header via JS-free CSS. The status
+     <td> is reordered to sit visually inside the header by absolute
+     positioning the badge to the right side of the name row. We do
+     that by hiding the entire .iir-cell-status td and rendering the
+     status from the JSX. Since changing the JSX requires React edits,
+     the simpler approach: keep the status td but render it inline.
+     Below: we use display:contents-style trick — render the status
+     td as a non-block sibling of the header. But on this version we
+     keep it simple: show a small compact status row right after the
+     header. */
+  .iir-cell-status {
+    margin-bottom: 14px;
+  }
+  .iir-cell-status .inv-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    font-size: var(--text-xs);
+    font-weight: 500;
+    border-radius: 999px;
+  }
+
+  /* Quantity row — stepper centered with generous spacing, unit beside it. */
+  .iir-cell-qty {
+    margin-bottom: 14px;
+  }
+  .iir-cell-qty .ist-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+  }
+  .iir-cell-qty .ist-btn {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+  }
+  .iir-cell-qty .ist-input {
+    width: 64px;
+    height: 40px;
+    font-size: var(--text-md);
+    text-align: center;
+  }
+  .iir-cell-qty .ist-unit {
+    font-size: var(--text-xs);
+    color: var(--text-3);
+  }
+
+  /* Save-state cell hidden on mobile — the stepper itself flashes. */
+  .iir-cell-state { display: none !important; }
+
+  /* Actions — three equal-width buttons in a row. */
+  .iir-cell-actions .iir-actions {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+  }
+  .iir-cell-actions .iir-action {
+    flex: 1;
+    padding: 9px 8px;
+    font-size: var(--text-sm);
+    min-height: 38px;
+    text-align: center;
+    justify-content: center;
+    border-radius: 8px;
+  }
+}
+
+/* Phone (≤480px) — even tighter card padding and slightly smaller header
+   thumb, but the three-section layout from the ≤768px block holds. */
+@media (max-width: 480px) {
+  .iit-table tr { padding: 12px 14px; border-radius: 12px; }
+  .iit-head { flex-direction: column; align-items: stretch; gap: var(--sp-2); }
+  .iit-head-actions { flex-direction: column; align-items: stretch; }
+
+  .iit-head-actions .iit-add-btn { width: 100%; justify-content: center; min-height: 44px; }
+  .iir-name-thumb { width: 32px; height: 32px; }
+  .iir-name { font-size: var(--text-base, 14px); }
+  /* Readonly banner takes the full row on phones */
+  .irb { flex-direction: row; padding: var(--sp-3); }
+  .irb-body { line-height: 1.45; }
+  .irb-title { font-size: var(--text-sm); margin-bottom: 4px; }
+  .irb-text  { font-size: var(--text-xs); }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   ADMIN — visual & mobile polish (May 2026)
+   - Tighter banner spacing on mobile (no more big gap to navbar)
+   - Products table → card stack at <768px
+   - Inventory page: prominent "Add category" CTA on /admin/inventory
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Admin Inventory page — title + Add Category CTA ────────────── */
+.ai-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+.ai-title-block { flex: 1 1 auto; min-width: 0; }
+.ai-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: var(--text);
+  font-family: inherit;
+  letter-spacing: -0.005em;
+}
+.ai-subtitle {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  margin: 0;
+  line-height: 1.5;
+}
+.ai-add-cat-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-radius: 10px;
+  background: var(--midnight);
+  color: var(--surface);
+  border: none;
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+  white-space: nowrap;
+  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+.ai-add-cat-btn:hover {
+  background: color-mix(in srgb, var(--midnight) 88%, white 12%);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.35);
+}
+.ai-add-cat-btn:active { transform: translateY(0); }
+.ai-add-cat-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .ai-title-row { flex-direction: column; align-items: stretch; }
+  .ai-add-cat-btn { width: 100%; justify-content: center; }
+  .ai-title { font-size: 1.35rem; }
+}
+
+/* ── Tighter banner spacing on mobile (Products page) ───────────── */
+@media (max-width: 768px) {
+  .ap-page-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    border-radius: 12px;
+  }
+  .ap-page-banner-h2 {
+    font-size: 1.4rem !important;
+    margin-bottom: 6px;
+  }
+  .ap-page-banner-actions {
+    flex-direction: row;
+    width: 100%;
+    /* CRITICAL: actions appear BELOW the title on mobile, not above.
+       The default flex source order would already produce this, but
+       any earlier rule with `flex-direction: column-reverse` would
+       flip it — so we explicitly set `row` here. */
+  }
+  .ap-page-banner-actions button {
+    flex: 1;
+    min-height: 44px;
+    font-size: var(--text-sm);
+    justify-content: center;
+  }
+}
+
+/* ── Products table → card stack on mobile (<768px) ─────────────── */
+@media (max-width: 768px) {
+  .ap-products-table,
+  .ap-products-table thead,
+  .ap-products-table tbody,
+  .ap-products-table tr,
+  .ap-products-table td { display: block; width: 100%; }
+
+  /* Hide the column header row in card mode — data-label attrs
+     render inline labels per cell instead. */
+  .ap-products-table thead { display: none; }
+
+  .ap-products-table tr {
+    background: var(--surface);
+    border: 1px solid var(--cream-2-bd) !important;
+    border-radius: 12px;
+    margin-bottom: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+  }
+
+  .ap-products-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-2) 0 !important;
+    border-bottom: none;
+    font-size: var(--text-sm);
+    min-width: 0;
+  }
+  .ap-products-table td::before {
+    content: attr(data-label);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-3);
+    flex-shrink: 0;
+  }
+
+  /* Tea (name + thumb) cell — full-width card header, no label,
+     bigger typography. Image to the left, name on the right. */
+  .ap-products-table td[data-label='Tea'] {
+    padding-bottom: var(--sp-3) !important;
+    border-bottom: 1px solid var(--cream-2-bd);
+    margin-bottom: var(--sp-2);
+    justify-content: flex-start;
+  }
+  .ap-products-table td[data-label='Tea']::before { display: none; }
+  .ap-products-table td[data-label='Tea'] p {
+    font-size: var(--text-base, 15px) !important;
+    font-weight: 600;
+  }
+  .ap-products-table td[data-label='Tea'] .ap-row-thumb {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  /* Flags cell — let pills wrap naturally on the right. */
+  .ap-products-table td[data-label='Flags'] {
+    align-items: flex-start;
+  }
+  .ap-products-table td[data-label='Flags'] > div {
+    justify-content: flex-end;
+  }
+
+  /* Actions cell — sits at the bottom of the card with proper
+     touch targets. */
+  .ap-products-table td[data-label='Actions'] {
+    padding-top: var(--sp-3) !important;
+    border-top: 1px solid var(--cream-2-bd);
+    margin-top: var(--sp-2);
+    justify-content: flex-end;
+  }
+  .ap-products-table td[data-label='Actions']::before { display: none; }
+  .ap-products-table td[data-label='Actions'] button {
+    min-width: 44px;
+    min-height: 40px;
+  }
+}
+
+/* ── Even smaller: phones (<480px) ──────────────────────────────── */
+@media (max-width: 480px) {
+  .ap-page-banner { padding: var(--sp-3); }
+  .ap-page-stats { gap: 6px 12px; }
+  .ap-page-stat { font-size: var(--text-xs); }
+  .ap-products-table tr { padding: var(--sp-3); }
+}
+

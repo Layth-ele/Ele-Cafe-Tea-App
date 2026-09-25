@@ -1,0 +1,58 @@
+[
+  {
+    "name": "main entry (index)",
+    "path": "dist/assets/index-*.js",
+    "limit": "60 KB",
+    "gzip": true,
+    "running": false
+  },
+  {
+    "name": "react core",
+    "path": "dist/assets/react-*.js",
+    "limit": "85 KB",
+    "gzip": true,
+    "running": false
+  },
+  {
+    "name": "firebase (firestore + auth + core + storage)",
+    "path": "dist/assets/firebase-*.js",
+    "limit": "200 KB",
+    "gzip": true,
+    "running": false
+  },
+  {
+    "name": "data layer (tanstack-query + zustand + immer)",
+    "path": "dist/assets/data-layer-*.js",
+    "limit": "30 KB",
+    "gzip": true,
+    "running": false
+  },
+  {
+    "name": "icons (lucide-react)",
+    "path": "dist/assets/icons-*.js",
+    "limit": "10 KB",
+    "gzip": true,
+    "running": false
+  },
+  {
+    "name": "flip (react-flip-toolkit + rematrix, lazy on /products)",
+    "path": "dist/assets/flip-*.js",
+    "limit": "15 KB",
+    "gzip": true,
+    "running": false
+  },
+  {
+    "name": "vendor (everything else from node_modules)",
+    "path": "dist/assets/vendor-*.js",
+    "limit": "65 KB",
+    "gzip": true,
+    "running": false
+  },
+  {
+    "name": "css (the entire stylesheet)",
+    "path": "dist/assets/index-*.css",
+    "limit": "50 KB",
+    "gzip": true,
+    "running": false
+  }
+]

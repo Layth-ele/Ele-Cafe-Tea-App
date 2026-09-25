@@ -1,0 +1,26 @@
+/* ============================================================
+   ELE CAFÉ — DESIGN SYSTEM (index)
+
+   Component and page styles, split into ordered files in
+   src/styles/design/. ORDER MATTERS — later files may override
+   earlier ones at equal specificity, exactly as when this was one
+   file. Tokens (colours, type scale, spacing) live in tokens.css.
+
+   Where to put new styles: the file for that area; a new feature
+   gets a new numbered file at the end. Always use tokens —
+   var(--text-*) for font sizes, var(--sp-*) for spacing — never raw
+   px, so readability and spacing stay adjustable in one place.
+   ============================================================ */
+@import './design/01-foundation.css';   /* Foundation — a11y, base, typography, buttons, forms, navbar, cards */
+@import './design/02-search-footer-icons.css';   /* Search bar, footer, icon system */
+@import './design/03-shared-layout.css';   /* Shared page layout, account, checkout modal, utilities, cart summary, verify/welcome modals */
+@import './design/04-feature-components.css';   /* Reduced motion, 404, share, toaster, orders, info pages, pairing page, contact card, cart drawer, credit widget, command palette, breadcrumbs */
+@import './design/05-forms-admin-a.css';   /* Admin customers, skeletons, field + submit primitives, analytics, login, promotions, loading states, checkout steps, gift builder steps */
+@import './design/06-settings-tea-profile.css';   /* Admin settings, tea profile page, admin orders, analytics, notification bell */
+@import './design/07-core-pages.css';   /* Home, admin overview, cart, admin products, gifts, checkout, products, combo gallery */
+@import './design/08-gift-builder-modals.css';   /* Pairings index, gift builder, bundle card, modal, error boundary, related teas, stepper */
+@import './design/09-admin-layout-motion.css';   /* Admin layout, lazy image, static page, PWA banner, micro-animations, personalization */
+@import './design/10-inventory.css';   /* Inventory: access modal, tables, employees, audit log, form modals */
+@import './design/11-mobile-admin-polish.css';   /* Inventory mobile cards, admin visual polish */
+@import './design/12-payments-cafe-guide.css';   /* Card payments (Clover), pagination, home tea guide, café menu page */
+@import './design/13-staff-inventory-nav.css';   /* Inventory category menu, cooler log, staff shell */
