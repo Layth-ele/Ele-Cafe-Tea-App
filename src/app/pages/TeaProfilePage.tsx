@@ -3,7 +3,7 @@ import { CafeMenuFor, cafeSectionForTea } from '@/app/components/cafe/CafeMenuBo
 import { TeaImage } from '@/app/components/TeaImage';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { fetchTea, queryKeys } from '@/lib/firebaseQueries';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router';
 import { ROUTES, SITE_BASE } from '@/lib/routes';
 import { useT, useTx, tNow, localizeTea, type Lang, localeFor } from '@/i18n/useT';
@@ -169,6 +169,8 @@ interface ReviewDoc {
   rating: number;
   comment?: string;
   createdAt: Timestamp | null;
+  /** Set server-side (onReviewWrite) when the reviewer ordered this tea. */
+  verifiedPurchase?: boolean;
 }
 
 // ── Skeleton ────────────────────────────────────────────────────────────────────
@@ -345,6 +347,22 @@ export function TeaProfilePage() {
 
   const [reviews, setReviews] = useState<ReviewDoc[]>([]);
   const [reviewsError, setReviewsError] = useState<string | null>(null);
+  // Arriving from a "Rate your teas" link (…#reviews): scroll to the review
+  // form once the page has rendered, like a normal in-page anchor.
+  const scrolledToReviews = useRef(false);
+  useEffect(() => {
+    if (scrolledToReviews.current || window.location.hash !== '#reviews') return;
+    const timer = window.setTimeout(() => {
+      const el = document.getElementById('reviews');
+      if (!el) return;
+      scrolledToReviews.current = true;
+      el.scrollIntoView({ block: 'start' });
+      // Images and sections above finish loading and push the reviews
+      // down; land on them again once the page has settled.
+      window.setTimeout(() => el.scrollIntoView({ block: 'start' }), 1200);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  });
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   // Verification modal state — review submit gates on emailVerified.
@@ -586,6 +604,15 @@ export function TeaProfilePage() {
   const userReview = user ? reviews.find((r) => r.userId === user.uid) : undefined;
   const avgRating =
     reviews.length > 0 ? reviews.reduce((s, r) => s + (r.rating ?? 0), 0) / reviews.length : 0;
+  // Two most recent reviews that have a comment, for "What customers say".
+  const latestReviews = [...reviews]
+    .filter((r) => (r.comment ?? '').trim().length > 0)
+    .sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0))
+    .slice(0, 2);
+  const goToReviews = (e: MouseEvent) => {
+    e.preventDefault();
+    document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   // Serving suggestions — the data may be in legacy format (plain
   // strings) or new format ({ label, enabled? }) depending on when
@@ -924,6 +951,46 @@ export function TeaProfilePage() {
               )}
               <CafeTrustLine variant="product" />
 
+              {/* What customers say — right under the buy box. Real reviews
+                  only; with none yet, one small invitation instead. */}
+              <div className="tpf-social">
+                {reviews.length > 0 ? (
+                  <>
+                    <div className="tpf-social-head">
+                      <span className="tpf-social-title">{t('What customers say')}</span>
+                      <a href="#reviews" onClick={goToReviews} className="tpf-social-score">
+                        <Stars rating={avgRating} size={14} />
+                        <strong>{avgRating.toFixed(1)}</strong>
+                        <span>
+                          {t(reviews.length === 1 ? '{count} review' : '{count} reviews', {
+                            count: reviews.length,
+                          })}
+                        </span>
+                      </a>
+                    </div>
+                    {latestReviews.map((r) => (
+                      <blockquote key={r.id} className="tpf-social-quote">
+                        <p>“{r.comment}”</p>
+                        <footer>
+                          {r.userName}
+                          {r.verifiedPurchase && (
+                            <span className="tpf-verified">✓ {t('Verified purchase')}</span>
+                          )}
+                        </footer>
+                      </blockquote>
+                    ))}
+                    <a href="#reviews" onClick={goToReviews} className="tpf-social-more">
+                      {t('Read all reviews')} →
+                    </a>
+                  </>
+                ) : (
+                  <a href="#reviews" onClick={goToReviews} className="tpf-social-first">
+                    <Star size={14} aria-hidden="true" />{' '}
+                    {t('No reviews yet — be the first to review this tea')}
+                  </a>
+                )}
+              </div>
+
               {/* Out-of-stock: back-in-stock email request. */}
               {!isProductAvailable(product) &&
                 product.slug &&
@@ -1192,7 +1259,7 @@ export function TeaProfilePage() {
         />
 
         {/* ── Reviews ───────────────────────────────────────────────────────── */}
-        <section className="tpf-reviews-section">
+        <section className="tpf-reviews-section" id="reviews">
           <div className="tpf-reviews-inner">
             <div className="tpf-reviews-head">
               <h2 className="tpf-reviews-title">{t('Reviews')}</h2>
@@ -1283,7 +1350,12 @@ export function TeaProfilePage() {
                   <div key={r.id} className="tpf-review-card">
                     <div className="tpf-review-card-head">
                       <div>
-                        <p className="tpf-review-card-name">{r.userName}</p>
+                        <p className="tpf-review-card-name">
+                          {r.userName}
+                          {r.verifiedPurchase && (
+                            <span className="tpf-verified">✓ {t('Verified purchase')}</span>
+                          )}
+                        </p>
                         <Stars rating={r.rating} size={13} />
                       </div>
                       {r.createdAt && (

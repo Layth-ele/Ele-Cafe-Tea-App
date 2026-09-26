@@ -1859,4 +1859,13 @@ export const STRINGS: Record<string, { fr: string }> = {
   },
   'Taste it first at our café': { fr: 'Goûtez-le d’abord à notre café' },
   'Free pickup': { fr: 'Cueillette gratuite' },
+  'Rate your teas': { fr: 'Évaluez vos thés' },
+  Rate: { fr: 'Évaluer' },
+  'What customers say': { fr: 'Ce qu’en disent nos clients' },
+  'Read all reviews': { fr: 'Lire tous les avis' },
+  'No reviews yet — be the first to review this tea': {
+    fr: 'Aucun avis pour l’instant — soyez le premier à évaluer ce thé',
+  },
+  'Verified purchase': { fr: 'Achat vérifié' },
+  'Rated {rating} out of 5 from {count} reviews': { fr: 'Noté {rating} sur 5 selon {count} avis' },
 };

@@ -98,7 +98,9 @@ export const ProductsTeaCard = React.memo(function ProductsTeaCard({
         >
           <TeaImage product={product} variant="card" priority={priority} />
           {product.isOrganic && <span className="tea-tag tea-tag-green">{t('Organic')}</span>}
-          {product.caffeine === 'None' && !product.isOrganic && <span className="tea-tag">{t('Caffeine-free')}</span>}
+          {product.caffeine === 'None' && !product.isOrganic && (
+            <span className="tea-tag">{t('Caffeine-free')}</span>
+          )}
           {cartQty > 0 && <span className="hp-tc-cart-badge">{cartQty}</span>}
 
           <WishlistHeart
@@ -118,6 +120,20 @@ export const ProductsTeaCard = React.memo(function ProductsTeaCard({
         <span className="tea-name">{displayName}</span>
       </Link>
       <span className="tea-price">{formatPricePerWeight(price, product)}</span>
+      {(product.ratingCount ?? 0) > 0 && (product.avgRating ?? 0) > 0 && (
+        <span
+          className="tea-rating"
+          aria-label={t('Rated {rating} out of 5 from {count} reviews', {
+            rating: (product.avgRating as number).toFixed(1),
+            count: product.ratingCount as number,
+          })}
+        >
+          <span aria-hidden="true">★ {(product.avgRating as number).toFixed(1)}</span>
+          <span className="tea-rating-count" aria-hidden="true">
+            ({product.ratingCount})
+          </span>
+        </span>
+      )}
 
       {!available ? (
         <button className="btn-add pp-tc-soldout" disabled>
@@ -137,7 +153,12 @@ export const ProductsTeaCard = React.memo(function ProductsTeaCard({
           <span className="tc-stepper-qty">{cartQty}</span>
           <button className="tc-stepper-btn" onClick={handleInc} aria-label={t('Increase')}>
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-              <path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              <path
+                d="M5 1v8M1 5h8"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
             </svg>
           </button>
         </div>

@@ -122,6 +122,7 @@ import {
   totalsTable,
   addressBox,
   emailLang,
+  note,
   L,
   type EmailBrand,
 } from './lib/emailLayout';
@@ -1907,7 +1908,8 @@ export const onOrderWrite = functions.firestore.onDocumentWritten(
           'customer_order_delivered',
           `Order ${orderId} delivered`,
           `Enjoy your tea!${ptsEarned > 0 ? ` You earned ${ptsEarned.toLocaleString()} pts.` : ''}`,
-          { orderId, pointsEarned: ptsEarned },
+          // "Rate your teas" in the bell opens My Orders, where each tea has a Rate link.
+          { orderId, pointsEarned: ptsEarned, url: '/orders' },
           'orderUpdates',
         );
         break;
@@ -3280,6 +3282,36 @@ export const onOrderEmail = functions.firestore.onDocumentWritten(
       } catch (auditReadErr) {
         console.warn('[email delivered] earn audit read failed for', orderId, auditReadErr);
       }
+      // "Rate your teas": one link per tea in the order, straight to its
+      // review form. Items that aren't catalog teas (gift boxes) are skipped.
+      let rateBlock = '';
+      try {
+        const ids = [
+          ...new Set(
+            ((after.items as { productId?: string }[]) ?? [])
+              .map((i) => i.productId)
+              .filter((x): x is string => typeof x === 'string' && !!x),
+          ),
+        ].slice(0, 6);
+        const snaps = ids.length
+          ? await db.getAll(...ids.map((id) => db.collection('teas').doc(id)))
+          : [];
+        const links = snaps
+          .filter((d) => d.exists && d.get('slug') && d.get('category'))
+          .map((d) => {
+            const name = (lang === 'fr' && d.get('nameFr')) || d.get('name') || d.get('slug');
+            const url = `${brand.website}/tea-profile/${encodeURIComponent(d.get('category'))}/${encodeURIComponent(d.get('slug'))}#reviews`;
+            return `<a href="${esc(url)}" style="color:#b8924a;font-weight:600;text-decoration:none;">★ ${esc(T(`Rate ${name}`, `Évaluer ${name}`))}</a>`;
+          });
+        if (links.length) {
+          rateBlock = note(
+            T('Rate your teas', 'Évaluez vos thés'),
+            `${T('A quick review helps other tea lovers find the right blend.', 'Un petit avis aide d&#39;autres amateurs de thé à trouver le bon mélange.')}<br/>${links.join('<br/>')}`,
+          );
+        }
+      } catch (err) {
+        console.warn('[email delivered] review links failed for', orderId, err);
+      }
       await sendOrderEmailOnce({
         to: customerEmail,
         uid: userId,
@@ -3337,13 +3369,14 @@ export const onOrderEmail = functions.firestore.onDocumentWritten(
             ),
             items.length ? totals : '',
             ptsEarnedLine,
-            p(
-              T(
-                'If you have a moment, a quick review helps other tea lovers find the right blend.',
-                'Si vous avez un moment, un petit avis aide d&#39;autres amateurs de thé à trouver le bon mélange.',
+            rateBlock ||
+              p(
+                T(
+                  'If you have a moment, a quick review helps other tea lovers find the right blend.',
+                  'Si vous avez un moment, un petit avis aide d&#39;autres amateurs de thé à trouver le bon mélange.',
+                ),
+                { small: true },
               ),
-              { small: true },
-            ),
             button(T('Shop more teas', "Découvrir d'autres thés"), shopUrl),
           ],
         }),
@@ -6977,6 +7010,9 @@ export { onPromotionWrite, notifyPromotion, onTeaPublished, marketingTick } from
 
 // Small WebP copies of tea / pairing photos (see imageVariants.ts).
 export { teaImageVariants, pairingImageVariants, imageVariantsSweep } from './imageVariants';
+
+// "Verified purchase" on tea reviews (see reviews.ts).
+export { onReviewWrite } from './reviews';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // backfillTeaWeights — Admin callable for one-shot migration

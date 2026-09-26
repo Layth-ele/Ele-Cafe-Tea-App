@@ -18,14 +18,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Bell, Check, CheckCheck, CheckCircle2, Copy, Eye, ExternalLink,
-  RotateCcw, Shield, Trash2, Trash, X, XCircle,
+  Bell,
+  Check,
+  CheckCheck,
+  CheckCircle2,
+  Copy,
+  Eye,
+  ExternalLink,
+  RotateCcw,
+  Shield,
+  Trash2,
+  Trash,
+  X,
+  XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
-import {
-  doc, getDoc, updateDoc, serverTimestamp,
-} from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 import { useNotifications } from '@/contexts/NotificationContext';
 import { Modal, ModalBtn } from './modals/Modal';
@@ -47,7 +56,12 @@ import { useT, useTx, tNow, useLang } from '@/i18n/useT';
 import { formatMoney } from '@/lib/money';
 /** Stored title/body are written in English by Cloud Functions; in French,
  *  rebuild them from the notification's type + data. */
-function useNotificationText(n: { type: NotificationType; title: string; body: string; data?: Record<string, unknown> }) {
+function useNotificationText(n: {
+  type: NotificationType;
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+}) {
   const t = useT();
   const lang = useLang();
   if (lang !== 'fr') return { title: n.title, body: n.body };
@@ -95,7 +109,11 @@ const ADMIN_TYPES = new Set<NotificationType>([
 // Mobile: no hover, but the toast feedback + the icon swap make the
 // success state obvious. Tap target is 28×28 (above the 24px AAA min).
 //
-function CopyButton({ value, label = 'Copy', size = 12 }: {
+function CopyButton({
+  value,
+  label = 'Copy',
+  size = 12,
+}: {
   value: string;
   label?: string;
   size?: number;
@@ -104,7 +122,12 @@ function CopyButton({ value, label = 'Copy', size = 12 }: {
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
 
   async function doCopy(e: React.MouseEvent) {
     e.stopPropagation();
@@ -118,7 +141,7 @@ function CopyButton({ value, label = 'Copy', size = 12 }: {
         const ta = document.createElement('textarea');
         ta.value = value;
         ta.style.position = 'fixed';
-        ta.style.opacity  = '0';
+        ta.style.opacity = '0';
         document.body.appendChild(ta);
         ta.focus();
         ta.select();
@@ -143,10 +166,7 @@ function CopyButton({ value, label = 'Copy', size = 12 }: {
       aria-label={copied ? t('Copied') : label}
       title={copied ? t('Copied!') : label}
     >
-      {copied
-        ? <Check size={size} aria-hidden="true" />
-        : <Copy  size={size} aria-hidden="true" />
-      }
+      {copied ? <Check size={size} aria-hidden="true" /> : <Copy size={size} aria-hidden="true" />}
       <span className="copy-btn-tip" aria-hidden="true">
         {copied ? t('Copied!') : label}
       </span>
@@ -155,7 +175,11 @@ function CopyButton({ value, label = 'Copy', size = 12 }: {
 }
 
 // ── A single key/value row that supports an optional copy button ─────────
-function DetailRow({ label, value, copyValue }: {
+function DetailRow({
+  label,
+  value,
+  copyValue,
+}: {
   label: string;
   value: React.ReactNode;
   copyValue?: string;
@@ -185,20 +209,20 @@ function DetailRow({ label, value, copyValue }: {
 
 /** Minimal subset of the order doc needed for action math. */
 interface OrderForAction {
-  orderId:     string;
-  status:      string;
+  orderId: string;
+  status: string;
   totalAmount: number;
 }
 
 function AdminOrderActions({ orderId, onDone }: { orderId: string; onDone: () => void }) {
   const t = useT();
   const tx = useTx();
-  const [order,        setOrder]        = useState<OrderForAction | null>(null);
-  const [loadErr,      setLoadErr]      = useState(false);
-  const [mode,         setMode]         = useState<'idle' | 'approve' | 'reject'>('idle');
-  const [adminNote,    setAdminNote]    = useState('');
-  const [reason,       setReason]       = useState('');
-  const [submitting,   setSubmitting]   = useState(false);
+  const [order, setOrder] = useState<OrderForAction | null>(null);
+  const [loadErr, setLoadErr] = useState(false);
+  const [mode, setMode] = useState<'idle' | 'approve' | 'reject'>('idle');
+  const [adminNote, setAdminNote] = useState('');
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   // Fetch the order on mount. The customer-side rule that produced the
   // permission-denied bug in CheckoutPage doesn't apply here: this
@@ -210,11 +234,14 @@ function AdminOrderActions({ orderId, onDone }: { orderId: string; onDone: () =>
       try {
         const snap = await getDoc(doc(db, 'orders', orderId));
         if (cancelled) return;
-        if (!snap.exists()) { setLoadErr(true); return; }
+        if (!snap.exists()) {
+          setLoadErr(true);
+          return;
+        }
         const data = snap.data() as Record<string, unknown>;
         setOrder({
-          orderId:     String(data.orderId ?? orderId),
-          status:      String(data.status ?? 'pending'),
+          orderId: String(data.orderId ?? orderId),
+          status: String(data.status ?? 'pending'),
           totalAmount: Number(data.totalAmount ?? 0),
         });
       } catch (err) {
@@ -224,14 +251,19 @@ function AdminOrderActions({ orderId, onDone }: { orderId: string; onDone: () =>
         }
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [orderId]);
 
   // ── Loading / error / not-actionable states ────────────────────────────
   if (loadErr) {
     return (
       <div className="nb-hint-box" data-tone="danger">
-        {t("Couldn't load this order.")} <a href="/admin/orders" className="nb-dash-link">{t('Open Orders dashboard')}</a>
+        {t("Couldn't load this order.")}{' '}
+        <a href="/admin/orders" className="nb-dash-link">
+          {t('Open Orders dashboard')}
+        </a>
       </div>
     );
   }
@@ -245,8 +277,7 @@ function AdminOrderActions({ orderId, onDone }: { orderId: string; onDone: () =>
   if (order.status !== 'pending') {
     return (
       <div className="nb-hint-box" data-tone="muted">
-        {tx('This order is now {status}.', { status: <strong>{t(order.status)}</strong> })}
-        {' '}
+        {tx('This order is now {status}.', { status: <strong>{t(order.status)}</strong> })}{' '}
         <a href="/admin/orders" className="nb-dash-link">
           {t('View in dashboard')} <ExternalLink size={11} className="nb-extlink-icon" />
         </a>
@@ -258,9 +289,20 @@ function AdminOrderActions({ orderId, onDone }: { orderId: string; onDone: () =>
     setSubmitting(true);
     try {
       const { functions, httpsCallable } = await getFunctionsLazy();
-      const approve = httpsCallable<{ orderId: string; adminNote?: string }, { charged: number }>(functions, 'approveOrder');
-      const res = await approve({ orderId, ...(adminNote.trim() ? { adminNote: adminNote.trim() } : {}) });
-      toast.success(tNow('Order {id} approved — {amount} charged', { id: order!.orderId, amount: formatMoney(res.data.charged) }));
+      const approve = httpsCallable<{ orderId: string; adminNote?: string }, { charged: number }>(
+        functions,
+        'approveOrder',
+      );
+      const res = await approve({
+        orderId,
+        ...(adminNote.trim() ? { adminNote: adminNote.trim() } : {}),
+      });
+      toast.success(
+        tNow('Order {id} approved — {amount} charged', {
+          id: order!.orderId,
+          amount: formatMoney(res.data.charged),
+        }),
+      );
       onDone();
     } catch (err: unknown) {
       const msg = (err as { message?: string })?.message ?? 'Approve failed';
@@ -270,13 +312,16 @@ function AdminOrderActions({ orderId, onDone }: { orderId: string; onDone: () =>
   }
 
   async function handleReject() {
-    if (!reason.trim()) { toast.error(tNow('A reason is required')); return; }
+    if (!reason.trim()) {
+      toast.error(tNow('A reason is required'));
+      return;
+    }
     setSubmitting(true);
     try {
       await updateDoc(doc(db, 'orders', orderId), {
-        status:           'rejected',
-        rejectionReason:  reason.trim(),
-        updatedAt:        serverTimestamp(),
+        status: 'rejected',
+        rejectionReason: reason.trim(),
+        updatedAt: serverTimestamp(),
       });
       toast.success(tNow('Order {id} rejected', { id: order!.orderId }));
       onDone();
@@ -319,14 +364,18 @@ function AdminOrderActions({ orderId, onDone }: { orderId: string; onDone: () =>
           <CheckCircle2 size={13} /> {t('Approve & charge')}
         </p>
         <p className="nb-field-label">
-          {t('Checks every tea is in stock, then charges the customer\'s card. If something is out of stock, nothing is charged — reject instead.')}
+          {t(
+            "Checks every tea is in stock, then charges the customer's card. If something is out of stock, nothing is charged — reject instead.",
+          )}
         </p>
-        <label className="nb-field-label nb-field-label-mt" htmlFor="nb-admin-note">{t('Admin note (optional)')}</label>
+        <label className="nb-field-label nb-field-label-mt" htmlFor="nb-admin-note">
+          {t('Admin note (optional)')}
+        </label>
         <input
           id="nb-admin-note"
           type="text"
           value={adminNote}
-          onChange={e => setAdminNote(e.target.value)}
+          onChange={(e) => setAdminNote(e.target.value)}
           placeholder={t('Visible to the customer')}
           autoFocus
           disabled={submitting}
@@ -338,7 +387,12 @@ function AdminOrderActions({ orderId, onDone }: { orderId: string; onDone: () =>
           <strong className="nb-preview-value">{formatMoney(order.totalAmount)}</strong>
         </div>
         <div className="nb-action-row nb-action-row-mt">
-          <button type="button" onClick={() => setMode('idle')} disabled={submitting} className="nb-ghost-btn">
+          <button
+            type="button"
+            onClick={() => setMode('idle')}
+            disabled={submitting}
+            className="nb-ghost-btn"
+          >
             {t('Back')}
           </button>
           <button
@@ -362,11 +416,13 @@ function AdminOrderActions({ orderId, onDone }: { orderId: string; onDone: () =>
       <p className="nb-form-title">
         <XCircle size={13} /> {t('Reject order')}
       </p>
-      <label className="nb-field-label" htmlFor="nb-reject-reason">{t('Reason (shown to customer)')}</label>
+      <label className="nb-field-label" htmlFor="nb-reject-reason">
+        {t('Reason (shown to customer)')}
+      </label>
       <textarea
         id="nb-reject-reason"
         value={reason}
-        onChange={e => setReason(e.target.value)}
+        onChange={(e) => setReason(e.target.value)}
         placeholder={t('e.g. Out of stock — please reorder once back in stock.')}
         autoFocus
         disabled={submitting}
@@ -375,7 +431,12 @@ function AdminOrderActions({ orderId, onDone }: { orderId: string; onDone: () =>
         className="nb-field-input nb-field-textarea"
       />
       <div className="nb-action-row nb-action-row-mt">
-        <button type="button" onClick={() => setMode('idle')} disabled={submitting} className="nb-ghost-btn">
+        <button
+          type="button"
+          onClick={() => setMode('idle')}
+          disabled={submitting}
+          className="nb-ghost-btn"
+        >
           {t('Back')}
         </button>
         <button
@@ -384,7 +445,7 @@ function AdminOrderActions({ orderId, onDone }: { orderId: string; onDone: () =>
           disabled={submitting || !reason.trim()}
           className="nb-action-btn"
           data-tone="danger"
-          data-dim={(submitting || !reason.trim()) ? 'true' : 'false'}
+          data-dim={submitting || !reason.trim() ? 'true' : 'false'}
         >
           {submitting ? t('Rejecting…') : t('Confirm reject')}
         </button>
@@ -415,44 +476,68 @@ function NotifDetailModal({ n, onClose }: { n: Notification; onClose: () => void
 
   // Extract values once via the typed accessors. Per-call narrowing
   // means we don't need scattered casts further down.
-  const orderId        = dStr(d, 'orderId');
-  const customerName   = dStr(d, 'customerName');
-  const customerId     = dStr(d, 'customerId');
-  const customerEmail  = dStr(d, 'customerEmail');
-  const totalAmount    = dNum(d, 'totalAmount');
-  const shippingFee    = dNum(d, 'shippingFee');
+  const orderId = dStr(d, 'orderId');
+  const customerName = dStr(d, 'customerName');
+  const customerId = dStr(d, 'customerId');
+  const customerEmail = dStr(d, 'customerEmail');
+  const totalAmount = dNum(d, 'totalAmount');
+  const shippingFee = dNum(d, 'shippingFee');
   const trackingNumber = dStr(d, 'trackingNumber');
-  const carrier        = dStr(d, 'carrier');
-  const reason         = dStr(d, 'reason');
-  const adminNote      = dStr(d, 'adminNote');
-  const pointsEarned   = dNum(d, 'pointsEarned');
-  const pointsAdded    = dNum(d, 'pointsAdded');
-  const newBalance     = dNum(d, 'newBalance');
-  const joinDate       = dStr(d, 'joinDate');
+  const carrier = dStr(d, 'carrier');
+  const reason = dStr(d, 'reason');
+  const adminNote = dStr(d, 'adminNote');
+  const pointsEarned = dNum(d, 'pointsEarned');
+  const pointsAdded = dNum(d, 'pointsAdded');
+  const newBalance = dNum(d, 'newBalance');
+  const joinDate = dStr(d, 'joinDate');
   // Back-in-stock: in-app path to the tea. Only same-site paths.
-  const linkUrl        = n.type === 'customer_back_in_stock' || n.type === 'customer_promotion'
-    || n.type === 'customer_new_arrival' || n.type === 'customer_cart_reminder' ? dStr(d, 'url') : undefined;
-  const linkLabel      = n.type === 'customer_promotion' ? t('Shop now')
-    : n.type === 'customer_cart_reminder' ? t('View cart')
-    : n.type === 'customer_new_arrival' && dStr(d, 'url') === '/products' ? t('Shop new teas')
-    : t('View tea');
-  const navigate       = useNavigate();
+  const linkUrl =
+    n.type === 'customer_back_in_stock' ||
+    n.type === 'customer_promotion' ||
+    n.type === 'customer_new_arrival' ||
+    n.type === 'customer_cart_reminder' ||
+    n.type === 'customer_order_delivered'
+      ? dStr(d, 'url')
+      : undefined;
+  const linkLabel =
+    n.type === 'customer_order_delivered'
+      ? t('Rate your teas')
+      : n.type === 'customer_promotion'
+        ? t('Shop now')
+        : n.type === 'customer_cart_reminder'
+          ? t('View cart')
+          : n.type === 'customer_new_arrival' && dStr(d, 'url') === '/products'
+            ? t('Shop new teas')
+            : t('View tea');
+  const navigate = useNavigate();
 
   // Build the table rows that apply to this notification.
   const rows: { label: string; value: React.ReactNode; copyValue?: string }[] = [];
-  if (orderId)             rows.push({ label: 'Order ID', value: <code>{orderId}</code>, copyValue: orderId });
-  if (customerName)        rows.push({ label: 'Customer', value: `${customerName}${customerId ? ` (${customerId})` : ''}` });
-  if (customerEmail)       rows.push({ label: 'Email',    value: customerEmail, copyValue: customerEmail });
-  if (totalAmount != null) rows.push({ label: 'Total',         value: formatMoney(totalAmount) });
-  if (shippingFee)         rows.push({ label: 'Shipping fee',  value: formatMoney(shippingFee) });
-  if (trackingNumber)      rows.push({ label: 'Tracking',      value: <code>{trackingNumber}</code>, copyValue: trackingNumber });
-  if (carrier)             rows.push({ label: 'Carrier',       value: carrier });
-  if (reason)              rows.push({ label: 'Reason',        value: reason });
-  if (adminNote)           rows.push({ label: 'Note',          value: adminNote });
-  if (pointsEarned != null) rows.push({ label: 'Points earned', value: `+${pointsEarned.toLocaleString()} pts` });
-  if (pointsAdded  != null) rows.push({ label: 'Points added',  value: `+${pointsAdded.toLocaleString()} pts` });
-  if (newBalance   != null) rows.push({ label: 'New balance',   value: `${newBalance.toLocaleString()} pts` });
-  if (joinDate)            rows.push({ label: 'Joined',        value: joinDate });
+  if (orderId) rows.push({ label: 'Order ID', value: <code>{orderId}</code>, copyValue: orderId });
+  if (customerName)
+    rows.push({
+      label: 'Customer',
+      value: `${customerName}${customerId ? ` (${customerId})` : ''}`,
+    });
+  if (customerEmail) rows.push({ label: 'Email', value: customerEmail, copyValue: customerEmail });
+  if (totalAmount != null) rows.push({ label: 'Total', value: formatMoney(totalAmount) });
+  if (shippingFee) rows.push({ label: 'Shipping fee', value: formatMoney(shippingFee) });
+  if (trackingNumber)
+    rows.push({
+      label: 'Tracking',
+      value: <code>{trackingNumber}</code>,
+      copyValue: trackingNumber,
+    });
+  if (carrier) rows.push({ label: 'Carrier', value: carrier });
+  if (reason) rows.push({ label: 'Reason', value: reason });
+  if (adminNote) rows.push({ label: 'Note', value: adminNote });
+  if (pointsEarned != null)
+    rows.push({ label: 'Points earned', value: `+${pointsEarned.toLocaleString()} pts` });
+  if (pointsAdded != null)
+    rows.push({ label: 'Points added', value: `+${pointsAdded.toLocaleString()} pts` });
+  if (newBalance != null)
+    rows.push({ label: 'New balance', value: `${newBalance.toLocaleString()} pts` });
+  if (joinDate) rows.push({ label: 'Joined', value: joinDate });
 
   return (
     <Modal
@@ -464,9 +549,18 @@ function NotifDetailModal({ n, onClose }: { n: Notification; onClose: () => void
       darkHeader
       footer={
         <>
-          <ModalBtn variant="outline" onClick={onClose}>{t('Close')}</ModalBtn>
+          <ModalBtn variant="outline" onClick={onClose}>
+            {t('Close')}
+          </ModalBtn>
           {linkUrl?.startsWith('/') && (
-            <ModalBtn onClick={() => { onClose(); navigate(linkUrl); }}>{linkLabel}</ModalBtn>
+            <ModalBtn
+              onClick={() => {
+                onClose();
+                navigate(linkUrl);
+              }}
+            >
+              {linkLabel}
+            </ModalBtn>
           )}
         </>
       }
@@ -489,12 +583,7 @@ function NotifDetailModal({ n, onClose }: { n: Notification; onClose: () => void
       {rows.length > 0 && (
         <div className={`notif-detail-table${isAdminNotif ? ' is-admin' : ''}`}>
           {rows.map((r, i) => (
-            <DetailRow
-              key={r.label + i}
-              label={r.label}
-              value={r.value}
-              copyValue={r.copyValue}
-            />
+            <DetailRow key={r.label + i} label={r.label} value={r.value} copyValue={r.copyValue} />
           ))}
         </div>
       )}
@@ -507,8 +596,12 @@ function NotifDetailModal({ n, onClose }: { n: Notification; onClose: () => void
           <div className="notif-detail-table">
             {d.items.map((item, i) => (
               <div key={`${item.productName}-${i}`} className="notif-detail-row">
-                <span className="notif-detail-label">{item.productName} × {item.quantity}</span>
-                <span className="notif-detail-value">{formatMoney((Number(item.price) * Number(item.quantity)))}</span>
+                <span className="notif-detail-label">
+                  {item.productName} × {item.quantity}
+                </span>
+                <span className="notif-detail-value">
+                  {formatMoney(Number(item.price) * Number(item.quantity))}
+                </span>
               </div>
             ))}
           </div>
@@ -535,7 +628,9 @@ function NotifDetailModal({ n, onClose }: { n: Notification; onClose: () => void
         <div className="notif-admin-hint">
           <Shield size={11} />
           {n.type === 'admin_payment_issue'
-            ? t('Open the Clover dashboard and release the hold or refund the charge for this order.')
+            ? t(
+                'Open the Clover dashboard and release the hold or refund the charge for this order.',
+              )
             : t('Open the Orders dashboard to handle this event.')}
         </div>
       )}
@@ -550,54 +645,68 @@ export function NotificationBell() {
   const t = useT();
   const { currentUser } = useAuth();
   const {
-    notifications, unreadCount, loading,
-    markAsRead, markAsUnread, markAllAsRead,
-    deleteOne, clearAllRead,
+    notifications,
+    unreadCount,
+    loading,
+    markAsRead,
+    markAsUnread,
+    markAllAsRead,
+    deleteOne,
+    clearAllRead,
   } = useNotifications();
 
-  const [open, setOpen]               = useState(false);
-  const [selected, setSelected]       = useState<Notification | null>(null);
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<Notification | null>(null);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
-  const [now, setNow]                 = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
-  const bellRef       = useRef<HTMLButtonElement | null>(null);
-  const closeBtnRef   = useRef<HTMLButtonElement | null>(null);
+  const bellRef = useRef<HTMLButtonElement | null>(null);
+  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
   const liveRegionRef = useRef<HTMLDivElement | null>(null);
 
-  const handleDelete = useCallback(async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setDeletingIds(prev => new Set(prev).add(id));
-    try {
-      await deleteOne(id);
-    } catch (err) {
-      console.warn('[NotificationBell] delete failed:', err);
-      setDeletingIds(prev => {
-        const s = new Set(prev);
-        s.delete(id);
-        return s;
-      });
-    }
-  }, [deleteOne]);
+  const handleDelete = useCallback(
+    async (id: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      setDeletingIds((prev) => new Set(prev).add(id));
+      try {
+        await deleteOne(id);
+      } catch (err) {
+        console.warn('[NotificationBell] delete failed:', err);
+        setDeletingIds((prev) => {
+          const s = new Set(prev);
+          s.delete(id);
+          return s;
+        });
+      }
+    },
+    [deleteOne],
+  );
 
-  const handleOpenDetail = useCallback((n: Notification) => {
-    setSelected(n);
-    if (!n.isRead) markAsRead(n.id);
-    setOpen(false);
-  }, [markAsRead]);
+  const handleOpenDetail = useCallback(
+    (n: Notification) => {
+      setSelected(n);
+      if (!n.isRead) markAsRead(n.id);
+      setOpen(false);
+    },
+    [markAsRead],
+  );
 
   const visible = useMemo(
-    () => notifications.filter(n => !deletingIds.has(n.id)),
+    () => notifications.filter((n) => !deletingIds.has(n.id)),
     [notifications, deletingIds],
   );
 
   const grouped = useMemo(() => {
     const buckets: Record<NotificationGroupKey, Notification[]> = {
-      today: [], yesterday: [], 'this-week': [], older: [],
+      today: [],
+      yesterday: [],
+      'this-week': [],
+      older: [],
     };
     for (const n of visible) buckets[groupKeyFor(n.createdAt, now)].push(n);
     return (Object.keys(buckets) as NotificationGroupKey[])
-      .filter(k => buckets[k].length > 0)
-      .map(k => ({ key: k, label: t(NOTIFICATION_GROUP_LABEL[k]), items: buckets[k] }));
+      .filter((k) => buckets[k].length > 0)
+      .map((k) => ({ key: k, label: t(NOTIFICATION_GROUP_LABEL[k]), items: buckets[k] }));
   }, [visible, now]);
 
   // Independent tick to keep relative timestamps fresh even when the
@@ -618,10 +727,12 @@ export function NotificationBell() {
     // effect cleanup.
     const bellNode = bellRef.current;
     const release = lockBodyScroll();
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
     window.addEventListener('keydown', onKey);
     const focusTimer = setTimeout(() => closeBtnRef.current?.focus(), 280);
-    const tickTimer  = window.setInterval(() => setNow(Date.now()), 30_000);
+    const tickTimer = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => {
       release();
       window.removeEventListener('keydown', onKey);
@@ -666,7 +777,7 @@ export function NotificationBell() {
 
   if (!currentUser) return null;
 
-  const readCount = visible.filter(n => n.isRead).length;
+  const readCount = visible.filter((n) => n.isRead).length;
 
   return (
     <>
@@ -682,14 +793,25 @@ export function NotificationBell() {
         ref={bellRef}
         type="button"
         className="nav-icon notif-bell-btn"
-        onClick={() => setOpen(v => !v)}
-        aria-label={unreadCount > 0 ? t('Notifications ({count} unread)', { count: unreadCount }) : t('Notifications')}
+        onClick={() => setOpen((v) => !v)}
+        aria-label={
+          unreadCount > 0
+            ? t('Notifications ({count} unread)', { count: unreadCount })
+            : t('Notifications')
+        }
         aria-expanded={open}
         aria-haspopup="dialog"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
         {unreadCount > 0 && (
           <span className="nav-badge" aria-hidden="true">
@@ -698,108 +820,115 @@ export function NotificationBell() {
         )}
       </button>
 
-      {open && createPortal(
-        <>
-          <div className="notif-overlay" onClick={() => setOpen(false)} aria-hidden="true" />
-          <aside
-            className="notif-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-label={t('Notifications panel')}
-          >
-            <header className="notif-panel-head">
-              <div>
-                <h2 className="notif-panel-title">{t('Notifications')}</h2>
-                {unreadCount > 0 && (
-                  <p className="notif-panel-sub">{t('{count} unread', { count: unreadCount })}</p>
-                )}
-              </div>
-              <div className="notif-panel-actions">
-                {unreadCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={markAllAsRead}
-                    className="notif-head-btn"
-                    title={t('Mark every unread item as read')}
-                  >
-                    <CheckCheck size={13} /> {t('All read')}
-                  </button>
-                )}
-                {readCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={clearAllRead}
-                    className="notif-head-btn"
-                    title={t('Delete every read notification')}
-                  >
-                    <Trash size={13} /> {t('Clear read')}
-                  </button>
-                )}
-                <button
-                  ref={closeBtnRef}
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  className="notif-head-close"
-                  aria-label={t('Close notifications panel')}
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            </header>
-
-            <div
-              className="notif-panel-body"
-              aria-live="polite"
-              aria-relevant="additions"
-              aria-atomic="false"
+      {open &&
+        createPortal(
+          <>
+            <div className="notif-overlay" onClick={() => setOpen(false)} aria-hidden="true" />
+            <aside
+              className="notif-panel"
+              role="dialog"
+              aria-modal="true"
+              aria-label={t('Notifications panel')}
             >
-              {loading ? (
-                <NotifEmptyState
-                  icon={<Bell size={28} />}
-                  title={t('Loading…')}
-                  hint={t('Fetching your notifications')}
-                />
-              ) : visible.length === 0 ? (
-                <NotifEmptyState
-                  icon={<Bell size={32} />}
-                  title={t('No notifications')}
-                  hint={t('You\'re all caught up 🎉')}
-                />
-              ) : (
-                <>
-                  {grouped.map(group => (
-                    <section key={group.key} className="notif-group">
-                      <h3 className="notif-group-title">{group.label}</h3>
-                      <ul className="notif-list">
-                        {group.items.map(n => (
-                          <NotifItem
-                            key={n.id}
-                            n={n}
-                            now={now}
-                            onMarkRead={() => markAsRead(n.id)}
-                            onMarkUnread={() => markAsUnread(n.id)}
-                            onView={() => handleOpenDetail(n)}
-                            onDelete={(e) => handleDelete(n.id, e)}
-                          />
-                        ))}
-                      </ul>
-                    </section>
-                  ))}
-                </>
-              )}
-            </div>
-          </aside>
-        </>,
-        document.body
-      )}
+              <header className="notif-panel-head">
+                <div>
+                  <h2 className="notif-panel-title">{t('Notifications')}</h2>
+                  {unreadCount > 0 && (
+                    <p className="notif-panel-sub">{t('{count} unread', { count: unreadCount })}</p>
+                  )}
+                </div>
+                <div className="notif-panel-actions">
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={markAllAsRead}
+                      className="notif-head-btn"
+                      title={t('Mark every unread item as read')}
+                    >
+                      <CheckCheck size={13} /> {t('All read')}
+                    </button>
+                  )}
+                  {readCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={clearAllRead}
+                      className="notif-head-btn"
+                      title={t('Delete every read notification')}
+                    >
+                      <Trash size={13} /> {t('Clear read')}
+                    </button>
+                  )}
+                  <button
+                    ref={closeBtnRef}
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    className="notif-head-close"
+                    aria-label={t('Close notifications panel')}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </header>
+
+              <div
+                className="notif-panel-body"
+                aria-live="polite"
+                aria-relevant="additions"
+                aria-atomic="false"
+              >
+                {loading ? (
+                  <NotifEmptyState
+                    icon={<Bell size={28} />}
+                    title={t('Loading…')}
+                    hint={t('Fetching your notifications')}
+                  />
+                ) : visible.length === 0 ? (
+                  <NotifEmptyState
+                    icon={<Bell size={32} />}
+                    title={t('No notifications')}
+                    hint={t("You're all caught up 🎉")}
+                  />
+                ) : (
+                  <>
+                    {grouped.map((group) => (
+                      <section key={group.key} className="notif-group">
+                        <h3 className="notif-group-title">{group.label}</h3>
+                        <ul className="notif-list">
+                          {group.items.map((n) => (
+                            <NotifItem
+                              key={n.id}
+                              n={n}
+                              now={now}
+                              onMarkRead={() => markAsRead(n.id)}
+                              onMarkUnread={() => markAsUnread(n.id)}
+                              onView={() => handleOpenDetail(n)}
+                              onDelete={(e) => handleDelete(n.id, e)}
+                            />
+                          ))}
+                        </ul>
+                      </section>
+                    ))}
+                  </>
+                )}
+              </div>
+            </aside>
+          </>,
+          document.body,
+        )}
 
       {selected && <NotifDetailModal n={selected} onClose={() => setSelected(null)} />}
     </>
   );
 }
 
-function NotifEmptyState({ icon, title, hint }: {
-  icon: React.ReactNode; title: string; hint: string;
+function NotifEmptyState({
+  icon,
+  title,
+  hint,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  hint: string;
 }) {
   return (
     <div className="notif-empty">
@@ -810,7 +939,14 @@ function NotifEmptyState({ icon, title, hint }: {
   );
 }
 
-function NotifItem({ n, now, onMarkRead, onMarkUnread, onView, onDelete }: {
+function NotifItem({
+  n,
+  now,
+  onMarkRead,
+  onMarkUnread,
+  onView,
+  onDelete,
+}: {
   n: Notification;
   now: number;
   onMarkRead: () => void;
@@ -820,14 +956,16 @@ function NotifItem({ n, now, onMarkRead, onMarkUnread, onView, onDelete }: {
 }) {
   const t = useT();
   const lang = useLang();
-  const emoji      = NOTIFICATION_META[n.type]?.emoji ?? '🔔';
+  const emoji = NOTIFICATION_META[n.type]?.emoji ?? '🔔';
   const isAdminBit = ADMIN_TYPES.has(n.type);
   const { title, body } = useNotificationText(n);
 
   return (
     <li className={`notif-item${n.isRead ? '' : ' is-unread'}${isAdminBit ? ' is-admin' : ''}`}>
       <div className="notif-item-row">
-        <span className="notif-item-emoji" aria-hidden="true">{emoji}</span>
+        <span className="notif-item-emoji" aria-hidden="true">
+          {emoji}
+        </span>
         <div className="notif-item-main">
           <div className="notif-item-title-row">
             <p className="notif-item-title">{title}</p>
@@ -863,11 +1001,7 @@ function NotifItem({ n, now, onMarkRead, onMarkUnread, onView, onDelete }: {
             <Check size={11} /> {t('Mark read')}
           </button>
         )}
-        <button
-          type="button"
-          onClick={onView}
-          className="notif-action notif-action-view"
-        >
+        <button type="button" onClick={onView} className="notif-action notif-action-view">
           <Eye size={11} /> {t('View')}
         </button>
         <button

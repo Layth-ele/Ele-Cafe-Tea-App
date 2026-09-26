@@ -2604,3 +2604,20 @@
   }
 }
 
+
+/* Orders: "Rate" link beside each tea of a delivered order */
+.orders-item-right { display: inline-flex; align-items: center; gap: 12px; }
+.orders-rate-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--gold-deep);
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--gold-text);
+  text-decoration: none;
+}
+.orders-rate-link:hover { background: var(--gold-soft); }
