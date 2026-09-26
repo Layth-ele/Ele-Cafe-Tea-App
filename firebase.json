@@ -55,6 +55,10 @@
         "function": "recordRum"
       },
       {
+        "source": "/api/unsubscribe",
+        "function": "unsubscribe"
+      },
+      {
         "_comment": "Phase 0.4 \u2014 Playwright auth fixture mint. The function checks ALLOW_TEST_LOGIN env and a UID whitelist; production builds with no env set will return 403. Safe to leave wired here.",
         "source": "/api/test-login",
         "function": "testLogin"

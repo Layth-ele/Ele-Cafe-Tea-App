@@ -40,6 +40,7 @@ import {
   type InventorySessionClaims,
 } from './lib/inventoryAccount';
 import { buildBackInStockEmail } from './lib/backInStockEmail';
+import { unsubscribeHeaders, unsubscribeToken, unsubscribeUrl } from './unsubscribe';
 import { emailBrandFrom, emailLang, type EmailBrand, type EmailLang } from './lib/emailLayout';
 import { sendPushToUser } from './lib/push';
 
@@ -376,6 +377,7 @@ async function sendEmail(opts: {
   text?: string;
   from?: string;
   replyTo?: string;
+  headers?: Record<string, string>;
 }): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -400,6 +402,7 @@ async function sendEmail(opts: {
         html: opts.html,
         ...(opts.text ? { text: opts.text } : {}),
         ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
+        ...(opts.headers ? { headers: opts.headers } : {}),
       }),
     });
   } catch (err) {
@@ -513,6 +516,10 @@ async function notifyBackInStock(teaId: string, eventId: string): Promise<void> 
       const email = await getUserEmail(uid);
       if (email) {
         const lang = await getUserLang(uid);
+        const unsubUrl = unsubscribeUrl(
+          await unsubscribeToken(uid, (await db().doc(`users/${uid}`).get()).get('unsubToken')),
+          'lowStock',
+        );
         const msg = buildBackInStockEmail({
           brand: store,
           teaName: (lang === 'fr' && tea.nameFr?.trim()) || teaName,
@@ -521,8 +528,9 @@ async function notifyBackInStock(teaId: string, eventId: string): Promise<void> 
           teaImage: tea.image ?? '',
           price: typeof tea.price === 'number' ? tea.price : 0,
           explicitRequest,
+          unsubUrl,
         });
-        emailOk = await sendEmail({ to: email, ...msg });
+        emailOk = await sendEmail({ to: email, ...msg, headers: unsubscribeHeaders(unsubUrl) });
       } else {
         console.warn(`[notifyBackInStock] no email for uid=${uid} — bell/push only`);
       }

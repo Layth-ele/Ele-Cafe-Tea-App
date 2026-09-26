@@ -37,7 +37,9 @@ export function firestore() {
     // Cloud Functions instance (Google's recommended setting). We don't
     // use server-side realtime listeners, which are the only gRPC-only
     // feature.
-    db.settings({ preferRest: true });
+    // Not under the emulator: with preferRest the client ignores
+    // FIRESTORE_EMULATOR_HOST and would talk to production.
+    if (!process.env.FIRESTORE_EMULATOR_HOST) db.settings({ preferRest: true });
   }
   return db;
 }

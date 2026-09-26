@@ -19,6 +19,7 @@ import * as admin from './lib/admin';
 import { userAcceptsCategory, type NotificationCategory } from './lib/notificationPrefs';
 import { sendPushToUser } from './lib/push';
 import { isInventoryEmail } from './lib/inventoryAccount';
+import { unsubscribeHeaders, unsubscribeToken, unsubscribeUrl } from './unsubscribe';
 import { translateBatchToFrench } from './translate';
 import {
   renderEmail,
@@ -50,6 +51,8 @@ interface Recipient {
   email: string;
   lang: EmailLang;
   firstName: string;
+  /** Personal one-click unsubscribe link for this email's category. */
+  unsubUrl: string;
 }
 
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
@@ -80,17 +83,22 @@ async function toRecipient(
   const email = str(d?.email);
   if (!email || isInventoryEmail(email)) return null;
   if (!(await userAcceptsCategory(uid, category))) return null;
+  const token = await unsubscribeToken(uid, d?.unsubToken);
   return {
     uid,
     email,
     lang: emailLang(d?.lang),
     firstName: str(d?.displayName).split(' ')[0] ?? '',
+    unsubUrl: unsubscribeUrl(token, category),
   };
 }
 
 /** Every customer who hasn't turned `category` off. */
 async function recipientsFor(category: NotificationCategory): Promise<Recipient[]> {
-  const snap = await db().collection('users').select('email', 'lang', 'displayName').get();
+  const snap = await db()
+    .collection('users')
+    .select('email', 'lang', 'displayName', 'unsubToken')
+    .get();
   const out: Recipient[] = [];
   for (let i = 0; i < snap.docs.length; i += 50) {
     const chunk = await Promise.all(
@@ -105,6 +113,8 @@ interface Outgoing {
   to: string;
   subject: string;
   html: string;
+  /** One-click unsubscribe URL (List-Unsubscribe headers). */
+  unsub?: string;
 }
 
 /** Resend batch API (100 per request, ~2 requests/s). Returns how many were accepted. */
@@ -127,7 +137,9 @@ async function sendBatch(
           subject: m.subject,
           html: m.html,
           ...(replyTo ? { reply_to: replyTo } : {}),
-          headers: { 'List-Unsubscribe': `<${SITE}/account>` },
+          headers: m.unsub
+            ? unsubscribeHeaders(m.unsub)
+            : { 'List-Unsubscribe': `<${SITE}/account>` },
         })),
       ),
     }).catch((err: unknown) => err as Error);
@@ -180,10 +192,14 @@ async function bellAndPush(
   }
 }
 
-const manageNote = (lang: EmailLang, why: string) =>
+const manageNote = (lang: EmailLang, why: string, unsubUrl?: string) =>
   note(
     L(lang, 'Why you got this', 'Pourquoi ce courriel'),
-    `${esc(why)} <a href="${SITE}/account" style="color:#b8924a;text-decoration:none;">${L(lang, 'Manage email preferences', 'Gérer mes préférences de courriel')}</a>`,
+    `${esc(why)} <a href="${SITE}/account" style="color:#b8924a;text-decoration:none;">${L(lang, 'Manage email preferences', 'Gérer mes préférences de courriel')}</a>${
+      unsubUrl
+        ? ` · <a href="${esc(`${unsubUrl}${lang === 'fr' ? '&l=fr' : ''}`)}" style="color:#b8924a;text-decoration:none;">${L(lang, 'Unsubscribe', 'Se désabonner')}</a>`
+        : ''
+    }`,
   );
 
 // ── Promotions ──────────────────────────────────────────────────────────────
@@ -244,6 +260,7 @@ function promoEmail(d: Promo, r: Recipient, b: EmailBrand): Outgoing {
   const desc = (lang === 'fr' && str(d.descriptionFr)) || str(d.description);
   return {
     to: r.email,
+    unsub: r.unsubUrl,
     subject: T(
       `${offer} with code ${codeTxt} | ${b.name}`,
       `${offer} avec le code ${codeTxt} | ${b.name}`,
@@ -275,6 +292,7 @@ function promoEmail(d: Promo, r: Recipient, b: EmailBrand): Outgoing {
             'You get Ele Café offers because Promotions is on in your account.',
             'Vous recevez les offres Ele Café, car les promotions sont activées dans votre compte.',
           ),
+          r.unsubUrl,
         ),
       ],
     }),
@@ -456,6 +474,7 @@ async function sendNewArrivals(): Promise<void> {
     const one = teas.length === 1;
     return {
       to: r.email,
+      unsub: r.unsubUrl,
       subject: one
         ? T(`New at ${b.name}: ${first}`, `Nouveau chez ${b.name} : ${first}`)
         : T(`${teas.length} new teas at ${b.name}`, `${teas.length} nouveaux thés chez ${b.name}`),
@@ -499,6 +518,7 @@ async function sendNewArrivals(): Promise<void> {
               'You get new-tea alerts because New arrivals is on in your account.',
               'Vous recevez les alertes de nouveautés, car « Nouveautés » est activé dans votre compte.',
             ),
+            r.unsubUrl,
           ),
         ],
       }),
@@ -555,6 +575,146 @@ async function sendNewArrivals(): Promise<void> {
 
 // ── Cart reminders ──────────────────────────────────────────────────────────
 
+// ── Refill reminders ────────────────────────────────────────────────────────
+//
+// ~30 days after an order is delivered (or picked up), a "Time for a
+// refill?" email with the teas they bought (those still in stock), a
+// Reorder button and two teas from the same categories. Once per order
+// (refillReminders/{orderId}); skipped if they have ordered again since,
+// or turned Cart reminders off.
+
+type RefillTea = Tea & { id: string; available?: boolean };
+
+const REFILL_MIN_DAYS = 30;
+const REFILL_MAX_DAYS = 45;
+
+async function sendRefillReminders(): Promise<void> {
+  const now = Date.now();
+  const delivered = await db().collection('orders').where('status', '==', 'delivered').get();
+  const due = delivered.docs.filter((o) => {
+    const at = millis(o.get('updatedAt'));
+    const days = (now - at) / 86_400_000;
+    return (
+      Number.isFinite(at) &&
+      days >= REFILL_MIN_DAYS &&
+      days <= REFILL_MAX_DAYS &&
+      typeof o.get('userId') === 'string'
+    );
+  });
+  if (!due.length) return;
+
+  const b = await brand();
+  const allTeas = (await db().collection('teas').get()).docs
+    .map((d): RefillTea => ({
+      ...(d.data() as Tea),
+      id: d.id,
+      available: d.get('available') as boolean | undefined,
+    }))
+    .filter((t) => t.isActive !== false && t.available !== false && t.slug && t.category);
+  const byId = new Map(
+    allTeas.flatMap(
+      (t) =>
+        [
+          [t.id, t],
+          [t.slug as string, t],
+        ] as const,
+    ),
+  );
+  const mails: Outgoing[] = [];
+
+  for (const o of due) {
+    const logRef = db().doc(`refillReminders/${o.id}`);
+    if ((await logRef.get()).exists) continue;
+    const uid = o.get('userId') as string;
+    const deliveredAt = millis(o.get('updatedAt'));
+    // Already ordered again since this delivery → no nudge needed.
+    const later = await db().collection('orders').where('userId', '==', uid).get();
+    if (later.docs.some((x) => x.id !== o.id && millis(x.get('createdAt')) > deliveredAt)) {
+      await logRef.set({ skipped: 'reordered', at: now });
+      continue;
+    }
+    const r = await toRecipient(uid, (await db().doc(`users/${uid}`).get()).data(), 'reminders');
+    if (!r) {
+      await logRef.set({ skipped: 'opted-out-or-no-email', at: now });
+      continue;
+    }
+
+    const bought = [
+      ...new Set(((o.get('items') as { productId?: string }[]) ?? []).map((i) => i.productId)),
+    ]
+      .map((id) => (id ? byId.get(id) : undefined))
+      .filter((t): t is RefillTea => !!t)
+      .slice(0, 4);
+    if (!bought.length) {
+      await logRef.set({ skipped: 'nothing-in-stock', at: now });
+      continue;
+    }
+    const cats = new Set(bought.map((t) => t.category));
+    const boughtIds = new Set(bought.map((t) => t.id));
+    const suggest = allTeas.filter((t) => cats.has(t.category) && !boughtIds.has(t.id)).slice(0, 2);
+
+    const lang = r.lang;
+    const T = (en: string, fr: string) => L(lang, en, fr);
+    const nameOf = (t: Tea) => (lang === 'fr' && str(t.nameFr)) || str(t.name) || str(t.slug);
+    const line = (t: RefillTea) =>
+      `<a href="${SITE}${teaPath(t)}" style="color:#0f1c26;font-weight:600;text-decoration:none;">${esc(nameOf(t))}</a>${typeof t.price === 'number' && t.price > 0 ? ` · ${T(`$${t.price}`, `${t.price} $`)}` : ''}`;
+
+    mails.push({
+      to: r.email,
+      unsub: r.unsubUrl,
+      subject:
+        bought.length === 1
+          ? T(
+              `Running low on ${nameOf(bought[0])}? | ${b.name}`,
+              `Bientôt à court de ${nameOf(bought[0])}? | ${b.name}`,
+            )
+          : T(
+              `Time for a tea refill? | ${b.name}`,
+              `Le temps de refaire vos réserves de thé? | ${b.name}`,
+            ),
+      html: renderEmail({
+        brand: b,
+        lang,
+        preheader: T(
+          'Your favourites are in stock and ready to ship or pick up.',
+          'Vos favoris sont en stock, prêts à expédier ou à ramasser.',
+        ),
+        eyebrow: T('Time for a refill', 'Réapprovisionnement'),
+        title: T('Running low on your tea?', 'Bientôt à court de thé?'),
+        body: [
+          p(
+            T(
+              `${r.firstName ? `Hi ${esc(r.firstName)}, ` : ''}it’s been about a month since your last order. If your tins are getting light, your favourites are in stock:`,
+              `${r.firstName ? `Bonjour ${esc(r.firstName)}, ` : ''}cela fait environ un mois depuis votre dernière commande. Si vos boîtes s’allègent, vos favoris sont en stock :`,
+            ),
+          ),
+          p(bought.map(line).join('<br/>')),
+          button(T('Reorder in one tap', 'Recommander en un clic'), `${SITE}/orders`),
+          suggest.length
+            ? p(
+                `${strong(T('You might also like', 'Vous aimerez aussi'))}<br/>${suggest.map(line).join('<br/>')}`,
+              )
+            : '',
+          manageNote(
+            lang,
+            T(
+              'You get refill reminders because Cart reminders is on in your account.',
+              'Vous recevez ces rappels, car « Rappels de panier » est activé dans votre compte.',
+            ),
+            r.unsubUrl,
+          ),
+        ],
+      }),
+    });
+    await logRef.set({ sentAt: now, uid });
+  }
+  if (!mails.length) return;
+  const result = await sendBatch(mails, b.email);
+  console.log(
+    `[refillReminders] ${result.sent}/${mails.length} emails${result.error ? ` (error: ${result.error})` : ''}`,
+  );
+}
+
 type CartItem = { name?: string; nameFr?: string; quantity?: number; price?: number };
 
 async function sendCartReminders(): Promise<void> {
@@ -587,6 +747,7 @@ async function sendCartReminders(): Promise<void> {
     const T = (en: string, fr: string) => L(lang, en, fr);
     return {
       to: r.email,
+      unsub: r.unsubUrl,
       subject: T(`Your cart is waiting | ${b.name}`, `Votre panier vous attend | ${b.name}`),
       html: renderEmail({
         brand: b,
@@ -620,6 +781,7 @@ async function sendCartReminders(): Promise<void> {
               'You get cart reminders because Cart reminders is on in your account.',
               'Vous recevez ces rappels, car « Rappels de panier » est activé dans votre compte.',
             ),
+            r.unsubUrl,
           ),
         ],
       }),
@@ -691,6 +853,11 @@ export const marketingTick = functions.scheduler.onSchedule(
       await sendCartReminders();
     } catch (err) {
       console.error('[marketingTick] cart reminders failed:', err);
+    }
+    try {
+      await sendRefillReminders();
+    } catch (err) {
+      console.error('[marketingTick] refill reminders failed:', err);
     }
   },
 );

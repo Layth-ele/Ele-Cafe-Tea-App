@@ -7196,6 +7196,9 @@ export { teaImageVariants, pairingImageVariants, imageVariantsSweep } from './im
 // "Verified purchase" on tea reviews (see reviews.ts).
 export { onReviewWrite } from './reviews';
 
+// One-click unsubscribe for marketing email (see unsubscribe.ts).
+export { unsubscribe } from './unsubscribe';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // backfillTeaWeights — Admin callable for one-shot migration
 // ─────────────────────────────────────────────────────────────────────────────
