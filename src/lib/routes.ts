@@ -20,6 +20,7 @@ export const ROUTES = {
   PAIRINGS: '/pairings',
   CAFE: '/cafe',
   REWARDS: '/rewards',
+  FRANCHISE: '/franchise',
   PAIRING: (slug: string) => `/pairings/${encodeURIComponent(slug)}`,
   COLLECTION: (slug: string) => `/collections/${encodeURIComponent(slug)}`,
   CART: '/cart',

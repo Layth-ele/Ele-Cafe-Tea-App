@@ -48,6 +48,10 @@ import {
 import {
   REWARDS_TITLE, REWARDS_DESCRIPTION, REWARDS_EARN, REWARDS_REDEEM, REWARDS_URL, buildRewardsFaq, rewardsIntro,
 } from './lib/rewards';
+import {
+  FRANCHISE_TITLE, FRANCHISE_DESCRIPTION, FRANCHISE_CONCEPT, FRANCHISE_PARTNER, FRANCHISE_EMAIL_FALLBACK,
+  franchiseIntro, franchiseMailto,
+} from './lib/franchise';
 import { CAFE_TITLE, CAFE_DESCRIPTION, CAFE_MENU, cafeIntro, buildCafeFaq, cafeMenuLd, type CafeCombo } from './lib/cafeMenu';
 import {
   renderEmail, emailBrandFrom, esc, p, strong, code, button, infoBox, itemsTable, totalsTable, addressBox,
@@ -3656,6 +3660,7 @@ const STATIC_SITEMAP_URLS: Array<{ loc: string; priority: string; changefreq: st
   { loc: '/products',        priority: '0.9', changefreq: 'daily'   },
   { loc: '/cafe',            priority: '0.9', changefreq: 'weekly'  },
   { loc: '/rewards',         priority: '0.7', changefreq: 'monthly' },
+  { loc: '/franchise',       priority: '0.5', changefreq: 'monthly' },
   { loc: '/gifts',           priority: '0.7', changefreq: 'weekly'  },
   { loc: '/about',           priority: '0.5', changefreq: 'monthly' },
   { loc: '/contact',         priority: '0.5', changefreq: 'monthly' },
@@ -4749,6 +4754,55 @@ async function fetchActiveTeaSummaries(): Promise<TeaSummary[]> {
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// ── /franchise: franchise inquiries (lib/franchise.ts) ─────────────────────
+
+function patchHeadForFranchise(template: string): string {
+  const url = `${SEO_SITE_BASE}/franchise`;
+  const email = SEO_STORE.email || FRANCHISE_EMAIL_FALLBACK;
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type':    'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home',      item: SEO_SITE_BASE },
+      { '@type': 'ListItem', position: 2, name: 'Franchise', item: url },
+    ],
+  };
+  const html = patchTemplateHead(template, {
+    title:       FRANCHISE_TITLE,
+    description: seoClamp(FRANCHISE_DESCRIPTION),
+    canonical:   url,
+    ogType:      'website',
+    ogImage:     SEO_DEFAULT_OG,
+    extraOgMeta: [],
+    extraJsonLd: [breadcrumbLd],
+  });
+  return replaceNoscript(html, `
+    <noscript>
+      <article class="seo-fallback">
+        <header>
+          <p>Franchise opportunities</p>
+          <h1>Open an Ele Café in your city</h1>
+          <p>${seoEscHtml(franchiseIntro())}</p>
+          <p><a href="${seoEscHtml(franchiseMailto(email))}">Email us about franchising</a> (${seoEscHtml(email)})</p>
+        </header>
+        <section>
+          <h2>The concept</h2>
+          <ul>
+          ${FRANCHISE_CONCEPT.map((p) => `<li><strong>${seoEscHtml(p.title)}</strong> — ${seoEscHtml(p.text)}</li>`).join('\n          ')}
+          </ul>
+        </section>
+        <section>
+          <h2>Who we're looking for</h2>
+          <ul>
+          ${FRANCHISE_PARTNER.map((p) => `<li>${seoEscHtml(p.en)}</li>`).join('\n          ')}
+          </ul>
+        </section>
+        <p><a href="${SEO_SITE_BASE}/cafe">Café menu</a> · <a href="${SEO_SITE_BASE}/about">About Ele Café</a></p>
+        ${seoContactHtml(SEO_STORE)}
+      </article>
+    </noscript>`);
+}
+
 // ── /rewards: Ele Rewards loyalty program (lib/rewards.ts) ─────────────────
 
 function patchHeadForRewards(template: string): string {
@@ -5097,6 +5151,15 @@ export const renderSeo = functions.https.onRequest(
       res.set('Content-Type', 'text/html; charset=utf-8');
       res.set('Cache-Control', 'public, max-age=0, s-maxage=60');
       res.status(200).send(template);
+      return;
+    }
+
+    // /franchise — franchise inquiries.
+    if (reqPath === '/franchise' || reqPath === '/franchise/') {
+      const html = patchHeadForFranchise(template);
+      res.set('Content-Type', 'text/html; charset=utf-8');
+      res.set('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
+      res.status(200).send(html);
       return;
     }
 

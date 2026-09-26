@@ -1170,3 +1170,6 @@ body:has(.cd-panel[data-open='true']) [data-sonner-toaster][data-y-position='top
 .rw-title { font-size: var(--text-ui); font-weight: 600; color: var(--midnight); }
 .rw-detail { font-size: var(--text-sm); color: var(--muted); }
 .rw-card-foot { margin: var(--sp-4) 0 0; text-align: center; }
+/* /franchise reuses the rewards cards (.rw-*) */
+.fr-partner-text { color: var(--text); font-size: var(--text-ui); line-height: 1.5; }
+.fr-next-h { display: block; margin: var(--sp-5) 0 var(--sp-2); font-family: var(--font-sans); font-size: var(--text-ui); font-weight: 600; }

@@ -267,6 +267,7 @@ export function Footer() {
               <TransitionLink key={to} to={to} className="footer-link">{t(label)}</TransitionLink>
             ))}
             <TransitionLink to={ROUTES.REWARDS} className="footer-link">{t('Ele Rewards')}</TransitionLink>
+            <TransitionLink to={ROUTES.FRANCHISE} className="footer-link">{t('Franchise')}</TransitionLink>
           </div>
         </div>
 

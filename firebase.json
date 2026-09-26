@@ -84,6 +84,10 @@
         "function": "renderSeo"
       },
       {
+        "source": "/franchise",
+        "function": "renderSeo"
+      },
+      {
         "source": "/pairings/*",
         "function": "renderSeo"
       },
