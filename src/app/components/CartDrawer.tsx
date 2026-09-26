@@ -129,7 +129,9 @@ export function CartDrawer() {
 
   // Close on Escape
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [close]);
@@ -142,8 +144,8 @@ export function CartDrawer() {
   // admin-set "always free" doesn't silently fall back to the default.
   const FREE_THRESHOLD = settings?.freeShippingThreshold ?? 100;
   const alwaysFree = FREE_THRESHOLD <= 0;
-  const remaining  = alwaysFree ? 0 : Math.max(0, FREE_THRESHOLD - totalPrice);
-  const progress   = alwaysFree ? 100 : Math.min(100, (totalPrice / FREE_THRESHOLD) * 100);
+  const remaining = alwaysFree ? 0 : Math.max(0, FREE_THRESHOLD - totalPrice);
+  const progress = alwaysFree ? 100 : Math.min(100, (totalPrice / FREE_THRESHOLD) * 100);
 
   // GST + grand total — memoised so we don't run the reduce on every
   // unrelated state update (drawer open/close, scroll, body-lock
@@ -195,18 +197,20 @@ export function CartDrawer() {
         <div className="cd-header">
           <div className="cd-header-title-row">
             <span className="cd-header-title">{t('My Cart')}</span>
-            {totalItems > 0 && (
-              <span className="cd-header-count">({totalItems})</span>
-            )}
+            {totalItems > 0 && <span className="cd-header-count">({totalItems})</span>}
           </div>
 
-          <button
-            onClick={close}
-            aria-label={t('Close cart')}
-            className="cd-close-btn"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M18 6L6 18M6 6l12 12"/>
+          <button onClick={close} aria-label={t('Close cart')} className="cd-close-btn">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
         </div>
@@ -215,10 +219,13 @@ export function CartDrawer() {
         {totalItems > 0 && (
           <div className="cd-ship-wrap">
             <p className="cd-ship-msg">
-              {remaining === 0
-                ? <span className="cd-ship-msg-success">{t('✓ Free shipping unlocked!')}</span>
-                : tx('{amount} away from free shipping', { amount: <strong className="cd-ship-msg-amount">{formatMoney(remaining)}</strong> })
-              }
+              {remaining === 0 ? (
+                <span className="cd-ship-msg-success">{t('✓ Free shipping unlocked!')}</span>
+              ) : (
+                tx('You’re {amount} away from free shipping', {
+                  amount: <strong className="cd-ship-msg-amount">{formatMoney(remaining)}</strong>,
+                })
+              )}
             </p>
             <div className="cd-ship-track">
               <div
@@ -240,10 +247,18 @@ export function CartDrawer() {
             /* Empty state */
             <div className="cd-empty">
               <div className="empty-state-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                  <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-                  <line x1="3" y1="6" x2="21" y2="6"/>
-                  <path d="M16 10a4 4 0 0 1-8 0"/>
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                >
+                  <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <path d="M16 10a4 4 0 0 1-8 0" />
                 </svg>
               </div>
               <div>
@@ -297,7 +312,9 @@ export function CartDrawer() {
                     {/* Info */}
                     <div className="cd-item-info">
                       <p className="cd-item-name">{cartItemName(item, lang)}</p>
-                      <p className="cd-item-each">{t('{price} each', { price: formatMoney(item.price) })}</p>
+                      <p className="cd-item-each">
+                        {t('{price} each', { price: formatMoney(item.price) })}
+                      </p>
 
                       {/* Qty stepper */}
                       <div className="cd-stepper">
@@ -307,20 +324,32 @@ export function CartDrawer() {
                           className="cd-stepper-cell cd-stepper-cell-l cd-stepper-btn"
                         >
                           <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                            <path d="M2 5h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                            <path
+                              d="M2 5h6"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                            />
                           </svg>
                         </button>
                         <span
                           className="cd-stepper-display"
                           data-just-bumped={bumpedId === item.id ? 'true' : 'false'}
-                        >{item.quantity}</span>
+                        >
+                          {item.quantity}
+                        </span>
                         <button
                           onClick={() => incrementWithBump(item.id, item.quantity + 1)}
                           aria-label={t('Increase quantity')}
                           className="cd-stepper-cell cd-stepper-cell-r cd-stepper-btn"
                         >
                           <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                            <path d="M5 2v6M2 5h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                            <path
+                              d="M5 2v6M2 5h6"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                            />
                           </svg>
                         </button>
                       </div>
@@ -328,7 +357,9 @@ export function CartDrawer() {
 
                     {/* Price + remove */}
                     <div className="cd-item-right">
-                      <span className="cd-item-price">{formatMoney((item.price * item.quantity))}</span>
+                      <span className="cd-item-price">
+                        {formatMoney(item.price * item.quantity)}
+                      </span>
                       <button
                         onClick={() => removeFromCart(item.id)}
                         aria-label={t('Remove {name}', { name: cartItemName(item, lang) })}
@@ -375,19 +406,11 @@ export function CartDrawer() {
             <p className="cd-shipping-note">{t('Shipping calculated at checkout.')}</p>
 
             {/* CTA */}
-            <Link
-              to={ROUTES.CHECKOUT}
-              onClick={close}
-              className="cd-cta-primary cd-checkout-btn"
-            >
+            <Link to={ROUTES.CHECKOUT} onClick={close} className="cd-cta-primary cd-checkout-btn">
               {t('Proceed to Checkout')}
             </Link>
 
-            <Link
-              to={ROUTES.CART}
-              onClick={close}
-              className="cd-cta-secondary cd-view-cart-btn"
-            >
+            <Link to={ROUTES.CART} onClick={close} className="cd-cta-secondary cd-view-cart-btn">
               {t('View Full Cart')}
             </Link>
           </div>
@@ -402,16 +425,13 @@ export function CartDrawer() {
 // inside" disclosure, recipient name preview, and a Remove button. No
 // qty stepper — bundles are fixed quantity 1; cartStore.updateQuantity()
 // silently ignores qty changes on bundle ids.
-function BundleCartItem({
-  item, onRemove,
-}: { item: CartItem; onRemove: () => void }) {
+function BundleCartItem({ item, onRemove }: { item: CartItem; onRemove: () => void }) {
   const tr = useT();
   const [open, setOpen] = useState(false);
   const bundle = item.bundle!; // caller guards `if (item.bundle)`
 
   const recipient = bundle.personalization.recipientName;
-  const totalCount = bundle.teas.length + bundle.samples.length +
-    (bundle.hasFrenchPress ? 1 : 0);
+  const totalCount = bundle.teas.length + bundle.samples.length + (bundle.hasFrenchPress ? 1 : 0);
 
   return (
     <div className="cd-bundle-row">
@@ -435,36 +455,24 @@ function BundleCartItem({
       </div>
 
       {/* Disclosure — What's inside */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        aria-expanded={open}
-        className="cd-disclosure"
-      >
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="cd-disclosure">
         {tr('What’s inside')}
-        <ChevronDown
-          size={12}
-          className="cd-disclosure-chev"
-          data-open={open ? 'true' : 'false'}
-        />
+        <ChevronDown size={12} className="cd-disclosure-chev" data-open={open ? 'true' : 'false'} />
       </button>
 
       {open && (
         <div className="cd-disclosure-body">
           {bundle.teas.length > 0 && (
-            <BundleSubList title={tr('Teas')} items={bundle.teas.map(t => t.name)} />
+            <BundleSubList title={tr('Teas')} items={bundle.teas.map((t) => t.name)} />
           )}
           {bundle.samples.length > 0 && (
-            <BundleSubList title={tr('Samples')} items={bundle.samples.map(t => t.name)} />
+            <BundleSubList title={tr('Samples')} items={bundle.samples.map((t) => t.name)} />
           )}
-          {bundle.hasFrenchPress && (
-            <BundleSubList title={tr('Extras')} items={['French press']} />
-          )}
+          {bundle.hasFrenchPress && <BundleSubList title={tr('Extras')} items={['French press']} />}
           {bundle.personalization.message && (
             <div className="cd-msg-block">
               <span className="cd-msg-label">{tr('Card message')}</span>
-              <span className="cd-msg-value">
-                &ldquo;{bundle.personalization.message}&rdquo;
-              </span>
+              <span className="cd-msg-value">&ldquo;{bundle.personalization.message}&rdquo;</span>
             </div>
           )}
         </div>

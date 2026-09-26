@@ -1845,4 +1845,9 @@ export const STRINGS: Record<string, { fr: string }> = {
   },
   Guide: { fr: 'Guide' },
   '{name}: questions': { fr: '{name} : questions fréquentes' },
+  'You’re {amount} away from free shipping': { fr: 'Plus que {amount} pour la livraison gratuite' },
+  'Add one of these to unlock free shipping': {
+    fr: 'Ajoutez l’un de ceux-ci pour la livraison gratuite',
+  },
+  'Unlocks free shipping': { fr: 'Livraison gratuite débloquée' },
 };

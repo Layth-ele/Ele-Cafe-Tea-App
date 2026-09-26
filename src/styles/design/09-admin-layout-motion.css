@@ -1157,6 +1157,17 @@
   transition: background-color var(--dur-fast) var(--ease-standard);
 }
 .cart-upsell-add:hover { background: color-mix(in srgb, var(--midnight) 88%, var(--gold)); }
+.cart-upsell-unlock {
+  margin-top: 2px;
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--status-ok-text);
+}
+/* Cart page: the suggestions sit under the progress bar. */
+.cp-upsell { margin: 14px 0 0; }
+.cart-upsell-add { min-height: 36px; flex-shrink: 0; }
 @media (prefers-reduced-motion: no-preference) {
   .cart-upsell-add:active { transform: scale(0.96); }
 }

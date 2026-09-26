@@ -8,6 +8,7 @@ import { useSettings } from '@/hooks/useSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { SeoHead } from '@/app/components/SeoHead';
 import { CartSummary } from '@/app/components/CartSummary';
+import { CartUpsell } from '@/app/components/CartUpsell';
 import { LazyImage } from '@/app/components/LazyImage';
 
 import { cartItemName } from '@/store/cartStore';
@@ -18,61 +19,84 @@ export function CartPage() {
   const lang = useLang();
   const tx = useTx();
   const { items, updateQuantity, removeFromCart, totalPrice } = useOptimisticCart();
-  const settings      = useSettings();
+  const settings = useSettings();
   const { currentUser } = useAuth();
-  const navigate      = useNavigate();
+  const navigate = useNavigate();
 
   // Phase 8 improvement — idle-time prefetch of checkout + login chunks.
   // From /cart the conversion path is either checkout (signed-in) or
   // login-then-checkout (anonymous). Prefetching both means the
   // "Checkout" button click feels instant.
-  useEffect(() => { prefetchRoutesForPage('cart'); }, []);
+  useEffect(() => {
+    prefetchRoutesForPage('cart');
+  }, []);
 
   // Falls back to 100 (matching SETTING_DEFAULTS in useSettings.ts) so the
   // threshold is consistent across CartDrawer / CartSummary / Checkout
   // while settings is loading.
   const FREE_THRESHOLD = settings.freeShippingThreshold ?? 100;
-  const alwaysFree     = FREE_THRESHOLD <= 0;
-  const remaining      = alwaysFree ? 0 : Math.max(0, FREE_THRESHOLD - totalPrice);
-  const progress       = alwaysFree ? 100 : Math.min(100, (totalPrice / FREE_THRESHOLD) * 100);
+  const alwaysFree = FREE_THRESHOLD <= 0;
+  const remaining = alwaysFree ? 0 : Math.max(0, FREE_THRESHOLD - totalPrice);
+  const progress = alwaysFree ? 100 : Math.min(100, (totalPrice / FREE_THRESHOLD) * 100);
 
   const handleCheckout = () => {
-    if (!currentUser) { navigate(loginWithReturn(ROUTES.CHECKOUT)); return; }
+    if (!currentUser) {
+      navigate(loginWithReturn(ROUTES.CHECKOUT));
+      return;
+    }
     navigate(ROUTES.CHECKOUT);
   };
 
   // ── Empty state ────────────────────────────────────────────────────────────
-  if (items.length === 0) return (
-    <>
-      <SeoHead title="My Basket | Ele Café" description="Review your cart and proceed to checkout." noIndex={true} />
-    <div className="cp-empty">
-      <div className="cp-empty-inner">
-        <div className="empty-state-icon cp-empty-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-            <line x1="3" y1="6" x2="21" y2="6"/>
-            <path d="M16 10a4 4 0 0 1-8 0"/>
-          </svg>
+  if (items.length === 0)
+    return (
+      <>
+        <SeoHead
+          title="My Basket | Ele Café"
+          description="Review your cart and proceed to checkout."
+          noIndex={true}
+        />
+        <div className="cp-empty">
+          <div className="cp-empty-inner">
+            <div className="empty-state-icon cp-empty-icon">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              >
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <path d="M16 10a4 4 0 0 1-8 0" />
+              </svg>
+            </div>
+            <h2 className="cp-empty-title">{t('Your basket is empty')}</h2>
+            <p className="cp-empty-msg">
+              {t(
+                "Discover our collection of premium teas sourced from the world's finest gardens.",
+              )}
+            </p>
+            <Link to={ROUTES.PRODUCTS} className="btn btn-dark btn-lg">
+              {t('Browse Teas')}
+            </Link>
+          </div>
         </div>
-        <h2 className="cp-empty-title">
-          {t('Your basket is empty')}
-        </h2>
-        <p className="cp-empty-msg">
-          {t('Discover our collection of premium teas sourced from the world\'s finest gardens.')}
-        </p>
-        <Link to={ROUTES.PRODUCTS} className="btn btn-dark btn-lg">{t('Browse Teas')}</Link>
-      </div>
-    </div>
-    </>
-  );
+      </>
+    );
 
   // ── Cart with items ────────────────────────────────────────────────────────
   return (
     <div className="cp-page">
-      <SeoHead title="My Basket | Ele Café" description="Review your cart and proceed to checkout." noIndex={true} />
+      <SeoHead
+        title="My Basket | Ele Café"
+        description="Review your cart and proceed to checkout."
+        noIndex={true}
+      />
 
       <div className="container container-sm cp-container">
-
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div className="page-hero cp-page-hero">
           <span className="overline">{t('Shopping')}</span>
@@ -80,14 +104,18 @@ export function CartPage() {
           <div className="page-hero-rule" />
         </div>
         <div className="cp-progress-wrap">
-
           {/* Free shipping progress */}
           <div className="cp-progress-inner">
             <p className="text-sm text-muted cp-progress-msg">
-              {remaining === 0
-                ? <span className="cp-progress-qualified">{t('✓ You qualify for free shipping!')}</span>
-                : tx('Add {amount} more for free shipping', { amount: <strong className="cp-progress-amount">{formatMoney(remaining)}</strong> })
-              }
+              {remaining === 0 ? (
+                <span className="cp-progress-qualified">
+                  {t('✓ You qualify for free shipping!')}
+                </span>
+              ) : (
+                tx('You’re {amount} away from free shipping', {
+                  amount: <strong className="cp-progress-amount">{formatMoney(remaining)}</strong>,
+                })
+              )}
             </p>
             <div className="cp-progress-track">
               <div
@@ -97,16 +125,14 @@ export function CartPage() {
                 style={{ width: `${progress}%` }}
               />
             </div>
+            <CartUpsell className="cp-upsell" />
           </div>
         </div>
 
         {/* ── Items ───────────────────────────────────────────────────────── */}
         <div className="cp-items">
-          {items.map(item => (
-            <div
-              key={item.id}
-              className="cp-item"
-            >
+          {items.map((item) => (
+            <div key={item.id} className="cp-item">
               {/* Thumbnail */}
               <LazyImage
                 src={item.image}
@@ -118,15 +144,9 @@ export function CartPage() {
 
               {/* Info */}
               <div className="cp-item-info">
-                <span className="tea-cat cp-item-cat">
-                  {item.category}
-                </span>
-                <p className="cp-item-name">
-                  {cartItemName(item, lang)}
-                </p>
-                <p className="text-sm cp-item-price">
-                  {formatMoney(item.price)}
-                </p>
+                <span className="tea-cat cp-item-cat">{item.category}</span>
+                <p className="cp-item-name">{cartItemName(item, lang)}</p>
+                <p className="text-sm cp-item-price">{formatMoney(item.price)}</p>
 
                 {/* Qty stepper + Remove */}
                 <div className="cp-item-controls">
@@ -138,9 +158,7 @@ export function CartPage() {
                     >
                       <Minus size={13} />
                     </button>
-                    <span className="cp-item-qty">
-                      {item.quantity}
-                    </span>
+                    <span className="cp-item-qty">{item.quantity}</span>
                     <button
                       onClick={() => updateQuantity(item.id, item.quantity + 1)}
                       aria-label={t('Increase quantity')}
@@ -162,9 +180,7 @@ export function CartPage() {
 
               {/* Line total */}
               <div className="cp-item-total-wrap">
-                <p className="cp-item-total">
-                  {formatMoney((item.price * item.quantity))}
-                </p>
+                <p className="cp-item-total">{formatMoney(item.price * item.quantity)}</p>
               </div>
             </div>
           ))}
@@ -172,14 +188,13 @@ export function CartPage() {
 
         {/* ── Summary + CTA ────────────────────────────────────────────────── */}
         <div className="cp-summary-wrap">
-          <CartSummary
-            items={items}
-            subtotal={totalPrice}
-            totalLabel="Total"
-          />
+          <CartSummary items={items} subtotal={totalPrice} totalLabel="Total" />
 
           <div className="cp-summary-actions">
-            <button onClick={handleCheckout} className="btn btn-dark btn-full btn-lg cp-checkout-btn">
+            <button
+              onClick={handleCheckout}
+              className="btn btn-dark btn-full btn-lg cp-checkout-btn"
+            >
               {t('Checkout')} <ArrowRight size={15} />
             </button>
             <Link to={ROUTES.PRODUCTS} className="btn btn-ghost btn-full btn-sm cp-continue-link">
@@ -187,7 +202,6 @@ export function CartPage() {
             </Link>
           </div>
         </div>
-
       </div>
     </div>
   );
