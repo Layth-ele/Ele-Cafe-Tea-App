@@ -1885,4 +1885,15 @@ export const STRINGS: Record<string, { fr: string }> = {
     fr: 'Envie de cumuler des points et de suivre vos commandes?',
   },
   'Create a free account': { fr: 'Créer un compte gratuit' },
+  'Free tea sample with every online order': {
+    fr: 'Un échantillon de thé gratuit avec chaque commande en ligne',
+  },
+  'A free tea sample is included with your online order': {
+    fr: 'Un échantillon de thé gratuit est inclus dans votre commande en ligne',
+  },
+  'With every online order': { fr: 'Avec chaque commande en ligne' },
+  'On every online order': { fr: 'Sur chaque commande en ligne' },
+  'A free sample with every online order': {
+    fr: 'Un échantillon gratuit avec chaque commande en ligne',
+  },
 };

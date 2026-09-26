@@ -87,7 +87,7 @@ const DEFAULTS = {
   sendShippingEmails: true,
 
   // Announcement
-  announcementText: 'Free shipping on all orders · Free sample with every order',
+  announcementText: 'Free shipping on all orders · Free sample with every online order',
   announcementEnabled: true,
   /** Rotating announcements list — each with optional luxury highlight
    *  chip (price, promo code, date) and optional date range for
@@ -1346,7 +1346,7 @@ export function AdminSettings() {
               className="field"
               value={settings.announcementText}
               onChange={(e) => set('announcementText', e.target.value)}
-              placeholder="e.g. Free shipping on all orders · Free sample with every order"
+              placeholder="e.g. Free shipping on all orders · Free sample with every online order"
             />
           </AdminSettingsField>
         </div>
@@ -1535,7 +1535,7 @@ export function AdminSettings() {
           </AdminSettingsField>
         </div>
         <Toggle
-          label="Free tea sample with every order"
+          label="Free tea sample with every online order"
           hint="Shown beside Add to Cart on every tea page, in the cart, the footer and the homepage. Turn off if you stop including samples."
           value={settings.freeSampleWithOrders !== false}
           onChange={(v) => set('freeSampleWithOrders', v)}

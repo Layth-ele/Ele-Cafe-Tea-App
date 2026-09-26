@@ -40,7 +40,7 @@ function buildPerks(
       : [
           {
             title: t('Free Sample'),
-            sub: t('With every order'),
+            sub: t('With every online order'),
             icon: (
               <svg
                 width="20"

@@ -137,7 +137,7 @@ export function WhyEleCafe({ store }: { store: StoreContent }) {
     ...(store.freeSample
       ? [
           {
-            title: t('A free sample with every order'),
+            title: t('A free sample with every online order'),
             body: t(
               'Every online order includes a complimentary sample, so each order introduces you to something new.',
             ),

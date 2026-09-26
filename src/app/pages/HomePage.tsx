@@ -307,7 +307,7 @@ export function HomePage() {
       ),
       lucideIcon: <Package size={18} />,
       title: t('Free Sample'),
-      sub: t('On every order'),
+      sub: t('On every online order'),
       color: '#e8f5ed',
       iconColor: '#2d6e4f',
     },

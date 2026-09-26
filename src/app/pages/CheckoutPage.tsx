@@ -1651,7 +1651,7 @@ export function CheckoutPage() {
                     creditApplied={creditCapped}
                     ptsWillEarn={ptsWillEarn}
                     showItems={true}
-                    showEarnBadge={true}
+                    showEarnBadge={!isGuest}
                     totalLabel="Total"
                     actualShippingFee={shippingFee}
                     fulfillmentMethod={fulfillmentMethod}

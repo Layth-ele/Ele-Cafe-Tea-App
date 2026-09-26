@@ -241,7 +241,7 @@ export function CartDrawer() {
             {settings?.freeSampleWithOrders !== false && (
               <p className="cart-sample-note">
                 <Gift size={14} aria-hidden="true" />{' '}
-                {t('A free tea sample is included with your order')}
+                {t('A free tea sample is included with your online order')}
               </p>
             )}
           </div>

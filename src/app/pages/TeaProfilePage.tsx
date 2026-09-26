@@ -946,7 +946,7 @@ export function TeaProfilePage() {
               {freeSample && isProductAvailable(product) && (
                 <p className="tpf-sample-note">
                   <Gift size={16} aria-hidden="true" />
-                  {t('Free tea sample with every order')}
+                  {t('Free tea sample with every online order')}
                 </p>
               )}
               <CafeTrustLine variant="product" />
