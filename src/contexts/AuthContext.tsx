@@ -67,10 +67,34 @@ export async function ensureAuth(): Promise<{ auth: Auth; mod: AuthMod }> {
   return _resolvedAuth;
 }
 
+// "This browser had a signed-in customer last time." Visitors without it
+// (every new visitor, and search engines) get the page painted at once
+// instead of waiting for the Auth SDK to download and restore a session —
+// that wait was most of the mobile LCP. Signed-in customers keep the gate,
+// so they never see signed-out UI flash. `loading` still means "auth not
+// known yet" for guards (ProtectedRoute, LoginPage, checkout).
+const SIGNED_IN_HINT = 'ele:signedIn';
+function readSignedInHint(): boolean {
+  try {
+    return localStorage.getItem(SIGNED_IN_HINT) === '1';
+  } catch {
+    return true; // storage blocked: keep the safe (gated) behaviour
+  }
+}
+function writeSignedInHint(on: boolean) {
+  try {
+    if (on) localStorage.setItem(SIGNED_IN_HINT, '1');
+    else localStorage.removeItem(SIGNED_IN_HINT);
+  } catch {
+    /* storage blocked */
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [guestUser, setGuestUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [gated] = useState(readSignedInHint);
   const [isAdmin, setIsAdmin] = useState(false);
 
   function isFirstAuthSession(user: User): boolean {
@@ -380,6 +404,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!user) {
           // Logged out — both updates can be synchronous.
+          writeSignedInHint(false);
           setCurrentUser(null);
           setGuestUser(null);
           setIsAdmin(false);
@@ -388,6 +413,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         // Guest-checkout session: not a signed-in customer.
         if (user.isAnonymous) {
+          writeSignedInHint(false);
           setCurrentUser(null);
           setGuestUser(user);
           setIsAdmin(false);
@@ -395,6 +421,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         setGuestUser(null);
+        writeSignedInHint(true);
 
         // Logged in — resolve isAdmin BEFORE committing currentUser
         // so React batches both state updates into one render. Without
@@ -616,5 +643,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ],
   );
 
-  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>{(!gated || !loading) && children}</AuthContext.Provider>
+  );
 }

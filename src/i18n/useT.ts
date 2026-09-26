@@ -25,9 +25,27 @@
  */
 import { Fragment, createElement, useCallback, type ReactNode } from 'react';
 import { useLanguageStore } from '@/store/languageStore';
-import { STRINGS, type Lang } from './translations';
+import type { Lang } from './translations';
 
 export type { Lang };
+
+// The French dictionary is its own chunk: English visitors never download
+// it. main.tsx loads it before the first render when French is saved, and
+// languageStore loads it before switching to French.
+let STRINGS: Record<string, { fr: string }> = {};
+let frLoad: Promise<void> | null = null;
+export function loadFrench(): Promise<void> {
+  frLoad ??= import('./translations').then(
+    (m) => {
+      STRINGS = m.STRINGS;
+    },
+    (err) => {
+      frLoad = null; // allow a retry on the next switch
+      throw err;
+    },
+  );
+  return frLoad;
+}
 
 export type TVars = Record<string, string | number>;
 export type TFunc = (key: string, vars?: TVars) => string;
@@ -72,10 +90,14 @@ export function useT(): TFunc {
 export type TxVars = Record<string, ReactNode>;
 export function translateRich(key: string, lang: Lang, vars: TxVars): ReactNode {
   const s = lang === 'fr' ? (STRINGS[key]?.fr ?? key) : key;
-  return createElement(Fragment, null, ...s.split(/(\{\w+\})/).map((part, i) => {
-    const m = /^\{(\w+)\}$/.exec(part);
-    return createElement(Fragment, { key: i }, m && m[1] in vars ? vars[m[1]] : part);
-  }));
+  return createElement(
+    Fragment,
+    null,
+    ...s.split(/(\{\w+\})/).map((part, i) => {
+      const m = /^\{(\w+)\}$/.exec(part);
+      return createElement(Fragment, { key: i }, m && m[1] in vars ? vars[m[1]] : part);
+    }),
+  );
 }
 export function useTx(): (key: string, vars: TxVars) => ReactNode {
   const lang = useLang();
@@ -101,12 +123,18 @@ export const localeFor = (lang: Lang) => (lang === 'fr' ? 'fr-CA' : 'en-CA');
 // ── Tea content ─────────────────────────────────────────────────────────────
 
 type TeaText = {
-  name?: string; nameFr?: string | null;
-  description?: string; descriptionFr?: string | null;
-  benefits?: string; benefitsFr?: string | null;
-  ingredients?: string; ingredientsFr?: string | null;
-  origin?: string; originFr?: string | null;
-  regions?: string; regionsFr?: string | null;
+  name?: string;
+  nameFr?: string | null;
+  description?: string;
+  descriptionFr?: string | null;
+  benefits?: string;
+  benefitsFr?: string | null;
+  ingredients?: string;
+  ingredientsFr?: string | null;
+  origin?: string;
+  originFr?: string | null;
+  regions?: string;
+  regionsFr?: string | null;
 };
 
 const pick = (en: string | undefined, fr: string | null | undefined, lang: Lang) =>
@@ -116,18 +144,32 @@ const pick = (en: string | undefined, fr: string | null | undefined, lang: Lang)
  *  /teas doc, falling back to English when a field hasn't been translated). */
 export function localizeTea(p: TeaText | null | undefined, lang: Lang) {
   return {
-    name:        pick(p?.name,        p?.nameFr,        lang),
+    name: pick(p?.name, p?.nameFr, lang),
     description: pick(p?.description, p?.descriptionFr, lang),
-    benefits:    pick(p?.benefits,    p?.benefitsFr,    lang),
+    benefits: pick(p?.benefits, p?.benefitsFr, lang),
     ingredients: pick(p?.ingredients, p?.ingredientsFr, lang),
-    origin:      pick(p?.origin,      p?.originFr,      lang),
-    regions:     pick(p?.regions,     p?.regionsFr,     lang),
+    origin: pick(p?.origin, p?.originFr, lang),
+    regions: pick(p?.regions, p?.regionsFr, lang),
   };
 }
 
 /** A pairing's (combo's) title/description in the current language. */
-export function localizeCombo(c: { title?: string; titleFr?: string | null; description?: string; descriptionFr?: string | null } | null | undefined, lang: Lang) {
-  return { title: pick(c?.title, c?.titleFr, lang), description: pick(c?.description, c?.descriptionFr, lang) };
+export function localizeCombo(
+  c:
+    | {
+        title?: string;
+        titleFr?: string | null;
+        description?: string;
+        descriptionFr?: string | null;
+      }
+    | null
+    | undefined,
+  lang: Lang,
+) {
+  return {
+    title: pick(c?.title, c?.titleFr, lang),
+    description: pick(c?.description, c?.descriptionFr, lang),
+  };
 }
 
 /** Hook form of localizeTea. */

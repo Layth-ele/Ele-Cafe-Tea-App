@@ -66,19 +66,18 @@ import jost400 from '@fontsource/jost/files/jost-latin-400-normal.woff2?url';
 import cormorant300 from '@fontsource/cormorant-garamond/files/cormorant-garamond-latin-300-normal.woff2?url';
 
 import { createRoot } from 'react-dom/client';
-import App            from './app/App.tsx';
-import { initTheme }  from './lib/theme';
-import { initRUM }    from './lib/rum';
+import App from './app/App.tsx';
+import { initTheme } from './lib/theme';
+import { initRUM } from './lib/rum';
 import { initSentry } from './lib/sentry';
 import { reportTelemetryWiring } from './lib/telemetryGuard';
 import './styles/index.css';
 import { isChunkLoadError, recoverFromStaleBundle } from '@/lib/chunkRecovery';
+import { useLanguageStore } from '@/store/languageStore';
+import { loadFrench } from '@/i18n/useT';
 
 (function injectFontPreloads() {
-  const fonts: Array<{ href: string }> = [
-    { href: jost400 },
-    { href: cormorant300 },
-  ];
+  const fonts: Array<{ href: string }> = [{ href: jost400 }, { href: cormorant300 }];
   for (const f of fonts) {
     const link = document.createElement('link');
     link.rel = 'preload';
@@ -136,7 +135,11 @@ initTheme();
   });
 })();
 
-createRoot(document.getElementById('root')!).render(<App />);
+// French visitors: fetch the dictionary first so the page never paints in
+// English and then flips. Everyone else renders immediately.
+const render = () => createRoot(document.getElementById('root')!).render(<App />);
+if (useLanguageStore.getState().language === 'fr') loadFrench().then(render, render);
+else render();
 
 // ── Telemetry ────────────────────────────────────────────────────────────────
 // Phase 0 of the UI/UX roadmap. Order matters: do these AFTER React mounts

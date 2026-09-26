@@ -6310,6 +6310,15 @@ function patchHeadForHome(template: string, teas: TeaSummary[]): string {
     extraOgMeta: [],
     extraJsonLd: [faqJsonLd(faq)],
   });
+  // The hero line quotes the tea count; handing it over in the HTML lets
+  // the app paint its final text at once (it's the mobile LCP element)
+  // instead of re-rendering when the Firestore count arrives.
+  if (teas.length) {
+    html = html.replace(
+      /(\s*)<\/head>/,
+      `\n    <meta name="ele:tea-count" content="${teas.length}" />$1</head>`,
+    );
+  }
 
   const noscriptBlock = `
     <noscript>

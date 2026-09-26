@@ -116,7 +116,7 @@ export function CheckoutPage() {
   const t = useT();
   const tx = useTx();
   const { items, totalPrice, clearCart } = useCart();
-  const { currentUser, guestUser, startGuestSession } = useAuth();
+  const { currentUser, guestUser, startGuestSession, loading: authLoading } = useAuth();
   const { redeemCredit } = useCredit();
   const cc = useCreditConfig();
   const navigate = useNavigate();
@@ -1121,6 +1121,11 @@ export function CheckoutPage() {
       </div>
     );
   };
+
+  // Auth still restoring: don't flash the guest gate at a signed-in customer.
+  if (authLoading && !showConfirm) {
+    return <div className="cp2-gate" aria-busy="true" />;
+  }
 
   // Not signed in and hasn't chosen guest checkout yet: ask how to continue.
   if (isGuest && !guestMode && !showConfirm) {

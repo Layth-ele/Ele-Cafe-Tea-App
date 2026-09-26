@@ -3,21 +3,21 @@
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { translateStatic } from '@/i18n/useT';
+import { translateStatic, loadFrench } from '@/i18n/useT';
 
 export type Language = 'en' | 'fr';
 
 interface LanguageState {
-  language:       Language;
-  setLanguage:    (lang: Language) => void;
+  language: Language;
+  setLanguage: (lang: Language) => void;
   toggleLanguage: () => void;
   /** Quick synchronous translate — use useT() hook in components */
-  t:              (key: string) => string;
+  t: (key: string) => string;
 }
 
 const applyLang = (lang: Language) => {
   document.documentElement.lang = lang;
-  document.documentElement.dir  = 'ltr'; // both EN and FR are LTR
+  document.documentElement.dir = 'ltr'; // both EN and FR are LTR
 };
 
 export const useLanguageStore = create<LanguageState>()(
@@ -26,14 +26,16 @@ export const useLanguageStore = create<LanguageState>()(
       language: 'en' as Language,
 
       setLanguage: (lang) => {
-        applyLang(lang);
-        set({ language: lang });
+        const apply = () => {
+          applyLang(lang);
+          set({ language: lang });
+        };
+        if (lang === 'fr') loadFrench().then(apply, () => {});
+        else apply();
       },
 
       toggleLanguage: () => {
-        const next: Language = get().language === 'en' ? 'fr' : 'en';
-        applyLang(next);
-        set({ language: next });
+        get().setLanguage(get().language === 'en' ? 'fr' : 'en');
       },
 
       t: (key) => translateStatic(key, get().language),
@@ -43,6 +45,6 @@ export const useLanguageStore = create<LanguageState>()(
       onRehydrateStorage: () => (state) => {
         if (state) applyLang(state.language);
       },
-    }
-  )
+    },
+  ),
 );

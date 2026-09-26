@@ -975,17 +975,6 @@
 
 .no-transition * { transition: none !important; }
 
-/* Responsive nav-height — collapse the body padding-top to match
-   the actual navbar shrinkage on small screens. Without these
-   overrides, the body reserves 132px on mobile but the navbar is
-   ~80px → 50px of dead space between the navbar and the first
-   content card. */
-@media (max-width: 1024px) {
-  :root { --nav-height: 96px; }
-}
-@media (max-width: 768px) {
-  :root { --nav-height: 80px; }
-}
-@media (max-width: 480px) {
-  :root { --nav-height: 72px; }
-}
+/* --nav-height is 132px at every width: Navbar.tsx floors its measured
+   value at 132 (the bar is 117–133px tall), so smaller values here only
+   made the whole page jump down after first paint on phones (CLS). */

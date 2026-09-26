@@ -4,12 +4,14 @@
  * match the English, so switching to FR never silently falls back to
  * English (or drops a number / name).
  */
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, beforeAll } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { STRINGS } from '@/i18n/translations';
-import { translate } from '@/i18n/useT';
+import { translate, loadFrench } from '@/i18n/useT';
+
+beforeAll(() => loadFrench());
 
 const ROOT = path.resolve(__dirname, '../../../src');
 const FNS = new Set(['t', 'tr', 'tx', 'tNow', 'k']);
@@ -17,8 +19,10 @@ const FNS = new Set(['t', 'tr', 'tx', 'tNow', 'k']);
 function sourceFiles(dir: string, out: string[] = []): string[] {
   for (const f of fs.readdirSync(dir)) {
     const p = path.join(dir, f);
-    if (fs.statSync(p).isDirectory()) { if (!/admin/.test(f)) sourceFiles(p, out); }
-    else if (/\.tsx?$/.test(f) && !/\.stories\.|\.test\./.test(f) && !/Admin/.test(f)) out.push(p);
+    if (fs.statSync(p).isDirectory()) {
+      if (!/admin/.test(f)) sourceFiles(p, out);
+    } else if (/\.tsx?$/.test(f) && !/\.stories\.|\.test\./.test(f) && !/Admin/.test(f))
+      out.push(p);
   }
   return out;
 }
@@ -28,13 +32,29 @@ function usedKeys(): Map<string, string> {
   for (const file of sourceFiles(ROOT)) {
     const src = fs.readFileSync(file, 'utf8');
     if (!/\b(t|tr|tx|tNow|k)\(/.test(src)) continue;
-    const sf = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, true, file.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    const sf = ts.createSourceFile(
+      file,
+      src,
+      ts.ScriptTarget.Latest,
+      true,
+      file.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+    );
     const add = (n: ts.Node) => {
-      if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n)) keys.set(n.text, path.relative(ROOT, file));
-      else if (ts.isConditionalExpression(n)) { add(n.whenTrue); add(n.whenFalse); }
+      if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n))
+        keys.set(n.text, path.relative(ROOT, file));
+      else if (ts.isConditionalExpression(n)) {
+        add(n.whenTrue);
+        add(n.whenFalse);
+      }
     };
     const visit = (n: ts.Node) => {
-      if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && FNS.has(n.expression.text) && n.arguments[0]) add(n.arguments[0]);
+      if (
+        ts.isCallExpression(n) &&
+        ts.isIdentifier(n.expression) &&
+        FNS.has(n.expression.text) &&
+        n.arguments[0]
+      )
+        add(n.arguments[0]);
       ts.forEachChild(n, visit);
     };
     visit(sf);

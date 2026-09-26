@@ -33,6 +33,12 @@ import {
 
 import { formatMoneyShort } from '@/lib/money';
 import { useVisibleCategoryIds } from '@/hooks/useVisibleCategoryIds';
+/** Tea count the server stamped into the page (renderSeo, home only). */
+function serverTeaCount(): number | undefined {
+  const n = Number(document.querySelector('meta[name="ele:tea-count"]')?.getAttribute('content'));
+  return n > 0 ? n : undefined;
+}
+
 // ── Animated underline hook — draws a gold rule on scroll into view ────────────
 function useDrawLine() {
   const ref = useRef<HTMLDivElement>(null);
@@ -275,11 +281,14 @@ export function HomePage() {
   }, []);
 
   // Live active-tea count (aggregation query). Copy omits the number
-  // while loading or on error rather than showing a hard-coded one.
+  // while loading or on error rather than showing a hard-coded one. The
+  // server-rendered home page carries the count in <meta name="ele:tea-count">
+  // so the hero (the mobile LCP element) paints final text immediately.
   const { data: teaCount = 0 } = useQuery({
     queryKey: queryKeys.teaCount(),
     queryFn: fetchActiveTeaCount,
     staleTime: 10 * 60 * 1000,
+    placeholderData: serverTeaCount,
   });
   const store = useStoreContent();
   const lang = useLang();
@@ -443,7 +452,8 @@ export function HomePage() {
             </h1>
             {/* Hero rule — always visible, no scroll needed */}
             <div className="hp-hero-rule" />
-            <p className="hero-sub fade-up fade-up-d2">
+            {/* No fade: on phones this paragraph is the LCP element (see h1 note). */}
+            <p className="hero-sub">
               {teaCount > 0
                 ? t(
                     '{count} loose leaf teas — black, green, white, oolong, rooibos, herbal, flower & fruit — shipped across Canada or ready for pickup in Vancouver',
