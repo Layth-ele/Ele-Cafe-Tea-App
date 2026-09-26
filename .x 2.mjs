@@ -1,0 +1,13 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch({ channel: 'chrome' });
+const p = await (await b.newContext({ viewport: {width:390,height:900} })).newPage(); const errs=[]; p.on('pageerror', e => errs.push(e.message));
+await p.goto('http://localhost:5173/tea-profile/black/earl-grey-classic#reviews', { waitUntil: 'load', timeout: 60000 });
+await p.waitForTimeout(6000);
+console.log('social block:', await p.locator('.tpf-social').innerText());
+const top = await p.evaluate(() => document.getElementById('reviews')?.getBoundingClientRect().top);
+console.log('#reviews top after arrival (should be near top of screen):', Math.round(top));
+await p.evaluate(() => window.scrollTo(0,0)); await p.waitForTimeout(300);
+await p.locator('.tpf-social').scrollIntoViewIfNeeded(); await p.locator('.tpf-social').screenshot({ path: '/private/tmp/claude-501/-Users-laythalshblawi-Documents-New-Ele-Cafe/9480a6be-b9e1-40cc-bae5-f70754993d09/scratchpad/social.png' });
+await p.locator('.tpf-social-first').click(); await p.waitForTimeout(1200);
+console.log('after click, #reviews top:', Math.round(await p.evaluate(() => document.getElementById('reviews').getBoundingClientRect().top)), '| errors', errs);
+await b.close();

@@ -28,25 +28,44 @@ export function initializeApp(): void {
   if (!getApps().length) _initializeApp();
 }
 
-export function firestore() { return getFirestore(); }
-// eslint-disable-next-line @typescript-eslint/no-namespace
+let firestoreConfigured = false;
+export function firestore() {
+  const db = getFirestore();
+  if (!firestoreConfigured) {
+    firestoreConfigured = true;
+    // REST instead of gRPC: avoids the slow first connection on a cold
+    // Cloud Functions instance (Google's recommended setting). We don't
+    // use server-side realtime listeners, which are the only gRPC-only
+    // feature.
+    db.settings({ preferRest: true });
+  }
+  return db;
+}
+// eslint-disable-next-line @typescript-eslint/no-namespace, no-redeclare -- firebase-admin v8-13 namespaced shape (function + namespace merge)
 export namespace firestore {
   export const FieldValue = _FieldValue;
-  export const FieldPath  = _FieldPath;
-  export const Timestamp  = _Timestamp;
-  export type FieldValue  = _FieldValue;
-  export type Timestamp   = _Timestamp;
+  export const FieldPath = _FieldPath;
+  export const Timestamp = _Timestamp;
+  export type FieldValue = _FieldValue;
+  export type Timestamp = _Timestamp;
   export type DocumentData = _DocumentData;
   export type DocumentReference<T extends _DocumentData = _DocumentData> = _DocumentReference<T>;
-  export type QueryDocumentSnapshot<T extends _DocumentData = _DocumentData> = _QueryDocumentSnapshot<T>;
+  export type QueryDocumentSnapshot<T extends _DocumentData = _DocumentData> =
+    _QueryDocumentSnapshot<T>;
   export type Transaction = _Transaction;
 }
 
-export function auth() { return getAuth(); }
-export function storage() { return getStorage(); }
+export function auth() {
+  return getAuth();
+}
+export function storage() {
+  return getStorage();
+}
 
-export function messaging() { return getMessaging(); }
-// eslint-disable-next-line @typescript-eslint/no-namespace
+export function messaging() {
+  return getMessaging();
+}
+// eslint-disable-next-line @typescript-eslint/no-namespace, no-redeclare -- firebase-admin v8-13 namespaced shape (function + namespace merge)
 export namespace messaging {
   export type MulticastMessage = _MulticastMessage;
 }

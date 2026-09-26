@@ -102,6 +102,8 @@ import {
 } from './lib/franchise';
 import {
   CAFE_TITLE,
+  PAIRINGS_TITLE,
+  PAIRINGS_DESCRIPTION,
   CAFE_DESCRIPTION,
   CAFE_MENU,
   cafeIntro,
@@ -4858,7 +4860,7 @@ interface TeaSeoFields {
   ratingCount?: number;
 }
 
-function patchHeadForTea(template: string, tea: TeaSeoFields): string {
+function patchHeadForTea(template: string, tea: TeaSeoFields, catalog: CatalogTea[] = []): string {
   const url = `${SEO_SITE_BASE}/tea-profile/${tea.category}/${tea.slug}`;
   const catLabel = SEO_CATEGORY_LABELS[tea.category] || 'Tea';
   const title = `${tea.name} | ${catLabel} | Ele Café Vancouver`;
@@ -5132,6 +5134,17 @@ function patchHeadForTea(template: string, tea: TeaSeoFields): string {
   // The <noscript> only renders when JS is disabled — JS-enabled
   // clients (the vast majority) see <div id="root"></div> as before
   // and React hydrates over it. No conflict with the SPA flow.
+  // Served-as list, related teas and collections — internal links + context.
+  const servedAsList = (tea.servingSuggestions ?? [])
+    .map((x) => (typeof x === 'string' ? { label: x, enabled: true } : x))
+    .filter((x) => x && x.enabled !== false && x.label)
+    .map((x) => String(x.label).toLowerCase());
+  const related = catalog
+    .filter((t) => t.category === tea.category && t.slug !== tea.slug)
+    .slice(0, 6);
+  const inCollections = SEO_COLLECTIONS.filter(
+    (c) => c.slug !== 'best-sellers' && c.match(tea as CollectionTea),
+  );
   const noscriptBlock = `
     <noscript>
       <article class="seo-fallback">
@@ -5150,8 +5163,43 @@ function patchHeadForTea(template: string, tea: TeaSeoFields): string {
           <h2>Brewing</h2>
           <p>Water temperature: ${seoEscHtml(brewTemp)}<br />Steep time: ${seoEscHtml(brewTime)}<br />${seoEscHtml(caffeineNote)}</p>
         </section>
+        ${
+          tea.ingredients
+            ? `<section>
+          <h2>Ingredients</h2>
+          <p>${seoEscHtml(tea.ingredients)}</p>
+        </section>`
+            : ''
+        }
+        ${
+          tea.benefits
+            ? `<section>
+          <h2>Tasting notes &amp; benefits</h2>
+          <p>${seoEscHtml(tea.benefits)}</p>
+        </section>`
+            : ''
+        }
+        ${tea.regions ? `<p>Growing region: ${seoEscHtml(tea.regions)}</p>` : ''}
+        ${
+          servedAsList.length
+            ? `<section>
+          <h2>Enjoy it at Ele Café</h2>
+          <p>We serve ${seoEscHtml(tea.name)} at our Vancouver café as ${seoEscHtml(servedAsList.join(', ').replace(/, ([^,]*)$/, ' or $1'))}.</p>
+        </section>`
+            : ''
+        }
         ${tea.isOrganic ? '<p><em>Certified organic.</em></p>' : ''}
         ${seoTasteLine(store, 'Taste it first at our café')}
+        ${
+          related.length
+            ? `<section>
+          <h2>More ${seoEscHtml(catLabel)}</h2>
+          ${teaListHtml(related)}
+          <p><a href="${SEO_SITE_BASE}/products/${seoEscHtml(tea.category)}">All ${seoEscHtml(catLabel)}</a> · <a href="${SEO_SITE_BASE}/products">All teas</a></p>
+        </section>`
+            : ''
+        }
+        ${inCollections.length ? `<p>Find it in: ${inCollections.map((c) => `<a href="${SEO_SITE_BASE}/collections/${seoEscHtml(c.slug)}">${seoEscHtml(c.title)}</a>`).join(' · ')}</p>` : ''}
         <p>
           <a href="${seoEscHtml(url)}">View ${seoEscHtml(tea.name)} on Ele Café</a>
         </p>
@@ -5540,6 +5588,21 @@ function patchHeadForCollection(
             : '<p>No teas currently match this collection.</p>'
         }
         ${guideHtml}
+        <section>
+          <h2>More tea collections</h2>
+          <p>${SEO_COLLECTIONS.filter((c) => c.slug !== def.slug)
+            .map(
+              (c) =>
+                `<a href="${SEO_SITE_BASE}/collections/${seoEscHtml(c.slug)}">${seoEscHtml(c.title)}</a>`,
+            )
+            .join(' · ')}</p>
+          <p>${Object.entries(SEO_CATEGORY_LABELS)
+            .map(
+              ([id, label]) =>
+                `<a href="${SEO_SITE_BASE}/products/${seoEscHtml(id)}">${seoEscHtml(label)}</a>`,
+            )
+            .join(' · ')}</p>
+        </section>
         <p>Browse <a href="${seoEscHtml(SEO_SITE_BASE)}/products">all teas</a>.</p>
         ${seoContactHtml(SEO_STORE)}
       </article>
@@ -5747,6 +5810,76 @@ async function fetchActiveTeaSummaries(): Promise<TeaSummary[]> {
     });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// ── /pairings: tea & pastry pairings index ──────────────────────────────────
+
+function patchHeadForPairings(template: string, combos: CafeCombo[]): string {
+  const url = `${SEO_SITE_BASE}/pairings`;
+  const html = patchTemplateHead(template, {
+    title: PAIRINGS_TITLE,
+    description: seoClamp(PAIRINGS_DESCRIPTION),
+    canonical: url,
+    ogType: 'website',
+    ogImage: combos[0]?.imageUrl || SEO_DEFAULT_OG,
+    extraOgMeta: [],
+    extraJsonLd: [
+      infoBreadcrumb('Tea & Pastry Pairings', url),
+      {
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        '@id': `${url}#collection`,
+        url,
+        name: 'Tea & Pastry Pairings',
+        description: PAIRINGS_DESCRIPTION,
+        mainEntity: {
+          '@type': 'ItemList',
+          numberOfItems: combos.length,
+          itemListElement: combos
+            .filter((c) => c.slug)
+            .map((c, i) => ({
+              '@type': 'ListItem',
+              position: i + 1,
+              url: `${SEO_SITE_BASE}/pairings/${c.slug}`,
+              name: c.title,
+            })),
+        },
+      },
+    ],
+  });
+  const items = combos
+    .map((c) => {
+      const name = c.slug
+        ? `<a href="${SEO_SITE_BASE}/pairings/${seoEscHtml(c.slug)}">${seoEscHtml(c.title)}</a>`
+        : seoEscHtml(c.title);
+      return `<li>${name} — ${seoEscHtml(money(c.price))}${c.description ? `. ${seoEscHtml(teaBlurb(c.description))}` : ''}</li>`;
+    })
+    .join('\n          ');
+  return replaceNoscript(
+    html,
+    `
+    <noscript>
+      <article class="seo-fallback">
+        <header>
+          <p>Ele Café · Vancouver</p>
+          <h1>Tea &amp; Pastry Pairings</h1>
+          <p>${seoEscHtml(PAIRINGS_DESCRIPTION)}</p>
+        </header>
+        ${
+          items
+            ? `<section>
+          <h2>Our pairings</h2>
+          <ul>
+          ${items}
+          </ul>
+        </section>`
+            : ''
+        }
+        <p><a href="${SEO_SITE_BASE}/cafe">Café menu</a> · <a href="${SEO_SITE_BASE}/products">Shop our teas</a></p>
+        ${seoContactHtml(SEO_STORE)}
+      </article>
+    </noscript>`,
+  );
 }
 
 // ── /about and /contact ─────────────────────────────────────────────────────
@@ -6234,6 +6367,9 @@ function patchTemplateHead(template: string, h: SeoHeadPatch): string {
   return out;
 }
 
+/** Express response as handed to onRequest handlers. */
+type SeoResponse = import('express').Response;
+
 export const renderSeo = functions.https.onRequest(
   {
     region: 'us-central1',
@@ -6255,6 +6391,33 @@ export const renderSeo = functions.https.onRequest(
     concurrency: 80,
   },
   async (req, res) => {
+    // Safety net: never leave a visitor or crawler waiting. If a page
+    // can't be built within 9 s (e.g. a slow cold start), serve the
+    // plain app shell right away — the SPA still renders the page — and
+    // don't let the CDN cache that fallback.
+    const guard = setTimeout(() => {
+      if (res.headersSent) return;
+      console.warn(`renderSeo: ${req.path} took >9s — serving the app shell`);
+      res.set('Content-Type', 'text/html; charset=utf-8');
+      res.set('Cache-Control', 'no-store');
+      res.status(200).send(seoTemplateCache?.html ?? SEO_FALLBACK_TEMPLATE);
+    }, 9000);
+    try {
+      await renderSeoHandler(req, res);
+    } catch (err) {
+      if (!res.headersSent) throw err;
+      console.warn(
+        'renderSeo: finished after the fallback was sent',
+        err instanceof Error ? err.message : err,
+      );
+    } finally {
+      clearTimeout(guard);
+    }
+  },
+);
+
+async function renderSeoHandler(req: functions.https.Request, res: SeoResponse): Promise<void> {
+  {
     await refreshSeoSettings();
     const reqPath = req.path || '/';
 
@@ -6280,6 +6443,19 @@ export const renderSeo = functions.https.onRequest(
       res.set('Cache-Control', 'public, max-age=0, s-maxage=60');
       res.status(200).send(template);
       return;
+    }
+
+    // /pairings — the pairings index (individual pairings are below).
+    if (reqPath === '/pairings' || reqPath === '/pairings/') {
+      try {
+        const html = patchHeadForPairings(template, await fetchCafeCombos());
+        res.set('Content-Type', 'text/html; charset=utf-8');
+        res.set('Cache-Control', 'public, max-age=0, s-maxage=600, stale-while-revalidate=3600');
+        res.status(200).send(html);
+        return;
+      } catch (err) {
+        console.error('renderSeo: pairings render failed', err);
+      }
     }
 
     // /about and /contact — facts from Admin → Settings.
@@ -6342,7 +6518,13 @@ export const renderSeo = functions.https.onRequest(
         if (!snap.empty) {
           const data = snap.docs[0].data() as TeaSeoFields;
           if (data.isActive !== false && data.slug && data.category) {
-            const html = patchHeadForTea(template, data);
+            let catalog: CatalogTea[] = [];
+            try {
+              catalog = await fetchCatalogForSeo();
+            } catch {
+              /* related teas are optional */
+            }
+            const html = patchHeadForTea(template, data, catalog);
             res.set('Content-Type', 'text/html; charset=utf-8');
             res.set(
               'Cache-Control',
@@ -6472,8 +6654,8 @@ export const renderSeo = functions.https.onRequest(
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.set('Cache-Control', 'public, max-age=60');
     res.status(200).send(template);
-  },
-);
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // onTeaWrite — Operations: ping search engines on catalog changes
