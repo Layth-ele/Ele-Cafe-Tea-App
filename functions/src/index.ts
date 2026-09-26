@@ -2628,7 +2628,15 @@ async function unavailableTeaNames(items: unknown): Promise<string[]> {
 // directly, so an order can't be marked paid without this capture.
 // ─────────────────────────────────────────────────────────────────────────────
 export const approveOrder = functions.https.onCall(
-  { region: 'us-central1', enforceAppCheck: true, secrets: [CLOVER_PRIVATE_TOKEN] },
+  {
+    region: 'us-central1',
+    enforceAppCheck: true,
+    secrets: [CLOVER_PRIVATE_TOKEN],
+    // Explicit: Cloud Run lost this function's public invoker binding once,
+    // so every Approve click was rejected (401) before reaching the admin
+    // check below. Stating it makes each deploy re-apply the binding.
+    invoker: 'public',
+  },
   async (request) => {
     if (request.auth?.token?.role !== 'admin') {
       throw new functions.https.HttpsError('permission-denied', 'Only admins can approve orders.');
