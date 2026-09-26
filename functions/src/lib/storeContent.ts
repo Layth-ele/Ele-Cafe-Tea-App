@@ -111,6 +111,9 @@ export function readStoreContent(raw: Record<string, unknown> | null | undefined
 export const FOUNDING_YEAR = '2023';
 
 export const money = (n: number) => `$${Number.isInteger(n) ? n : n.toFixed(2)}`;
+/** Canadian French price: "18 $", "12,99 $". */
+export const moneyFr = (n: number) =>
+  `${Number.isInteger(n) ? n : n.toFixed(2).replace('.', ',')} $`;
 
 /** "tel:" target in E.164 (+1 assumed for 10-digit North American numbers). */
 export function phoneTel(phone: string): string {
@@ -217,7 +220,15 @@ export function hoursText(hours: StoreHoursDay[], lang: 'en' | 'fr' = 'en'): str
 }
 
 /** "Free shipping across Canada on orders over $100 ($12.99 flat rate below)." */
-export function shippingText(s: StoreContent): string {
+export function shippingText(s: StoreContent, lang: 'en' | 'fr' = 'en'): string {
+  if (lang === 'fr') {
+    if (s.freeShippingThreshold <= 0)
+      return 'Livraison gratuite partout au Canada sur chaque commande.';
+    return (
+      `Livraison gratuite partout au Canada pour les commandes de plus de ${moneyFr(s.freeShippingThreshold)}` +
+      (s.shippingFee > 0 ? ` (tarif fixe de ${moneyFr(s.shippingFee)} en dessous).` : '.')
+    );
+  }
   if (s.freeShippingThreshold <= 0) return 'Free shipping on every order across Canada.';
   return (
     `Free shipping across Canada on orders over ${money(s.freeShippingThreshold)}` +
@@ -360,9 +371,25 @@ export function faqJsonLd(items: FaqItem[]): Record<string, unknown> {
 // ── Homepage title / description (browser SeoHead + renderSeo "/") ──────────
 
 export const HOME_TITLE = 'Loose Leaf Tea Online in Canada | Ele Café Vancouver Tea Shop';
+export const HOME_TITLE_FR =
+  'Thé en vrac en ligne au Canada | Ele Café, boutique de thé à Vancouver';
 
 /** Meta description with the live tea count and shipping threshold (≤155 chars). */
-export function homeDescription(teaCount: number, s: StoreContent): string {
+export function homeDescription(
+  teaCount: number,
+  s: StoreContent,
+  lang: 'en' | 'fr' = 'en',
+): string {
+  if (lang === 'fr') {
+    const livraison =
+      s.freeShippingThreshold > 0
+        ? `dès ${moneyFr(s.freeShippingThreshold)}`
+        : 'sur chaque commande';
+    return (
+      `${teaCount > 0 ? `${teaCount} thés` : 'Thés'} en vrac haut de gamme : noir, vert, oolong, rooibos et tisanes. ` +
+      `Café de thé à Vancouver : cueillette gratuite, livraison gratuite au Canada ${livraison}.`
+    );
+  }
   const ship =
     s.freeShippingThreshold > 0
       ? `on orders over ${money(s.freeShippingThreshold)}`

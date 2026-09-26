@@ -50,7 +50,9 @@ import { useWishlistSync } from '@/hooks/useWishlistSync';
 import { useSessionTracker } from '@/hooks/useSessionTracker';
 import { useProfileLangSync } from '@/hooks/useProfileLangSync';
 import { useTrackPageView } from '@/hooks/useTrackPageView';
-import { useEffect, Suspense, lazy } from 'react';
+import { useEffect, Suspense, lazy, type ReactNode } from 'react';
+import { useLanguageStore } from '@/store/languageStore';
+import { FR_BASE } from '@/i18n/langUrl';
 
 import { Toaster } from './components/ui/sonner';
 import { Skeleton } from './components/ui/skeleton';
@@ -434,32 +436,46 @@ function AppShell() {
 }
 
 // ── Root ─────────────────────────────────────────────────────────────────────
+// French pages live under /fr (i18n/langUrl.ts). Switching language
+// rewrites the address and remounts the router under the new base; the
+// providers above it (auth, notifications, credit) don't use the router,
+// so they — and the signed-in session — stay mounted.
+function LangRouter({ children }: { children: ReactNode }) {
+  const lang = useLanguageStore((s) => s.language);
+  const base = lang === 'fr' ? FR_BASE : undefined;
+  return (
+    <BrowserRouter basename={base} key={base ?? 'en'}>
+      {children}
+    </BrowserRouter>
+  );
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <ErrorBoundary>
-          <AuthProvider>
-            {/* Sync: clears the inventory access-code store on sign-out.
-                Always mounted, regardless of which route the user is on,
-                so the session can't survive past a logout that happened
-                from a non-inventory page (would otherwise let the next
-                person who signs in to the shared inventory account land
-                on /inventory with the previous employee's session). */}
-            <InventorySessionSync />
-            <NotificationProvider>
-              <CreditProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          {/* Sync: clears the inventory access-code store on sign-out.
+              Always mounted, regardless of which route the user is on,
+              so the session can't survive past a logout that happened
+              from a non-inventory page (would otherwise let the next
+              person who signs in to the shared inventory account land
+              on /inventory with the previous employee's session). */}
+          <InventorySessionSync />
+          <NotificationProvider>
+            <CreditProvider>
+              <LangRouter>
                 {/* Phase 4.3: cmd+K command palette. Mounted inside
                     AuthProvider so the palette can show different
                     entries based on auth state (Sign In vs My Account). */}
                 <CommandPaletteProvider>
                   <AppShell />
                 </CommandPaletteProvider>
-              </CreditProvider>
-            </NotificationProvider>
-          </AuthProvider>
-        </ErrorBoundary>
-      </BrowserRouter>
+              </LangRouter>
+            </CreditProvider>
+          </NotificationProvider>
+        </AuthProvider>
+      </ErrorBoundary>
       {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   );

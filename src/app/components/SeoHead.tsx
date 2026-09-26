@@ -12,53 +12,68 @@
 import { useLayoutEffect } from 'react';
 import { SITE_BASE } from '@/lib/routes';
 import { useSettings } from '@/hooks/useSettings';
+import { isFrPath, localizedUrl } from '@/i18n/langUrl';
 
 // Static <head> tags from the HTML shell (index.html, or renderSeo's
 // server-rendered copy) that SeoHead re-renders for each page. Captured at
 // module load — before any SeoHead renders — and removed on first mount,
 // so the page carries ONE title / description / canonical / OG set, not
 // the shell's generic homepage copy alongside the page's own.
-const SHELL_TAGS: Element[] = typeof document === 'undefined' ? [] : [
-  ...document.head.querySelectorAll(
-    'title, meta[name="description"], meta[property^="og:"], meta[name^="twitter:"], link[rel="canonical"], link[rel="alternate"][hreflang]',
-  ),
-];
+const SHELL_TAGS: Element[] =
+  typeof document === 'undefined'
+    ? []
+    : [
+        ...document.head.querySelectorAll(
+          'title, meta[name="description"], meta[property^="og:"], meta[name^="twitter:"], link[rel="canonical"], link[rel="alternate"][hreflang]',
+        ),
+      ];
 let shellTagsRemoved = false;
+// A French page renderSeo built (/fr/…) already carries its French title,
+// description, canonical, hreflang and JSON-LD. On that first page the
+// server's head is kept as-is (the props here are English); SeoHead takes
+// over after the first in-app navigation.
+const SSR_FR =
+  typeof document !== 'undefined' &&
+  document.querySelector('meta[name="ele:lang"]')?.getAttribute('content') === 'fr';
+const INITIAL_PATH = typeof window === 'undefined' ? '' : window.location.pathname;
 
-const SITE_NAME  = 'Ele Café';
-const BASE_URL   = SITE_BASE;
+const SITE_NAME = 'Ele Café';
+const BASE_URL = SITE_BASE;
 // PNG, not SVG — Facebook / iMessage / Slack don't render SVG previews.
 const DEFAULT_IMG = `${BASE_URL}/og-default.png`;
 const BUSINESS_ID = `${BASE_URL}/#business`;
 
-export interface BreadcrumbItem { name: string; url: string; }
+export interface BreadcrumbItem {
+  name: string;
+  url: string;
+}
 
 export interface SeoHeadProps {
-  title:            string;
-  description:      string;
-  image?:           string;
-  url?:             string;
-  type?:            'website' | 'product';
-  noIndex?:         boolean;
-  breadcrumbs?:     BreadcrumbItem[];
+  title: string;
+  description: string;
+  image?: string;
+  url?: string;
+  type?: 'website' | 'product';
+  noIndex?: boolean;
+  breadcrumbs?: BreadcrumbItem[];
   /**
    * Optional page-specific JSON-LD blocks. Useful for route-specific
    * schemas (e.g. OfferCatalog on /gifts) without forking SeoHead.
    */
-  extraJsonLd?:     Record<string, unknown> | Array<Record<string, unknown>>;
+  extraJsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
   // Product-specific (for tea profile pages)
   product?: {
-    name:          string;
-    description:   string;
-    image:         string;
-    price:         number;
-    currency?:     string;
-    inStock:       boolean;
-    sku?:          string;
-    brand?:        string;
-    category?:     string;
-    avgRating?:    number;   // 0–5
-    reviewCount?:  number;
+    name: string;
+    description: string;
+    image: string;
+    price: number;
+    currency?: string;
+    inStock: boolean;
+    sku?: string;
+    brand?: string;
+    category?: string;
+    avgRating?: number; // 0–5
+    reviewCount?: number;
   };
 }
 
@@ -67,27 +82,40 @@ export function SeoHead({
   description,
   image,
   url,
-  type      = 'website',
-  noIndex   = false,
+  type = 'website',
+  noIndex = false,
   breadcrumbs,
   extraJsonLd,
   product,
 }: SeoHeadProps) {
+  const pathname = typeof window === 'undefined' ? '' : window.location.pathname;
+  const keepServerHead = SSR_FR && !shellTagsRemoved && pathname === INITIAL_PATH;
   useLayoutEffect(() => {
-    if (shellTagsRemoved) return;
+    if (keepServerHead || shellTagsRemoved) return;
     shellTagsRemoved = true;
     for (const el of SHELL_TAGS) el.remove();
-  }, []);
-  const canonical = url ?? (typeof window !== 'undefined' ? window.location.href : BASE_URL);
+  }, [keepServerHead]);
+  // English and French URLs of this page; canonical is the one being viewed.
+  const fr = isFrPath(pathname);
+  const enUrl = localizedUrl(
+    url ?? (typeof window !== 'undefined' ? window.location.href : BASE_URL),
+    'en',
+  );
+  const frUrl = localizedUrl(enUrl, 'fr');
+  const canonical = fr ? frUrl : enUrl;
   // Clamp on a word boundary (same rule as renderSeo's seoClamp) so the
   // snippet never ends mid-word.
-  const safeDesc  = description.length <= 155
-    ? description
-    : description.slice(0, 154).replace(/\s+\S*$/, '') + '…';
+  const safeDesc =
+    description.length <= 155
+      ? description
+      : description.slice(0, 154).replace(/\s+\S*$/, '') + '…';
   // Page image → admin's default share image (Settings → OG Image URL) → hosted PNG.
   const { ogImageUrl } = useSettings();
-  const adminOg   = typeof ogImageUrl === 'string' && /^https:\/\/\S+$/.test(ogImageUrl.trim()) ? ogImageUrl.trim() : '';
-  const ogImage   = image || adminOg || DEFAULT_IMG;
+  const adminOg =
+    typeof ogImageUrl === 'string' && /^https:\/\/\S+$/.test(ogImageUrl.trim())
+      ? ogImageUrl.trim()
+      : '';
+  const ogImage = image || adminOg || DEFAULT_IMG;
 
   // ── Build JSON-LD array ─────────────────────────────────────────────────
   const schemas: object[] = [];
@@ -95,13 +123,13 @@ export function SeoHead({
   // BreadcrumbList
   if (breadcrumbs && breadcrumbs.length > 0) {
     schemas.push({
-      '@context':      'https://schema.org',
-      '@type':         'BreadcrumbList',
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
       itemListElement: breadcrumbs.map((b, i) => ({
-        '@type':  'ListItem',
+        '@type': 'ListItem',
         position: i + 1,
-        name:     b.name,
-        item:     b.url,
+        name: b.name,
+        item: b.url,
       })),
     });
   }
@@ -112,55 +140,55 @@ export function SeoHead({
      *  optional aggregateRating field allows the conditional
      *  assignment below to type-check without an `any` cast. */
     type ProductSchema = {
-      '@context':   string;
-      '@type':      'Product';
-      name:         string;
-      description:  string;
-      image:        string;
-      sku:          string;
-      brand:        Record<string, string>;
-      category:     string;
-      offers:       Record<string, unknown>;
+      '@context': string;
+      '@type': 'Product';
+      name: string;
+      description: string;
+      image: string;
+      sku: string;
+      brand: Record<string, string>;
+      category: string;
+      offers: Record<string, unknown>;
       aggregateRating?: {
-        '@type':     'AggregateRating';
+        '@type': 'AggregateRating';
         ratingValue: string;
         reviewCount: number;
-        bestRating:  string;
+        bestRating: string;
         worstRating: string;
       };
     };
     const productSchema: ProductSchema = {
-      '@context':   'https://schema.org',
-      '@type':      'Product',
-      name:         product.name,
-      description:  product.description,
-      image:        product.image,
-      sku:          product.sku ?? product.name.toLowerCase().replace(/\s+/g, '-'),
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: product.name,
+      description: product.description,
+      image: product.image,
+      sku: product.sku ?? product.name.toLowerCase().replace(/\s+/g, '-'),
       brand: {
         '@type': 'Brand',
-        name:    product.brand ?? 'Ele Café',
-        '@id':   BUSINESS_ID,
+        name: product.brand ?? 'Ele Café',
+        '@id': BUSINESS_ID,
       },
-      category:     product.category ?? 'Tea',
+      category: product.category ?? 'Tea',
       offers: {
-        '@type':          'Offer',
-        '@id':            `${canonical}#offer`,
-        priceCurrency:    product.currency ?? 'CAD',
-        price:            product.price.toFixed(2),
-        availability:     product.inStock
+        '@type': 'Offer',
+        '@id': `${canonical}#offer`,
+        priceCurrency: product.currency ?? 'CAD',
+        price: product.price.toFixed(2),
+        availability: product.inStock
           ? 'https://schema.org/InStock'
           : 'https://schema.org/OutOfStock',
-        itemCondition:    'https://schema.org/NewCondition',
+        itemCondition: 'https://schema.org/NewCondition',
         seller: {
           '@type': 'Organization',
-          name:    'Ele Café',
-          '@id':   BUSINESS_ID,
+          name: 'Ele Café',
+          '@id': BUSINESS_ID,
         },
         shippingDetails: {
-          '@type':              'OfferShippingDetails',
+          '@type': 'OfferShippingDetails',
           shippingDestination: {
-            '@type':          'DefinedRegion',
-            addressCountry:   'CA',
+            '@type': 'DefinedRegion',
+            addressCountry: 'CA',
           },
           doesNotShip: false,
         },
@@ -171,13 +199,18 @@ export function SeoHead({
     // stored as a true average (0-5 per schema) so we can use it directly.
     // (Previously this re-multiplied by reviewCount and divided again,
     // which was a no-op masking a deeper bug in TeaProfilePage's writer.)
-    if (product.avgRating && product.avgRating > 0 && product.reviewCount && product.reviewCount > 0) {
+    if (
+      product.avgRating &&
+      product.avgRating > 0 &&
+      product.reviewCount &&
+      product.reviewCount > 0
+    ) {
       productSchema.aggregateRating = {
-        '@type':       'AggregateRating',
-        ratingValue:   Math.min(5, Math.max(1, product.avgRating)).toFixed(1),
-        reviewCount:   product.reviewCount,
-        bestRating:    '5',
-        worstRating:   '1',
+        '@type': 'AggregateRating',
+        ratingValue: Math.min(5, Math.max(1, product.avgRating)).toFixed(1),
+        reviewCount: product.reviewCount,
+        bestRating: '5',
+        worstRating: '1',
       };
     }
 
@@ -195,57 +228,55 @@ export function SeoHead({
   // read the structured data correctly. Without this, an admin-written
   // string like "Best tea ever</script><script>alert(1)</script>"
   // would execute on every product page.
-  const jsonLd = schemas.length > 0
-    ? JSON.stringify(schemas.length === 1 ? schemas[0] : schemas)
-        .replace(/<\/(script|style)/gi, '<\\/$1')
-        .replace(/<!--/g, '<\\!--')
-    : null;
+  const jsonLd =
+    schemas.length > 0
+      ? JSON.stringify(schemas.length === 1 ? schemas[0] : schemas)
+          .replace(/<\/(script|style)/gi, '<\\/$1')
+          .replace(/<!--/g, '<\\!--')
+      : null;
+
+  if (keepServerHead) return null;
 
   return (
     <>
       {/* ── Primary ────────────────────────────────────────────────────── */}
       <title>{title}</title>
-      <meta name="description"   content={safeDesc} />
-      <link rel="canonical"      href={canonical} />
-      {noIndex
-        ? <meta name="robots" content="noindex,nofollow" />
-        : <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" />
-      }
+      <meta name="description" content={safeDesc} />
+      <link rel="canonical" href={canonical} />
+      {noIndex ? (
+        <meta name="robots" content="noindex,nofollow" />
+      ) : (
+        <meta
+          name="robots"
+          content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1"
+        />
+      )}
 
-      {/* ── hreflang ─────────────────────────────────────────────────────
-           The app uses client-side language switching (EN/FR via Zustand
-           store) — same URL serves different content. URL-based language
-           routing isn't implemented yet, so we don't emit per-language
-           hreflang URLs that would point crawlers at fake URLs. We do
-           still emit `x-default` as a clean canonical-equivalent.
-           When real /fr/* routes ship, restore the fr alternate. */}
-      <link rel="alternate" hrefLang="x-default" href={canonical} />
-      <link rel="alternate" hrefLang="en"        href={canonical} />
+      {/* ── hreflang: every page has an English URL and a /fr twin ─────── */}
+      {!noIndex && <link rel="alternate" hrefLang="en" href={enUrl} />}
+      {!noIndex && <link rel="alternate" hrefLang="fr" href={frUrl} />}
+      {!noIndex && <link rel="alternate" hrefLang="x-default" href={enUrl} />}
 
       {/* ── Open Graph ─────────────────────────────────────────────────── */}
-      <meta property="og:site_name"    content={SITE_NAME} />
-      <meta property="og:type"         content={type} />
-      <meta property="og:locale"       content="en_CA" />
-      <meta property="og:title"        content={title} />
-      <meta property="og:description"  content={safeDesc} />
-      <meta property="og:image"        content={ogImage} />
-      {ogImage.endsWith('.svg') && (
-        <meta property="og:image:type" content="image/svg+xml" />
-      )}
-      <meta property="og:image:alt"    content={title} />
-      <meta property="og:url"          content={canonical} />
+      <meta property="og:site_name" content={SITE_NAME} />
+      <meta property="og:type" content={type} />
+      <meta property="og:locale" content={fr ? 'fr_CA' : 'en_CA'} />
+      <meta property="og:title" content={title} />
+      <meta property="og:description" content={safeDesc} />
+      <meta property="og:image" content={ogImage} />
+      {ogImage.endsWith('.svg') && <meta property="og:image:type" content="image/svg+xml" />}
+      <meta property="og:image:alt" content={title} />
+      <meta property="og:url" content={canonical} />
 
       {/* ── Twitter Card ───────────────────────────────────────────────── */}
-      <meta name="twitter:card"        content="summary_large_image" />
-      <meta name="twitter:title"       content={title} />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={safeDesc} />
-      <meta name="twitter:image"       content={ogImage} />
-      <meta name="twitter:image:alt"   content={title} />
+      <meta name="twitter:image" content={ogImage} />
+      <meta name="twitter:image:alt" content={title} />
 
       {/* ── JSON-LD Structured Data ─────────────────────────────────────── */}
-      {jsonLd && (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
-      )}
+      {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />}
     </>
   );
 }

@@ -4,6 +4,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { translateStatic, loadFrench } from '@/i18n/useT';
+import { syncUrlToLang } from '@/i18n/langUrl';
 
 export type Language = 'en' | 'fr';
 
@@ -28,6 +29,8 @@ export const useLanguageStore = create<LanguageState>()(
       setLanguage: (lang) => {
         const apply = () => {
           applyLang(lang);
+          // /fr/… ⇄ /…: the router remounts under the new base (App.tsx).
+          syncUrlToLang(lang);
           set({ language: lang });
         };
         if (lang === 'fr') loadFrench().then(apply, () => {});

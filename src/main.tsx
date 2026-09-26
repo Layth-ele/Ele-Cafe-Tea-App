@@ -75,6 +75,7 @@ import './styles/index.css';
 import { isChunkLoadError, recoverFromStaleBundle } from '@/lib/chunkRecovery';
 import { useLanguageStore } from '@/store/languageStore';
 import { loadFrench } from '@/i18n/useT';
+import { isFrPath, syncUrlToLang } from '@/i18n/langUrl';
 
 (function injectFontPreloads() {
   const fonts: Array<{ href: string }> = [{ href: jost400 }, { href: cormorant300 }];
@@ -134,6 +135,15 @@ initTheme();
     }
   });
 })();
+
+// The URL decides the language: /fr/… is French (what Google indexes);
+// a visitor who chose French lands on the /fr version of any English URL.
+if (isFrPath(window.location.pathname)) {
+  if (useLanguageStore.getState().language !== 'fr') useLanguageStore.setState({ language: 'fr' });
+  document.documentElement.lang = 'fr';
+} else if (useLanguageStore.getState().language === 'fr') {
+  syncUrlToLang('fr');
+}
 
 // French visitors: fetch the dictionary first so the page never paints in
 // English and then flips. Everyone else renders immediately.

@@ -112,6 +112,15 @@
         "function": "renderSeo"
       },
       {
+        "_comment": "French pages: /fr and /fr/** are rendered in French by renderSeo (the pages it doesn't know get the app shell, which runs in French under /fr).",
+        "source": "/fr",
+        "function": "renderSeo"
+      },
+      {
+        "source": "/fr/**",
+        "function": "renderSeo"
+      },
+      {
         "source": "**",
         "destination": "/app.html"
       }

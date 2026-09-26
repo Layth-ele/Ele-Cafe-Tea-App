@@ -240,20 +240,29 @@ export const SEO_COLLECTION_BY_SLUG: Readonly<Record<string, CollectionDef>> = O
 //    renderSeo so the page and Google's copy always match) ─────────────────
 
 /** "Assam — Loose Leaf Black Tea | Ele Café Vancouver" (matches how people search). */
-export function teaSeoTitle(name: string, category: string): string {
+export function teaSeoTitle(name: string, category: string, lang: 'en' | 'fr' = 'en'): string {
+  if (lang === 'fr') {
+    if (category === 'powder') return `${name} | Thé japonais en poudre | Ele Café Vancouver`;
+    const labelFr = (CATEGORY_SEO[category]?.labelFr ?? 'Thé').toLowerCase();
+    return `${name} — ${labelFr.charAt(0).toUpperCase()}${labelFr.slice(1)} en vrac | Ele Café Vancouver`;
+  }
   if (category === 'powder') return `${name} | Japanese Tea Powder | Ele Café Vancouver`;
   const label = CATEGORY_SEO[category]?.label ?? 'Tea';
   return `${name} — Loose Leaf ${label} | Ele Café Vancouver`;
 }
 
 /** First sentence of the description + price/weight + pickup/shipping, ≤158 chars. */
-export function teaMetaDescription(t: {
-  name: string;
-  description?: string;
-  price?: number;
-  weight?: string;
-  category: string;
-}): string {
+export function teaMetaDescription(
+  t: {
+    name: string;
+    description?: string;
+    price?: number;
+    weight?: string;
+    category: string;
+  },
+  lang: 'en' | 'fr' = 'en',
+): string {
+  if (lang === 'fr') return teaMetaDescriptionFr(t);
   const label = (CATEGORY_SEO[t.category]?.label ?? 'tea').toLowerCase();
   const s = (t.description ?? '').replace(/\s+/g, ' ').trim();
   let lead =
@@ -266,5 +275,26 @@ export function teaMetaDescription(t: {
       : '';
   const tail = `${price}Free pickup in Vancouver or shipped across Canada.`;
   const out = `${lead} ${tail}`;
+  return out.length <= 158 ? out : `${out.slice(0, 157).replace(/\s+\S*$/, '')}…`;
+}
+
+function teaMetaDescriptionFr(t: {
+  name: string;
+  description?: string;
+  price?: number;
+  weight?: string;
+  category: string;
+}): string {
+  const label = (CATEGORY_SEO[t.category]?.labelFr ?? 'thé').toLowerCase();
+  const s = (t.description ?? '').replace(/\s+/g, ' ').trim();
+  let lead =
+    (s.match(/^.+?[.!?](\s|$)/)?.[0] ?? s).trim() ||
+    `${t.name}, ${label} en vrac haut de gamme d’Ele Café à Vancouver.`;
+  if (lead.length > 95) lead = `${lead.slice(0, 94).replace(/\s+\S*$/, '')}…`;
+  const price =
+    typeof t.price === 'number' && t.price > 0
+      ? `${Number.isInteger(t.price) ? t.price : t.price.toFixed(2).replace('.', ',')} $${t.weight ? ` / ${t.weight.replace(/\s*g$/i, ' g')}` : ''}. `
+      : '';
+  const out = `${lead} ${price}Cueillette gratuite à Vancouver ou livraison partout au Canada.`;
   return out.length <= 158 ? out : `${out.slice(0, 157).replace(/\s+\S*$/, '')}…`;
 }

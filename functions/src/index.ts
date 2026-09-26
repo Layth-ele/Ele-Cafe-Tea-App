@@ -74,11 +74,13 @@ import {
   faqJsonLd,
   homeDescription,
   HOME_TITLE,
+  HOME_TITLE_FR,
   shippingText,
   shippingRateFor,
   hoursText,
   phoneTel,
   money,
+  moneyFr,
   RETURN_POLICY_LD,
   addressLines,
   FOUNDING_YEAR,
@@ -88,6 +90,8 @@ import { COLLECTION_GUIDES } from './lib/collectionGuides';
 import {
   REWARDS_TITLE,
   REWARDS_DESCRIPTION,
+  REWARDS_TITLE_FR,
+  REWARDS_DESCRIPTION_FR,
   REWARDS_EARN,
   REWARDS_REDEEM,
   REWARDS_URL,
@@ -97,6 +101,8 @@ import {
 import {
   FRANCHISE_TITLE,
   FRANCHISE_DESCRIPTION,
+  FRANCHISE_TITLE_FR,
+  FRANCHISE_DESCRIPTION_FR,
   FRANCHISE_CONCEPT,
   FRANCHISE_PARTNER,
   FRANCHISE_EMAIL_FALLBACK,
@@ -105,9 +111,13 @@ import {
 } from './lib/franchise';
 import {
   CAFE_TITLE,
+  CAFE_TITLE_FR,
   PAIRINGS_TITLE,
+  PAIRINGS_TITLE_FR,
   PAIRINGS_DESCRIPTION,
+  PAIRINGS_DESCRIPTION_FR,
   CAFE_DESCRIPTION,
+  CAFE_DESCRIPTION_FR,
   CAFE_MENU,
   cafeIntro,
   buildCafeFaq,
@@ -4476,15 +4486,39 @@ function buildSitemapXml(
   };
   for (const p of pairings) lines.push(pairingEntry(p));
 
+  // French twins: every server-rendered page also exists under /fr. Both
+  // entries carry the same hreflang set so Google pairs them.
+  const FR_PAGE_RE =
+    /^\/(?:$|products|cafe|rewards|franchise|about|contact|pairings|collections|tea-profile)/;
+  const withFrench = (entry: string): string => {
+    const loc = entry.match(/<loc>([^<]+)<\/loc>/)?.[1] ?? '';
+    const path = loc.slice(SITE_BASE.length) || '/';
+    if (!FR_PAGE_RE.test(path)) return entry;
+    const frLoc = `${SITE_BASE}/fr${path === '/' ? '' : path}`;
+    const links = [
+      `<xhtml:link rel="alternate" hreflang="en" href="${loc}"/>`,
+      `<xhtml:link rel="alternate" hreflang="fr" href="${frLoc}"/>`,
+      `<xhtml:link rel="alternate" hreflang="x-default" href="${loc}"/>`,
+    ].join('\n    ');
+    const en = entry.replace('</loc>', `</loc>\n    ${links}`);
+    const fr = en.replace(`<loc>${loc}</loc>`, `<loc>${frLoc}</loc>`);
+    return `${en}\n${fr}`;
+  };
+  const allLines = lines.map(withFrench);
+  const frCount = allLines.length
+    ? allLines.join('\n').split('<url>').length - 1 - lines.length
+    : 0;
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!--
   Generated live by the getSitemap Cloud Function from /teas + /comboGalleryItems in Firestore.
-  ${lines.length} URLs (${STATIC_SITEMAP_URLS.length} static + ${liveCats.length} categories + ${liveCollections.length} collections + ${teas.length} teas + ${pairings.length} pairings).
+  ${lines.length + frCount} URLs (${STATIC_SITEMAP_URLS.length} static + ${liveCats.length} categories + ${liveCollections.length} collections + ${teas.length} teas + ${pairings.length} pairings, plus ${frCount} French /fr pages).
   Per-row <lastmod> uses the Firestore updatedAt (or createdAt) timestamp.
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-${lines.join('\n')}
+${allLines.join('\n')}
 </urlset>
 `;
 }
@@ -4745,6 +4779,70 @@ const SEO_BREWING_PARAMS: Record<
   },
 };
 
+/** French brewing text (temperatures are the same in both languages). */
+const SEO_BREWING_FR: Record<string, { time: string; gramsPerCup: string; caffeineNote: string }> =
+  {
+    black: {
+      time: '3 à 5 minutes',
+      gramsPerCup: '2,5 g (une cuillère à thé)',
+      caffeineNote:
+        'Oui — les thés noirs contiennent généralement 40 à 70 mg de caféine par tasse.',
+    },
+    green: {
+      time: '2 à 3 minutes',
+      gramsPerCup: '2 g (une cuillère à thé)',
+      caffeineNote: 'Oui — les thés verts contiennent environ 20 à 45 mg de caféine par tasse.',
+    },
+    white: {
+      time: '4 à 5 minutes',
+      gramsPerCup: '2 g (une cuillère à thé)',
+      caffeineNote:
+        'Oui — les thés blancs contiennent environ 15 à 30 mg de caféine par tasse, le moins de tous les vrais thés.',
+    },
+    oolong: {
+      time: '3 à 5 minutes',
+      gramsPerCup: '2,5 g (une cuillère à thé)',
+      caffeineNote:
+        'Oui — les thés oolong contiennent généralement 30 à 50 mg de caféine par tasse.',
+    },
+    rooibos: {
+      time: '5 à 7 minutes',
+      gramsPerCup: '2,5 g (une cuillère à thé)',
+      caffeineNote: 'Non — le rooibos est naturellement sans caféine.',
+    },
+    herbal: {
+      time: '5 à 7 minutes',
+      gramsPerCup: '2,5 g (une cuillère à thé)',
+      caffeineNote:
+        'La plupart des tisanes sont sans caféine; vérifiez la liste d’ingrédients pour du thé ou du maté si la caféine vous importe.',
+    },
+    flower: {
+      time: '3 à 5 minutes',
+      gramsPerCup: '2 g (une cuillère à thé)',
+      caffeineNote:
+        'La plupart des infusions de fleurs pures sont sans caféine; les mélanges avec des feuilles de thé en contiennent.',
+    },
+    fruit: {
+      time: '5 à 7 minutes',
+      gramsPerCup: '2,5 g (une cuillère à thé)',
+      caffeineNote:
+        'La plupart des infusions de fruits sont sans caféine; vérifiez la liste d’ingrédients pour la présence de thé.',
+    },
+    powder: {
+      time: 'fouetter 20 à 30 secondes',
+      gramsPerCup: '2 g (une cuillère à thé) pour 70 à 100 ml',
+      caffeineNote:
+        'Le matcha contient environ 60 à 70 mg de caféine par portion; le hojicha torréfié en contient beaucoup moins, environ 10 à 20 mg.',
+    },
+  };
+
+/** Category brewing defaults in the page language. */
+function seoBrewing(category: string) {
+  const en = SEO_BREWING_PARAMS[category] ?? SEO_BREWING_PARAMS.black;
+  const fr = SEO_BREWING_FR[category] ?? SEO_BREWING_FR.black;
+  return seoFr() ? { ...en, ...fr } : en;
+}
+
 let seoTemplateCache: { html: string; expires: number } | null = null;
 
 /**
@@ -4860,6 +4958,55 @@ function seoEmbedJson(obj: unknown): string {
   return JSON.stringify(obj).replace(/<\//g, '<\\/');
 }
 
+// ── French pages (/fr/…) ────────────────────────────────────────────────────
+//
+// Every server-rendered page also exists under /fr with French title,
+// description, content and internal links, and both versions point at each
+// other with hreflang. The page builders below are synchronous, so the
+// language is a module variable set only for the duration of one builder
+// call (withSeoLang) — never across an await, where concurrent requests
+// on the same instance could interleave.
+
+type SeoLang = 'en' | 'fr';
+let SEO_LANG: SeoLang = 'en';
+
+function withSeoLang<T>(lang: SeoLang, fn: () => T): T {
+  const prev = SEO_LANG;
+  SEO_LANG = lang;
+  try {
+    return fn();
+  } finally {
+    SEO_LANG = prev;
+  }
+}
+
+const seoFr = () => SEO_LANG === 'fr';
+/** English or French copy for the page being rendered. */
+const SL = (en: string, fr: string) => (SEO_LANG === 'fr' ? fr : en);
+/** Absolute URL of a site path in the language being rendered. */
+function seoUrl(path = '/'): string {
+  const rest = path === '/' ? '' : path;
+  return `${SEO_SITE_BASE}${SEO_LANG === 'fr' ? '/fr' : ''}${rest}`;
+}
+/** A tea's own text in the page language (French field when it's filled). */
+const seoTl = (en: string | undefined, fr: string | null | undefined): string =>
+  (SEO_LANG === 'fr' && typeof fr === 'string' && fr.trim() ? fr : en) ?? '';
+const seoMoney = (n: number) => (SEO_LANG === 'fr' ? moneyFr(n) : money(n));
+const seoCatLabel = (id: string): string =>
+  (seoFr() ? CATEGORY_SEO[id]?.labelFr : CATEGORY_SEO[id]?.label) ?? SL('Tea', 'Thé');
+const seoCollTitle = (c: CollectionDef) => (seoFr() ? c.titleFr : c.title);
+const seoShipping = (store: StoreContent) => shippingText(store, SEO_LANG);
+const seoHours = (store: StoreContent) => hoursText(store.hours, SEO_LANG);
+
+/** Serving-suggestion labels from Admin → Products, in French. */
+const SERVED_AS_FR: Record<string, string> = {
+  'infused tea': 'thé infusé',
+  'hot tea': 'thé chaud',
+  'iced tea': 'thé glacé',
+  'milk tea': 'thé au lait',
+  'tea latte': 'thé latté',
+};
+
 /** Swap the shell's static <noscript> (between the seo-noscript markers in
  *  index.html) for this page's live fallback content. Older shells without
  *  markers get the block appended after #root instead. */
@@ -4873,24 +5020,37 @@ function replaceNoscript(html: string, block: string): string {
 /** "Taste it in Vancouver before you buy it online" — the café as a trust signal. */
 function seoTasteLine(
   store: StoreContent,
-  lead = 'Taste it in Vancouver before you buy it online',
+  lead = SL(
+    'Taste it in Vancouver before you buy it online',
+    'Goûtez-le à Vancouver avant de l’acheter en ligne',
+  ),
 ): string {
   const [street] = addressLines(store.address);
-  return street
-    ? `<p><strong>${seoEscHtml(lead)}</strong>: visit our tea café at ${seoEscHtml(street)}, with free pickup for online orders.</p>`
-    : '';
+  if (!street) return '';
+  return seoFr()
+    ? `<p><strong>${seoEscHtml(lead)}</strong> : visitez notre café de thé au ${seoEscHtml(street)}, avec cueillette gratuite pour les commandes en ligne.</p>`
+    : `<p><strong>${seoEscHtml(lead)}</strong>: visit our tea café at ${seoEscHtml(street)}, with free pickup for online orders.</p>`;
 }
 
 function seoContactHtml(store: StoreContent): string {
   const parts: string[] = [];
-  if (store.address) parts.push(`Visit us at <strong>${seoEscHtml(store.address)}</strong>`);
+  if (store.address)
+    parts.push(
+      `${SL('Visit us at', 'Visitez-nous au')} <strong>${seoEscHtml(store.address)}</strong>`,
+    );
   const tel = phoneTel(store.phone);
-  if (tel) parts.push(`call <a href="tel:${seoEscHtml(tel)}">${seoEscHtml(store.phone)}</a>`);
-  const hours = hoursText(store.hours);
+  if (tel)
+    parts.push(
+      `${SL('call', 'appelez le')} <a href="tel:${seoEscHtml(tel)}">${seoEscHtml(store.phone)}</a>`,
+    );
+  const hours = seoHours(store);
   // Loyalty programme (RewardUp) — linked from every server-rendered page.
-  const rewards = `<p><a href="${SEO_SITE_BASE}/rewards">Ele Rewards</a>: our free loyalty program, 10% off when you join.</p>`;
+  const rewards = `<p><a href="${seoUrl('/rewards')}">Ele Rewards</a>${SL(
+    ': our free loyalty program, 10% off when you join.',
+    ' : notre programme de fidélité gratuit, 10 % de rabais à l’inscription.',
+  )}</p>`;
   if (!parts.length && !hours) return rewards;
-  return `<p>${parts.join(' or ')}${parts.length ? '.' : ''}${hours ? ` Open ${seoEscHtml(hours)}.` : ''}</p>${rewards}`;
+  return `<p>${parts.join(SL(' or ', ' ou '))}${parts.length ? '.' : ''}${hours ? ` ${SL('Open', 'Ouvert')} ${seoEscHtml(hours)}.` : ''}</p>${rewards}`;
 }
 
 interface TeaSeoFields {
@@ -4898,6 +5058,13 @@ interface TeaSeoFields {
   slug: string;
   category: string;
   description?: string;
+  // French text (auto-translated by translate.ts, editable in Admin).
+  nameFr?: string | null;
+  descriptionFr?: string | null;
+  ingredientsFr?: string | null;
+  benefitsFr?: string | null;
+  originFr?: string | null;
+  regionsFr?: string | null;
   price?: number;
   image?: string;
   isActive?: boolean;
@@ -4922,10 +5089,20 @@ interface TeaSeoFields {
   ratingCount?: number;
 }
 
-function patchHeadForTea(template: string, tea: TeaSeoFields, catalog: CatalogTea[] = []): string {
-  const url = `${SEO_SITE_BASE}/tea-profile/${tea.category}/${tea.slug}`;
-  const catLabel = SEO_CATEGORY_LABELS[tea.category] || 'Tea';
-  const title = teaSeoTitle(tea.name, tea.category);
+function patchHeadForTea(template: string, raw: TeaSeoFields, catalog: CatalogTea[] = []): string {
+  // The tea's own text in the page language (French fields when filled).
+  const tea: TeaSeoFields = {
+    ...raw,
+    name: seoTl(raw.name, raw.nameFr),
+    description: seoTl(raw.description, raw.descriptionFr) || undefined,
+    ingredients: seoTl(raw.ingredients, raw.ingredientsFr) || undefined,
+    benefits: seoTl(raw.benefits, raw.benefitsFr) || undefined,
+    origin: seoTl(raw.origin, raw.originFr) || undefined,
+    regions: seoTl(raw.regions, raw.regionsFr) || undefined,
+  };
+  const url = seoUrl(`/tea-profile/${tea.category}/${tea.slug}`);
+  const catLabel = seoCatLabel(tea.category);
+  const title = teaSeoTitle(tea.name, tea.category, SEO_LANG);
   const price = (typeof tea.price === 'number' ? tea.price : 18).toFixed(2);
   const image = (tea.image && tea.image.trim()) || SEO_DEFAULT_OG;
   const hasReal = !!(tea.image && tea.image.trim()); // for LCP preload decision
@@ -4935,36 +5112,57 @@ function patchHeadForTea(template: string, tea: TeaSeoFields, catalog: CatalogTe
   // after seoClamp.
   const descParts = [tea.description?.trim()].filter(Boolean) as string[];
   if (descParts.length === 0) {
-    const bits = [`Premium ${catLabel.toLowerCase()} from Ele Café Vancouver — ${tea.name}`];
-    if (tea.origin) bits.push(`Origin: ${tea.origin}`);
-    if (tea.isOrganic) bits.push('Certified organic');
+    const bits = [
+      SL(
+        `Premium ${catLabel.toLowerCase()} from Ele Café Vancouver — ${tea.name}`,
+        `${catLabel} haut de gamme d’Ele Café Vancouver — ${tea.name}`,
+      ),
+    ];
+    if (tea.origin) bits.push(`${SL('Origin: ', 'Origine : ')}${tea.origin}`);
+    if (tea.isOrganic) bits.push(SL('Certified organic', 'Certifié biologique'));
     descParts.push(bits.join('. ') + '.');
   }
   // Full text for the product data and page body; `desc` is the search snippet.
   const fullDesc = descParts.join(' ');
-  const desc = teaMetaDescription({
-    name: tea.name,
-    description: descParts.join(' '),
-    price: tea.price,
-    weight: tea.weight,
-    category: tea.category,
-  });
+  const desc = teaMetaDescription(
+    {
+      name: tea.name,
+      description: descParts.join(' '),
+      price: tea.price,
+      weight: tea.weight,
+      category: tea.category,
+    },
+    SEO_LANG,
+  );
 
   // Brewing: per-category default, but allow per-tea overrides.
-  const catBrew = SEO_BREWING_PARAMS[tea.category] ?? SEO_BREWING_PARAMS.black;
+  const catBrew = seoBrewing(tea.category);
   const brewTemp = (tea.brewingTemp && tea.brewingTemp.trim()) || catBrew.temp;
   const brewTime = (tea.brewingTime && tea.brewingTime.trim()) || catBrew.time;
 
   // Caffeine note: prefer per-tea caffeine level over the category default.
   const caffeine = (tea.caffeine ?? '').toLowerCase();
   const caffeineNote = (() => {
-    if (caffeine === 'none') return `${tea.name} is naturally caffeine-free.`;
+    if (caffeine === 'none')
+      return SL(
+        `${tea.name} is naturally caffeine-free.`,
+        `${tea.name} est naturellement sans caféine.`,
+      );
     if (caffeine === 'low')
-      return `${tea.name} has a low caffeine level — typically under 25 mg per cup.`;
+      return SL(
+        `${tea.name} has a low caffeine level — typically under 25 mg per cup.`,
+        `${tea.name} est faible en caféine — généralement moins de 25 mg par tasse.`,
+      );
     if (caffeine === 'medium')
-      return `${tea.name} has a moderate caffeine level — typically 25–50 mg per cup.`;
+      return SL(
+        `${tea.name} has a moderate caffeine level — typically 25–50 mg per cup.`,
+        `${tea.name} a une teneur modérée en caféine — généralement 25 à 50 mg par tasse.`,
+      );
     if (caffeine === 'high')
-      return `${tea.name} has a high caffeine level — typically 50–80 mg per cup.`;
+      return SL(
+        `${tea.name} has a high caffeine level — typically 50–80 mg per cup.`,
+        `${tea.name} est riche en caféine — généralement 50 à 80 mg par tasse.`,
+      );
     return catBrew.caffeineNote;
   })();
 
@@ -5043,13 +5241,18 @@ function patchHeadForTea(template: string, tea: TeaSeoFields, catalog: CatalogTe
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SEO_SITE_BASE },
-      { '@type': 'ListItem', position: 2, name: 'Our Teas', item: `${SEO_SITE_BASE}/products` },
+      { '@type': 'ListItem', position: 1, name: SL('Home', 'Accueil'), item: seoUrl('/') },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: SL('Our Teas', 'Nos thés'),
+        item: seoUrl('/products'),
+      },
       {
         '@type': 'ListItem',
         position: 3,
         name: catLabel,
-        item: `${SEO_SITE_BASE}/products/${tea.category}`,
+        item: seoUrl(`/products/${tea.category}`),
       },
       { '@type': 'ListItem', position: 4, name: tea.name, item: url },
     ],
@@ -5059,39 +5262,58 @@ function patchHeadForTea(template: string, tea: TeaSeoFields, catalog: CatalogTe
   // Never emit a question we can't answer well.
   const faqEntries: Array<{ q: string; a: string }> = [
     {
-      q: `How do I brew ${tea.name}?`,
-      a: `Use ${catBrew.gramsPerCup} of ${tea.name} per cup. Heat water to ${brewTemp} and steep for ${brewTime}. Adjust to taste.`,
+      q: SL(`How do I brew ${tea.name}?`, `Comment infuser ${tea.name}?`),
+      a: SL(
+        `Use ${catBrew.gramsPerCup} of ${tea.name} per cup. Heat water to ${brewTemp} and steep for ${brewTime}. Adjust to taste.`,
+        `Utilisez ${catBrew.gramsPerCup} de ${tea.name} par tasse. Chauffez l’eau à ${brewTemp} et laissez infuser ${brewTime}. Ajustez selon vos goûts.`,
+      ),
     },
-    { q: `Does ${tea.name} contain caffeine?`, a: caffeineNote },
+    {
+      q: SL(`Does ${tea.name} contain caffeine?`, `Y a-t-il de la caféine dans ${tea.name}?`),
+      a: caffeineNote,
+    },
   ];
   if (tea.ingredients?.trim()) {
     faqEntries.push({
-      q: `What is in ${tea.name}?`,
-      a: `${tea.name} contains: ${tea.ingredients.trim()}.`,
+      q: SL(`What is in ${tea.name}?`, `Que contient ${tea.name}?`),
+      a: SL(
+        `${tea.name} contains: ${tea.ingredients.trim()}.`,
+        `${tea.name} contient : ${tea.ingredients.trim()}.`,
+      ),
     });
   }
   if (tea.origin?.trim()) {
+    const where = `${tea.origin.trim()}${tea.regions?.trim() ? ` (${tea.regions.trim()})` : ''}`;
     faqEntries.push({
-      q: `Where does ${tea.name} come from?`,
-      a: `${tea.name} is sourced from ${tea.origin.trim()}${tea.regions?.trim() ? ` (${tea.regions.trim()})` : ''}.`,
+      q: SL(`Where does ${tea.name} come from?`, `D’où vient ${tea.name}?`),
+      a: SL(`${tea.name} is sourced from ${where}.`, `${tea.name} provient de : ${where}.`),
     });
   }
   if (tea.isOrganic) {
     faqEntries.push({
-      q: `Is ${tea.name} organic?`,
-      a: `Yes — ${tea.name} is certified organic.`,
+      q: SL(`Is ${tea.name} organic?`, `Est-ce que ${tea.name} est biologique?`),
+      a: SL(
+        `Yes — ${tea.name} is certified organic.`,
+        `Oui — ${tea.name} est certifié biologique.`,
+      ),
     });
   }
   faqEntries.push(
     {
-      q: `How is ${tea.name} shipped?`,
-      a:
-        `We ship across Canada. ${shippingText(store)} Orders typically arrive within 1–8 business days. ` +
-        `Free pickup is also available${store.address ? ` at ${store.address}` : ' in Vancouver'}.`,
+      q: SL(`How is ${tea.name} shipped?`, `Comment est expédié ${tea.name}?`),
+      a: SL(
+        `We ship across Canada. ${seoShipping(store)} Orders typically arrive within 1–8 business days. ` +
+          `Free pickup is also available${store.address ? ` at ${store.address}` : ' in Vancouver'}.`,
+        `Nous livrons partout au Canada. ${seoShipping(store)} Les commandes arrivent généralement en 1 à 8 jours ouvrables. ` +
+          `La cueillette gratuite est aussi offerte${store.address ? ` au ${store.address}` : ' à Vancouver'}.`,
+      ),
     },
     {
-      q: 'What is the return policy?',
-      a: 'Because tea is a food product, sales are final. If your tea arrives spoiled or damaged, contact us within 7 days and we’ll refund or replace it.',
+      q: SL('What is the return policy?', 'Quelle est la politique de retour?'),
+      a: SL(
+        'Because tea is a food product, sales are final. If your tea arrives spoiled or damaged, contact us within 7 days and we’ll refund or replace it.',
+        'Le thé étant un produit alimentaire, toutes les ventes sont finales. Si votre thé arrive abîmé ou endommagé, écrivez-nous dans les 7 jours et nous le rembourserons ou le remplacerons.',
+      ),
     },
   );
   const faqLd = {
@@ -5108,41 +5330,56 @@ function patchHeadForTea(template: string, tea: TeaSeoFields, catalog: CatalogTe
   const howtoLd = {
     '@context': 'https://schema.org',
     '@type': 'HowTo',
-    name: `How to brew ${tea.name}`,
-    description: `Step-by-step brewing instructions for ${tea.name}.`,
+    name: SL(`How to brew ${tea.name}`, `Comment infuser ${tea.name}`),
+    description: SL(
+      `Step-by-step brewing instructions for ${tea.name}.`,
+      `Instructions d’infusion étape par étape pour ${tea.name}.`,
+    ),
     totalTime: catBrew.totalTimeISO,
     supply: [
-      { '@type': 'HowToSupply', name: `${catBrew.gramsPerCup} of ${tea.name}` },
-      { '@type': 'HowToSupply', name: 'Filtered water' },
+      {
+        '@type': 'HowToSupply',
+        name: SL(`${catBrew.gramsPerCup} of ${tea.name}`, `${catBrew.gramsPerCup} de ${tea.name}`),
+      },
+      { '@type': 'HowToSupply', name: SL('Filtered water', 'Eau filtrée') },
     ],
     tool: [
-      { '@type': 'HowToTool', name: 'Teapot or infuser' },
-      { '@type': 'HowToTool', name: 'Kettle' },
+      { '@type': 'HowToTool', name: SL('Teapot or infuser', 'Théière ou infuseur') },
+      { '@type': 'HowToTool', name: SL('Kettle', 'Bouilloire') },
     ],
     step: [
       {
         '@type': 'HowToStep',
         position: 1,
-        name: 'Heat water',
-        text: `Heat fresh water to ${brewTemp}.`,
+        name: SL('Heat water', 'Chauffer l’eau'),
+        text: SL(`Heat fresh water to ${brewTemp}.`, `Chauffez de l’eau fraîche à ${brewTemp}.`),
       },
       {
         '@type': 'HowToStep',
         position: 2,
-        name: 'Measure tea',
-        text: `Measure ${catBrew.gramsPerCup} of loose-leaf ${tea.name} per cup.`,
+        name: SL('Measure tea', 'Mesurer le thé'),
+        text: SL(
+          `Measure ${catBrew.gramsPerCup} of loose-leaf ${tea.name} per cup.`,
+          `Mesurez ${catBrew.gramsPerCup} de ${tea.name} en vrac par tasse.`,
+        ),
       },
       {
         '@type': 'HowToStep',
         position: 3,
-        name: 'Steep',
-        text: `Pour water over the leaves and steep for ${brewTime}.`,
+        name: SL('Steep', 'Infuser'),
+        text: SL(
+          `Pour water over the leaves and steep for ${brewTime}.`,
+          `Versez l’eau sur les feuilles et laissez infuser ${brewTime}.`,
+        ),
       },
       {
         '@type': 'HowToStep',
         position: 4,
-        name: 'Strain & serve',
-        text: 'Strain the leaves and serve. The same leaves can usually be re-steeped 1–2 more times.',
+        name: SL('Strain & serve', 'Filtrer et servir'),
+        text: SL(
+          'Strain the leaves and serve. The same leaves can usually be re-steeped 1–2 more times.',
+          'Retirez les feuilles et servez. Les mêmes feuilles peuvent généralement être infusées encore 1 à 2 fois.',
+        ),
       },
     ],
   };
@@ -5156,6 +5393,7 @@ function patchHeadForTea(template: string, tea: TeaSeoFields, catalog: CatalogTe
     url: url,
     name: title,
     description: desc,
+    inLanguage: SL('en-CA', 'fr-CA'),
     speakable: {
       '@type': 'SpeakableSpecification',
       cssSelector: ['h1', '[data-speakable]', 'meta[name="description"]'],
@@ -5208,7 +5446,8 @@ function patchHeadForTea(template: string, tea: TeaSeoFields, catalog: CatalogTe
   const servedAsList = (tea.servingSuggestions ?? [])
     .map((x) => (typeof x === 'string' ? { label: x, enabled: true } : x))
     .filter((x) => x && x.enabled !== false && x.label)
-    .map((x) => String(x.label).toLowerCase());
+    .map((x) => String(x.label).toLowerCase())
+    .map((x) => (seoFr() ? (SERVED_AS_FR[x] ?? x) : x));
   const related = catalog
     .filter((t) => t.category === tea.category && t.slug !== tea.slug)
     .slice(0, 6);
@@ -5221,8 +5460,8 @@ function patchHeadForTea(template: string, tea: TeaSeoFields, catalog: CatalogTe
         <header>
           <p>${seoEscHtml(catLabel)}</p>
           <h1>${seoEscHtml(tea.name)}</h1>
-          ${tea.origin ? `<p>Origin: <strong>${seoEscHtml(tea.origin)}</strong></p>` : ''}
-          <p>Price: <strong>$${seoEscHtml(price)}</strong></p>
+          ${tea.origin ? `<p>${SL('Origin:', 'Origine :')} <strong>${seoEscHtml(tea.origin)}</strong></p>` : ''}
+          <p>${SL('Price:', 'Prix :')} <strong>${seoEscHtml(seoMoney(Number(price)))}</strong></p>
         </header>
         ${tea.image ? `<img src="${seoEscHtml(image)}" alt="${seoEscHtml(tea.name)}" loading="lazy" width="600" height="600" />` : ''}
         <section>
@@ -5230,13 +5469,13 @@ function patchHeadForTea(template: string, tea: TeaSeoFields, catalog: CatalogTe
           <p>${seoEscHtml(fullDesc)}</p>
         </section>
         <section>
-          <h2>Brewing</h2>
-          <p>Water temperature: ${seoEscHtml(brewTemp)}<br />Steep time: ${seoEscHtml(brewTime)}<br />${seoEscHtml(caffeineNote)}</p>
+          <h2>${SL('Brewing', 'Infusion')}</h2>
+          <p>${SL('Water temperature:', 'Température de l’eau :')} ${seoEscHtml(brewTemp)}<br />${SL('Steep time:', 'Temps d’infusion :')} ${seoEscHtml(brewTime)}<br />${seoEscHtml(caffeineNote)}</p>
         </section>
         ${
           tea.ingredients
             ? `<section>
-          <h2>Ingredients</h2>
+          <h2>${SL('Ingredients', 'Ingrédients')}</h2>
           <p>${seoEscHtml(tea.ingredients)}</p>
         </section>`
             : ''
@@ -5244,36 +5483,39 @@ function patchHeadForTea(template: string, tea: TeaSeoFields, catalog: CatalogTe
         ${
           tea.benefits
             ? `<section>
-          <h2>Tasting notes &amp; benefits</h2>
+          <h2>${SL('Tasting notes &amp; benefits', 'Notes de dégustation et bienfaits')}</h2>
           <p>${seoEscHtml(tea.benefits)}</p>
         </section>`
             : ''
         }
-        ${tea.regions ? `<p>Growing region: ${seoEscHtml(tea.regions)}</p>` : ''}
+        ${tea.regions ? `<p>${SL('Growing region:', 'Région de culture :')} ${seoEscHtml(tea.regions)}</p>` : ''}
         ${
           servedAsList.length
             ? `<section>
-          <h2>Enjoy it at Ele Café</h2>
-          <p>We serve ${seoEscHtml(tea.name)} at our Vancouver café as ${seoEscHtml(servedAsList.join(', ').replace(/, ([^,]*)$/, ' or $1'))}.</p>
+          <h2>${SL('Enjoy it at Ele Café', 'Savourez-le chez Ele Café')}</h2>
+          <p>${SL(
+            `We serve ${seoEscHtml(tea.name)} at our Vancouver café as ${seoEscHtml(servedAsList.join(', ').replace(/, ([^,]*)$/, ' or $1'))}.`,
+            `Nous servons ${seoEscHtml(tea.name)} à notre café de Vancouver en ${seoEscHtml(servedAsList.join(', ').replace(/, ([^,]*)$/, ' ou $1'))}.`,
+          )}</p>
         </section>`
             : ''
         }
-        ${tea.isOrganic ? '<p><em>Certified organic.</em></p>' : ''}
-        ${seoTasteLine(store, 'Taste it first at our café')}
+        ${tea.isOrganic ? `<p><em>${SL('Certified organic.', 'Certifié biologique.')}</em></p>` : ''}
+        ${seoTasteLine(store, SL('Taste it first at our café', 'Goûtez-le d’abord à notre café'))}
         ${
           related.length
             ? `<section>
-          <h2>More ${seoEscHtml(catLabel)}</h2>
+          <h2>${SL(`More ${seoEscHtml(catLabel)}`, `Plus de choix : ${seoEscHtml(catLabel)}`)}</h2>
           ${teaListHtml(related)}
-          <p><a href="${SEO_SITE_BASE}/products/${seoEscHtml(tea.category)}">All ${seoEscHtml(catLabel)}</a> · <a href="${SEO_SITE_BASE}/products">All teas</a></p>
+          <p><a href="${seoUrl(`/products/${seoEscHtml(tea.category)}`)}">${SL(`All ${seoEscHtml(catLabel)}`, `${seoEscHtml(catLabel)} : toute la sélection`)}</a> · <a href="${seoUrl('/products')}">${SL('All teas', 'Tous les thés')}</a></p>
         </section>`
             : ''
         }
-        ${inCollections.length ? `<p>Find it in: ${inCollections.map((c) => `<a href="${SEO_SITE_BASE}/collections/${seoEscHtml(c.slug)}">${seoEscHtml(c.title)}</a>`).join(' · ')}</p>` : ''}
+        ${inCollections.length ? `<p>${SL('Find it in:', 'Présent dans :')} ${inCollections.map((c) => `<a href="${seoUrl(`/collections/${seoEscHtml(c.slug)}`)}">${seoEscHtml(seoCollTitle(c))}</a>`).join(' · ')}</p>` : ''}
         <p>
-          <a href="${seoEscHtml(url)}">View ${seoEscHtml(tea.name)} on Ele Café</a>
+          <a href="${seoEscHtml(url)}">${SL(`View ${seoEscHtml(tea.name)} on Ele Café`, `Voir ${seoEscHtml(tea.name)} sur Ele Café`)}</a>
         </p>
-        ${inStock ? '' : '<p><strong>Currently sold out.</strong></p>'}
+        ${inStock ? '' : `<p><strong>${SL('Currently sold out.', 'Actuellement en rupture de stock.')}</strong></p>`}
         ${seoContactHtml(store)}
       </article>
     </noscript>`;
@@ -5296,6 +5538,8 @@ interface CatalogTea {
   price?: number;
   description?: string;
   available?: boolean;
+  nameFr?: string | null;
+  descriptionFr?: string | null;
 }
 
 let catalogCache: { at: number; teas: CatalogTea[] } | null = null;
@@ -5304,7 +5548,17 @@ async function fetchCatalogForSeo(): Promise<CatalogTea[]> {
   if (catalogCache && Date.now() - catalogCache.at < 5 * 60_000) return catalogCache.teas;
   const snap = await db
     .collection('teas')
-    .select('name', 'slug', 'category', 'price', 'description', 'isActive', 'available')
+    .select(
+      'name',
+      'slug',
+      'category',
+      'price',
+      'description',
+      'isActive',
+      'available',
+      'nameFr',
+      'descriptionFr',
+    )
     .get();
   const teas: CatalogTea[] = [];
   for (const doc of snap.docs) {
@@ -5317,6 +5571,8 @@ async function fetchCatalogForSeo(): Promise<CatalogTea[]> {
       price: d.price,
       description: d.description,
       available: d.available,
+      nameFr: d.nameFr,
+      descriptionFr: d.descriptionFr,
     });
   }
   teas.sort((a, b) => a.name.localeCompare(b.name));
@@ -5325,7 +5581,7 @@ async function fetchCatalogForSeo(): Promise<CatalogTea[]> {
 }
 
 const teaUrlFor = (t: { category: string; slug: string }) =>
-  `${SEO_SITE_BASE}/tea-profile/${encodeURIComponent(t.category)}/${encodeURIComponent(t.slug)}`;
+  seoUrl(`/tea-profile/${encodeURIComponent(t.category)}/${encodeURIComponent(t.slug)}`);
 
 /** First sentence of a description, capped for a list line. */
 function teaBlurb(desc?: string): string {
@@ -5341,11 +5597,11 @@ function teaListHtml(teas: readonly CatalogTea[]): string {
             .map((t) => {
               const price =
                 typeof t.price === 'number' && t.price > 0
-                  ? ` — ${seoEscHtml(money(t.price))}`
+                  ? ` — ${seoEscHtml(seoMoney(t.price))}`
                   : '';
-              const blurb = teaBlurb(t.description);
-              const sold = t.available === false ? ' (sold out)' : '';
-              return `<li><a href="${seoEscHtml(teaUrlFor(t))}">${seoEscHtml(t.name)}</a>${price}${sold}${blurb ? `. ${seoEscHtml(blurb)}` : ''}</li>`;
+              const blurb = teaBlurb(seoTl(t.description, t.descriptionFr));
+              const sold = t.available === false ? SL(' (sold out)', ' (épuisé)') : '';
+              return `<li><a href="${seoEscHtml(teaUrlFor(t))}">${seoEscHtml(seoTl(t.name, t.nameFr))}</a>${price}${sold}${blurb ? `. ${seoEscHtml(blurb)}` : ''}</li>`;
             })
             .join('\n          ')}
           </ul>`;
@@ -5373,47 +5629,52 @@ function itemListLd(
         '@type': 'ListItem',
         position: i + 1,
         url: teaUrlFor(t),
-        name: t.name,
+        name: seoTl(t.name, t.nameFr),
       })),
     },
   };
 }
 
 const PRODUCTS_TITLE = 'Shop Loose Leaf Tea Online in Canada — All Teas | Ele Café Vancouver';
+const PRODUCTS_TITLE_FR = 'Thé en vrac en ligne au Canada — Tous nos thés | Ele Café Vancouver';
 
 function patchHeadForProducts(template: string, teas: CatalogTea[]): string {
-  const url = `${SEO_SITE_BASE}/products`;
+  const url = seoUrl('/products');
   const cats = Object.keys(SEO_CATEGORY_LABELS).filter((id) => teas.some((t) => t.category === id));
-  const intro = `Shop ${teas.length} loose leaf teas online in Canada — ${cats.map((c) => SEO_CATEGORY_LABELS[c].toLowerCase()).join(', ')} — blended and packed at our Vancouver tea café. ${shippingText(SEO_STORE)}`;
+  const catList = cats.map((c) => seoCatLabel(c).toLowerCase()).join(', ');
+  const intro = SL(
+    `Shop ${teas.length} loose leaf teas online in Canada — ${catList} — blended and packed at our Vancouver tea café. ${seoShipping(SEO_STORE)}`,
+    `Achetez ${teas.length} thés en vrac en ligne au Canada — ${catList} — mélangés et emballés dans notre café de thé à Vancouver. ${seoShipping(SEO_STORE)}`,
+  );
   const breadcrumbLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SEO_SITE_BASE },
-      { '@type': 'ListItem', position: 2, name: 'Our Teas', item: url },
+      { '@type': 'ListItem', position: 1, name: SL('Home', 'Accueil'), item: seoUrl('/') },
+      { '@type': 'ListItem', position: 2, name: SL('Our Teas', 'Nos thés'), item: url },
     ],
   };
   const html = patchTemplateHead(template, {
-    title: PRODUCTS_TITLE,
+    title: SL(PRODUCTS_TITLE, PRODUCTS_TITLE_FR),
     description: seoClamp(intro),
     canonical: url,
     ogType: 'website',
     ogImage: SEO_DEFAULT_OG,
     extraOgMeta: [],
-    extraJsonLd: [itemListLd('Our Teas', url, teas, seoClamp(intro)), breadcrumbLd],
+    extraJsonLd: [itemListLd(SL('Our Teas', 'Nos thés'), url, teas, seoClamp(intro)), breadcrumbLd],
   });
   const sections = cats
     .map((c) => {
       const inCat = teas.filter((t) => t.category === c);
       return `<section>
-          <h2><a href="${SEO_SITE_BASE}/products/${seoEscHtml(c)}">${seoEscHtml(SEO_CATEGORY_LABELS[c])}</a> (${inCat.length})</h2>
+          <h2><a href="${seoUrl(`/products/${seoEscHtml(c)}`)}">${seoEscHtml(seoCatLabel(c))}</a> (${inCat.length})</h2>
           ${teaListHtml(inCat)}
         </section>`;
     })
     .join('\n        ');
   const collections = SEO_COLLECTIONS.map(
     (col) =>
-      `<a href="${SEO_SITE_BASE}/collections/${seoEscHtml(col.slug)}">${seoEscHtml(col.title)}</a>`,
+      `<a href="${seoUrl(`/collections/${seoEscHtml(col.slug)}`)}">${seoEscHtml(seoCollTitle(col))}</a>`,
   ).join(' · ');
   return replaceNoscript(
     html,
@@ -5422,15 +5683,15 @@ function patchHeadForProducts(template: string, teas: CatalogTea[]): string {
       <article class="seo-fallback">
         <header>
           <p>Ele Café · Vancouver</p>
-          <h1>Our Teas</h1>
+          <h1>${SL('Our Teas', 'Nos thés')}</h1>
           <p>${seoEscHtml(intro)}</p>
         </header>
         ${sections}
         <section>
-          <h2>Tea collections</h2>
+          <h2>${SL('Tea collections', 'Collections de thé')}</h2>
           <p>${collections}</p>
         </section>
-        <p><a href="${SEO_SITE_BASE}/cafe">Café menu</a> · <a href="${SEO_SITE_BASE}/pairings">Tea &amp; pastry pairings</a> · <a href="${SEO_SITE_BASE}/gifts">Gift builder</a></p>
+        <p><a href="${seoUrl('/cafe')}">${SL('Café menu', 'Menu du café')}</a> · <a href="${seoUrl('/pairings')}">${SL('Tea &amp; pastry pairings', 'Accords thé et pâtisserie')}</a> · <a href="${seoUrl('/gifts')}">${SL('Gift builder', 'Coffrets-cadeaux')}</a></p>
         ${seoContactHtml(SEO_STORE)}
       </article>
     </noscript>`,
@@ -5438,20 +5699,28 @@ function patchHeadForProducts(template: string, teas: CatalogTea[]): string {
 }
 
 function patchHeadForCategory(template: string, catId: string, catalog: CatalogTea[] = []): string {
-  const url = `${SEO_SITE_BASE}/products/${catId}`;
-  const label = SEO_CATEGORY_LABELS[catId] || 'Tea';
+  const url = seoUrl(`/products/${catId}`);
+  const label = seoCatLabel(catId);
   const title = `${label} | Ele Café Vancouver`;
   const intro =
-    CATEGORY_SEO[catId]?.intro ??
-    `Shop premium loose leaf ${label.toLowerCase()} at Ele Café, Vancouver's tea shop.`;
+    (seoFr() ? CATEGORY_SEO[catId]?.introFr : CATEGORY_SEO[catId]?.intro) ??
+    SL(
+      `Shop premium loose leaf ${label.toLowerCase()} at Ele Café, Vancouver's tea shop.`,
+      `${label} en vrac haut de gamme chez Ele Café, la boutique de thé de Vancouver.`,
+    );
   const desc = seoClamp(intro);
 
   const breadcrumbLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SEO_SITE_BASE },
-      { '@type': 'ListItem', position: 2, name: 'Our Teas', item: `${SEO_SITE_BASE}/products` },
+      { '@type': 'ListItem', position: 1, name: SL('Home', 'Accueil'), item: seoUrl('/') },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: SL('Our Teas', 'Nos thés'),
+        item: seoUrl('/products'),
+      },
       { '@type': 'ListItem', position: 3, name: label, item: url },
     ],
   };
@@ -5483,23 +5752,26 @@ function patchHeadForCategory(template: string, catId: string, catalog: CatalogT
     <noscript>
       <article class="seo-fallback">
         <header>
-          <p>Category</p>
+          <p>${SL('Category', 'Catégorie')}</p>
           <h1>${seoEscHtml(label)}</h1>
         </header>
         <section>
           <p>${seoEscHtml(intro)}</p>
-          <p>${seoEscHtml(shippingText(SEO_STORE))}</p>
+          <p>${seoEscHtml(seoShipping(SEO_STORE))}</p>
         </section>
         ${
           inCat.length
             ? `<section>
-          <h2>${inCat.length} ${seoEscHtml(label)} ${inCat.length === 1 ? 'tea' : 'teas'}</h2>
+          <h2>${SL(
+            `${inCat.length} ${seoEscHtml(label)} ${inCat.length === 1 ? 'tea' : 'teas'}`,
+            `${seoEscHtml(label)} : ${inCat.length} ${inCat.length === 1 ? 'thé' : 'thés'}`,
+          )}</h2>
           ${teaListHtml(inCat)}
         </section>`
             : ''
         }
         <p>
-          Browse the full catalog: <a href="${seoEscHtml(SEO_SITE_BASE)}/products">all teas</a>.
+          ${SL('Browse the full catalog:', 'Parcourez tout le catalogue :')} <a href="${seoUrl('/products')}">${SL('all teas', 'tous les thés')}</a>.
         </p>
         ${seoContactHtml(SEO_STORE)}
       </article>
@@ -5545,17 +5817,25 @@ function patchHeadForCollection(
   def: CollectionDef,
   teas: TeaSeoFields[],
 ): string {
-  const url = `${SEO_SITE_BASE}/collections/${def.slug}`;
-  const title = `${def.title} | Ele Café Vancouver`;
-  const desc = seoClamp(`${def.description} ${shippingText(SEO_STORE)}`);
+  const url = seoUrl(`/collections/${def.slug}`);
+  const defTitle = seoCollTitle(def);
+  const title = `${defTitle} | Ele Café Vancouver`;
+  const desc = seoClamp(
+    `${seoFr() ? def.descriptionFr : def.description} ${seoShipping(SEO_STORE)}`,
+  );
 
   const breadcrumbLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SEO_SITE_BASE },
-      { '@type': 'ListItem', position: 2, name: 'Our Teas', item: `${SEO_SITE_BASE}/products` },
-      { '@type': 'ListItem', position: 3, name: def.title, item: url },
+      { '@type': 'ListItem', position: 1, name: SL('Home', 'Accueil'), item: seoUrl('/') },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: SL('Our Teas', 'Nos thés'),
+        item: seoUrl('/products'),
+      },
+      { '@type': 'ListItem', position: 3, name: defTitle, item: url },
     ],
   };
 
@@ -5566,19 +5846,19 @@ function patchHeadForCollection(
     '@type': 'CollectionPage',
     '@id': `${url}#collection`,
     url: url,
-    name: def.title,
+    name: defTitle,
     description: desc,
     isPartOf: { '@id': `${SEO_SITE_BASE}/#website` },
     mainEntity: {
       '@type': 'ItemList',
-      name: def.title,
+      name: defTitle,
       numberOfItems: teas.length,
       itemListOrder: 'https://schema.org/ItemListOrderAscending',
       itemListElement: teas.map((tea, i) => ({
         '@type': 'ListItem',
         position: i + 1,
-        url: `${SEO_SITE_BASE}/tea-profile/${tea.category}/${tea.slug}`,
-        name: tea.name,
+        url: teaUrlFor(tea),
+        name: seoTl(tea.name, tea.nameFr),
       })),
     },
   };
@@ -5593,13 +5873,17 @@ function patchHeadForCollection(
     extraJsonLd: [
       collectionLd,
       breadcrumbLd,
-      ...(COLLECTION_GUIDES[def.slug] ? [faqJsonLd(COLLECTION_GUIDES[def.slug].faq)] : []),
+      ...(COLLECTION_GUIDES[def.slug]
+        ? [faqJsonLd(seoFr() ? COLLECTION_GUIDES[def.slug].faqFr : COLLECTION_GUIDES[def.slug].faq)]
+        : []),
     ],
   });
   const guide = COLLECTION_GUIDES[def.slug];
+  const guideSections = guide ? (seoFr() ? guide.sectionsFr : guide.sections) : [];
+  const guideFaq = guide ? (seoFr() ? guide.faqFr : guide.faq) : [];
   const guideHtml = guide
     ? `
-        ${guide.sections
+        ${guideSections
           .map(
             (sec) => `<section>
           <h2>${seoEscHtml(sec.h)}</h2>
@@ -5608,9 +5892,9 @@ function patchHeadForCollection(
           )
           .join('\n        ')}
         <section>
-          <h2>${seoEscHtml(def.title)}: questions</h2>
+          <h2>${seoEscHtml(defTitle)}${SL(': questions', ' : questions fréquentes')}</h2>
           <dl>
-          ${guide.faq.map((f) => `<dt>${seoEscHtml(f.q)}</dt><dd>${seoEscHtml(f.a)}</dd>`).join('\n          ')}
+          ${guideFaq.map((f) => `<dt>${seoEscHtml(f.q)}</dt><dd>${seoEscHtml(f.a)}</dd>`).join('\n          ')}
           </dl>
         </section>`
     : '';
@@ -5635,6 +5919,8 @@ function patchHeadForCollection(
       price: t.price,
       description: t.description,
       available: t.available,
+      nameFr: t.nameFr,
+      descriptionFr: t.descriptionFr,
     })),
   );
 
@@ -5643,7 +5929,7 @@ function patchHeadForCollection(
       <article class="seo-fallback">
         <header>
           <p>Collection</p>
-          <h1>${seoEscHtml(def.title)}</h1>
+          <h1>${seoEscHtml(defTitle)}</h1>
         </header>
         <section>
           <p>${seoEscHtml(desc)}</p>
@@ -5652,28 +5938,31 @@ function patchHeadForCollection(
           teas.length > 0
             ? `
         <section>
-          <h2>${seoEscHtml(String(teas.length))} ${teas.length === 1 ? 'tea' : 'teas'} in this collection</h2>
+          <h2>${SL(
+            `${seoEscHtml(String(teas.length))} ${teas.length === 1 ? 'tea' : 'teas'} in this collection`,
+            `${seoEscHtml(String(teas.length))} ${teas.length === 1 ? 'thé' : 'thés'} dans cette collection`,
+          )}</h2>
           ${teaList}
         </section>`
-            : '<p>No teas currently match this collection.</p>'
+            : `<p>${SL('No teas currently match this collection.', 'Aucun thé ne correspond à cette collection pour le moment.')}</p>`
         }
         ${guideHtml}
         <section>
-          <h2>More tea collections</h2>
+          <h2>${SL('More tea collections', 'Autres collections de thé')}</h2>
           <p>${SEO_COLLECTIONS.filter((c) => c.slug !== def.slug)
             .map(
               (c) =>
-                `<a href="${SEO_SITE_BASE}/collections/${seoEscHtml(c.slug)}">${seoEscHtml(c.title)}</a>`,
+                `<a href="${seoUrl(`/collections/${seoEscHtml(c.slug)}`)}">${seoEscHtml(seoCollTitle(c))}</a>`,
             )
             .join(' · ')}</p>
-          <p>${Object.entries(SEO_CATEGORY_LABELS)
+          <p>${Object.keys(SEO_CATEGORY_LABELS)
             .map(
-              ([id, label]) =>
-                `<a href="${SEO_SITE_BASE}/products/${seoEscHtml(id)}">${seoEscHtml(label)}</a>`,
+              (id) =>
+                `<a href="${seoUrl(`/products/${seoEscHtml(id)}`)}">${seoEscHtml(seoCatLabel(id))}</a>`,
             )
             .join(' · ')}</p>
         </section>
-        <p>Browse <a href="${seoEscHtml(SEO_SITE_BASE)}/products">all teas</a>.</p>
+        <p>${SL('Browse', 'Parcourez')} <a href="${seoUrl('/products')}">${SL('all teas', 'tous les thés')}</a>.</p>
         ${seoContactHtml(SEO_STORE)}
       </article>
     </noscript>`;
@@ -5694,6 +5983,8 @@ interface ComboSeoFields {
   slug: string;
   title: string;
   description: string;
+  titleFr?: string;
+  descriptionFr?: string;
   imageUrl: string;
   price: number;
   currency?: string;
@@ -5721,18 +6012,31 @@ async function fetchComboBySlug(slug: string): Promise<ComboSeoFields | null> {
     slug,
     title: data.title,
     description: typeof data.description === 'string' ? data.description : '',
+    titleFr: typeof data.titleFr === 'string' ? data.titleFr : undefined,
+    descriptionFr: typeof data.descriptionFr === 'string' ? data.descriptionFr : undefined,
     imageUrl: data.imageUrl,
     price: typeof data.price === 'number' ? data.price : 0,
     currency: typeof data.currency === 'string' ? data.currency : 'CAD',
   };
 }
 
-function patchHeadForPairing(template: string, combo: ComboSeoFields): string {
-  const url = `${SEO_SITE_BASE}/pairings/${combo.slug}`;
-  const title = `${combo.title} — Pair with our tea | Ele Café Vancouver`;
+function patchHeadForPairing(template: string, raw: ComboSeoFields): string {
+  const combo: ComboSeoFields = {
+    ...raw,
+    title: seoTl(raw.title, raw.titleFr),
+    description: seoTl(raw.description, raw.descriptionFr),
+  };
+  const url = seoUrl(`/pairings/${combo.slug}`);
+  const title = SL(
+    `${combo.title} — Pair with our tea | Ele Café Vancouver`,
+    `${combo.title} — À savourer avec notre thé | Ele Café Vancouver`,
+  );
   const desc = seoClamp(
     combo.description ||
-      `Pair ${combo.title} with our hand-selected loose-leaf teas — premium curated pairings from Ele Café Vancouver.`,
+      SL(
+        `Pair ${combo.title} with our hand-selected loose-leaf teas — premium curated pairings from Ele Café Vancouver.`,
+        `Accompagnez ${combo.title} de nos thés en vrac choisis à la main — des accords haut de gamme d’Ele Café Vancouver.`,
+      ),
   );
   const price = combo.price.toFixed(2);
   const image = combo.imageUrl;
@@ -5741,8 +6045,13 @@ function patchHeadForPairing(template: string, combo: ComboSeoFields): string {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SEO_SITE_BASE },
-      { '@type': 'ListItem', position: 2, name: 'Pairings', item: `${SEO_SITE_BASE}/pairings` },
+      { '@type': 'ListItem', position: 1, name: SL('Home', 'Accueil'), item: seoUrl('/') },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: SL('Pairings', 'Accords'),
+        item: seoUrl('/pairings'),
+      },
       { '@type': 'ListItem', position: 3, name: combo.title, item: url },
     ],
   };
@@ -5816,21 +6125,21 @@ function patchHeadForPairing(template: string, combo: ComboSeoFields): string {
     <noscript>
       <article class="seo-fallback">
         <header>
-          <p>Pairing</p>
+          <p>${SL('Pairing', 'Accord')}</p>
           <h1>${seoEscHtml(combo.title)}</h1>
-          <p>Price: <strong>$${seoEscHtml(price)} ${seoEscHtml(combo.currency || 'CAD')}</strong></p>
+          <p>${SL('Price:', 'Prix :')} <strong>${seoEscHtml(seoMoney(combo.price))} ${seoEscHtml(combo.currency || 'CAD')}</strong></p>
         </header>
         ${combo.imageUrl ? `<img src="${seoEscHtml(image)}" alt="${seoEscHtml(combo.title)}" loading="lazy" width="600" height="400" />` : ''}
         <section>
-          <h2>About this pairing</h2>
+          <h2>${SL('About this pairing', 'À propos de cet accord')}</h2>
           <p>${seoEscHtml(desc)}</p>
         </section>
         <p>
-          <a href="${seoEscHtml(url)}">View ${seoEscHtml(combo.title)} on Ele Café</a>
+          <a href="${seoEscHtml(url)}">${SL(`View ${seoEscHtml(combo.title)} on Ele Café`, `Voir ${seoEscHtml(combo.title)} sur Ele Café`)}</a>
         </p>
         <p>
-          Browse <a href="${seoEscHtml(SEO_SITE_BASE)}/pairings">all pairings</a>
-          or <a href="${seoEscHtml(SEO_SITE_BASE)}/products">browse teas</a>.
+          ${SL('Browse', 'Voir')} <a href="${seoUrl('/pairings')}">${SL('all pairings', 'tous les accords')}</a>
+          ${SL('or', 'ou')} <a href="${seoUrl('/products')}">${SL('browse teas', 'parcourir nos thés')}</a>.
         </p>
       </article>
     </noscript>`;
@@ -5855,6 +6164,8 @@ type TeaSummary = CollectionTea & {
   price?: number;
   description?: string;
   available?: boolean;
+  nameFr?: string | null;
+  descriptionFr?: string | null;
 };
 
 async function fetchActiveTeaSummaries(): Promise<TeaSummary[]> {
@@ -5874,6 +6185,8 @@ async function fetchActiveTeaSummaries(): Promise<TeaSummary[]> {
       'price',
       'description',
       'available',
+      'nameFr',
+      'descriptionFr',
     )
     .get();
   const out: TeaSummary[] = [];
@@ -5893,6 +6206,8 @@ async function fetchActiveTeaSummaries(): Promise<TeaSummary[]> {
       price: d.price,
       description: d.description,
       available: d.available,
+      nameFr: d.nameFr,
+      descriptionFr: d.descriptionFr,
     });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
@@ -5900,24 +6215,35 @@ async function fetchActiveTeaSummaries(): Promise<TeaSummary[]> {
 
 // ── /pairings: tea & pastry pairings index ──────────────────────────────────
 
-function patchHeadForPairings(template: string, combos: CafeCombo[]): string {
-  const url = `${SEO_SITE_BASE}/pairings`;
+/** Pastry combos with their title / description in the page language. */
+const seoCombos = (combos: CafeCombo[]): CafeCombo[] =>
+  combos.map((c) => ({
+    ...c,
+    title: seoTl(c.title, c.titleFr),
+    description: seoTl(c.description, c.descriptionFr) || undefined,
+  }));
+
+function patchHeadForPairings(template: string, rawCombos: CafeCombo[]): string {
+  const combos = seoCombos(rawCombos);
+  const url = seoUrl('/pairings');
+  const pageName = SL('Tea & Pastry Pairings', 'Accords thé et pâtisserie');
+  const pageDesc = SL(PAIRINGS_DESCRIPTION, PAIRINGS_DESCRIPTION_FR);
   const html = patchTemplateHead(template, {
-    title: PAIRINGS_TITLE,
-    description: seoClamp(PAIRINGS_DESCRIPTION),
+    title: SL(PAIRINGS_TITLE, PAIRINGS_TITLE_FR),
+    description: seoClamp(pageDesc),
     canonical: url,
     ogType: 'website',
     ogImage: combos[0]?.imageUrl || SEO_DEFAULT_OG,
     extraOgMeta: [],
     extraJsonLd: [
-      infoBreadcrumb('Tea & Pastry Pairings', url),
+      infoBreadcrumb(pageName, url),
       {
         '@context': 'https://schema.org',
         '@type': 'CollectionPage',
         '@id': `${url}#collection`,
         url,
-        name: 'Tea & Pastry Pairings',
-        description: PAIRINGS_DESCRIPTION,
+        name: pageName,
+        description: pageDesc,
         mainEntity: {
           '@type': 'ItemList',
           numberOfItems: combos.length,
@@ -5926,7 +6252,7 @@ function patchHeadForPairings(template: string, combos: CafeCombo[]): string {
             .map((c, i) => ({
               '@type': 'ListItem',
               position: i + 1,
-              url: `${SEO_SITE_BASE}/pairings/${c.slug}`,
+              url: seoUrl(`/pairings/${c.slug}`),
               name: c.title,
             })),
         },
@@ -5936,9 +6262,9 @@ function patchHeadForPairings(template: string, combos: CafeCombo[]): string {
   const items = combos
     .map((c) => {
       const name = c.slug
-        ? `<a href="${SEO_SITE_BASE}/pairings/${seoEscHtml(c.slug)}">${seoEscHtml(c.title)}</a>`
+        ? `<a href="${seoUrl(`/pairings/${seoEscHtml(c.slug)}`)}">${seoEscHtml(c.title)}</a>`
         : seoEscHtml(c.title);
-      return `<li>${name} — ${seoEscHtml(money(c.price))}${c.description ? `. ${seoEscHtml(teaBlurb(c.description))}` : ''}</li>`;
+      return `<li>${name} — ${seoEscHtml(seoMoney(c.price))}${c.description ? `. ${seoEscHtml(teaBlurb(c.description))}` : ''}</li>`;
     })
     .join('\n          ');
   return replaceNoscript(
@@ -5948,20 +6274,20 @@ function patchHeadForPairings(template: string, combos: CafeCombo[]): string {
       <article class="seo-fallback">
         <header>
           <p>Ele Café · Vancouver</p>
-          <h1>Tea &amp; Pastry Pairings</h1>
-          <p>${seoEscHtml(PAIRINGS_DESCRIPTION)}</p>
+          <h1>${seoEscHtml(pageName)}</h1>
+          <p>${seoEscHtml(pageDesc)}</p>
         </header>
         ${
           items
             ? `<section>
-          <h2>Our pairings</h2>
+          <h2>${SL('Our pairings', 'Nos accords')}</h2>
           <ul>
           ${items}
           </ul>
         </section>`
             : ''
         }
-        <p><a href="${SEO_SITE_BASE}/cafe">Café menu</a> · <a href="${SEO_SITE_BASE}/products">Shop our teas</a></p>
+        <p><a href="${seoUrl('/cafe')}">${SL('Café menu', 'Menu du café')}</a> · <a href="${seoUrl('/products')}">${SL('Shop our teas', 'Nos thés')}</a></p>
         ${seoContactHtml(SEO_STORE)}
       </article>
     </noscript>`,
@@ -5978,7 +6304,7 @@ function infoBreadcrumb(name: string, url: string) {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SEO_SITE_BASE },
+      { '@type': 'ListItem', position: 1, name: SL('Home', 'Accueil'), item: seoUrl('/') },
       { '@type': 'ListItem', position: 2, name, item: url },
     ],
   };
@@ -5986,29 +6312,43 @@ function infoBreadcrumb(name: string, url: string) {
 
 function patchHeadForAbout(template: string): string {
   const store = SEO_STORE;
-  const url = `${SEO_SITE_BASE}/about`;
+  const url = seoUrl('/about');
   const [street] = addressLines(store.address);
-  const desc = `Learn about ${store.name} — Vancouver's loose-leaf tea destination${street ? ` at ${street}` : ''}.`;
+  const desc = SL(
+    `Learn about ${store.name} — Vancouver's loose-leaf tea destination${street ? ` at ${street}` : ''}.`,
+    `Découvrez ${store.name} — la destination du thé en vrac à Vancouver${street ? `, au ${street}` : ''}.`,
+  );
   const html = patchTemplateHead(template, {
-    title: 'About Us | Ele Café',
+    title: SL('About Us | Ele Café', 'À propos | Ele Café'),
     description: seoClamp(desc),
     canonical: url,
     ogType: 'website',
     ogImage: SEO_DEFAULT_OG,
     extraOgMeta: [],
-    extraJsonLd: [infoBreadcrumb('About Us', url), localBusinessLd(store, SEO_SITE_BASE)],
+    extraJsonLd: [
+      infoBreadcrumb(SL('About Us', 'À propos'), url),
+      localBusinessLd(store, SEO_SITE_BASE),
+    ],
   });
+  const body = seoFr()
+    ? `<h1>À propos</h1>
+        <p>Ele Café a commencé son aventure à Vancouver (C.-B.) en ${FOUNDING_YEAR}, animé par la passion de partager des thés en vrac d’exception venus du monde entier. Chaque thé de notre collection est choisi avec soin pour sa qualité, son caractère et l’histoire unique de son origine.</p>
+        <p>Notre adresse${street ? ` au ${seoEscHtml(street)}` : ''} est plus qu’un café — c’est un lieu pour tous ceux qui croient qu’une bonne tasse de thé est l’un des plaisirs simples de la vie, du matcha de cérémonie japonais fouetté à la commande aux oolongs rares et aux thés noirs de caractère.</p>
+        <h2>Nos valeurs</h2>
+        <p>Nous misons sur la transparence quant à l’origine de chaque thé et cherchons à créer un espace accueillant où découvrir le goût, l’arôme et les bienfaits naturels des thés du monde entier.</p>
+        <p><a href="${seoUrl('/products')}">Nos thés</a> · <a href="${seoUrl('/cafe')}">Menu du café</a> · <a href="${seoUrl('/contact')}">Nous joindre</a></p>`
+    : `<h1>About Us</h1>
+        <p>Ele Café began its journey in Vancouver, BC in ${FOUNDING_YEAR} with a passion for sharing exceptional loose-leaf teas from around the world. Every tea in our collection is carefully selected for its quality, character, and the unique story behind its origin.</p>
+        <p>Our location${street ? ` at ${seoEscHtml(street)}` : ''} is more than a café — it is a place for anyone who believes a great cup of tea is one of life’s simple pleasures, from Japanese ceremonial matcha whisked to order to rare oolongs and distinctive black teas.</p>
+        <h2>Our Values</h2>
+        <p>We value transparency in the origin of every tea we offer and strive to create a welcoming space where people can discover the taste, aroma, and natural benefits of teas from around the world.</p>
+        <p><a href="${seoUrl('/products')}">Shop our teas</a> · <a href="${seoUrl('/cafe')}">Café menu</a> · <a href="${seoUrl('/contact')}">Contact us</a></p>`;
   return replaceNoscript(
     html,
     `
     <noscript>
       <article class="seo-fallback">
-        <h1>About Us</h1>
-        <p>Ele Café began its journey in Vancouver, BC in ${FOUNDING_YEAR} with a passion for sharing exceptional loose-leaf teas from around the world. Every tea in our collection is carefully selected for its quality, character, and the unique story behind its origin.</p>
-        <p>Our location${street ? ` at ${seoEscHtml(street)}` : ''} is more than a café — it is a place for anyone who believes a great cup of tea is one of life’s simple pleasures, from Japanese ceremonial matcha whisked to order to rare oolongs and distinctive black teas.</p>
-        <h2>Our Values</h2>
-        <p>We value transparency in the origin of every tea we offer and strive to create a welcoming space where people can discover the taste, aroma, and natural benefits of teas from around the world.</p>
-        <p><a href="${SEO_SITE_BASE}/products">Shop our teas</a> · <a href="${SEO_SITE_BASE}/cafe">Café menu</a> · <a href="${SEO_SITE_BASE}/contact">Contact us</a></p>
+        ${body}
         ${seoContactHtml(store)}
       </article>
     </noscript>`,
@@ -6017,33 +6357,42 @@ function patchHeadForAbout(template: string): string {
 
 function patchHeadForContact(template: string): string {
   const store = SEO_STORE;
-  const url = `${SEO_SITE_BASE}/contact`;
-  const hours = hoursText(store.hours);
-  const desc = `Visit ${store.name}${store.address ? ` at ${store.address}` : ' in Vancouver'}.${hours ? ` Open ${hours}.` : ''} Phone, email and directions.`;
+  const url = seoUrl('/contact');
+  const hours = seoHours(store);
+  const desc = SL(
+    `Visit ${store.name}${store.address ? ` at ${store.address}` : ' in Vancouver'}.${hours ? ` Open ${hours}.` : ''} Phone, email and directions.`,
+    `Visitez ${store.name}${store.address ? ` au ${store.address}` : ' à Vancouver'}.${hours ? ` Ouvert ${hours}.` : ''} Téléphone, courriel et itinéraire.`,
+  );
   const tel = phoneTel(store.phone);
   const html = patchTemplateHead(template, {
-    title: 'Contact Us | Ele Café',
+    title: SL('Contact Us | Ele Café', 'Nous joindre | Ele Café'),
     description: seoClamp(desc),
     canonical: url,
     ogType: 'website',
     ogImage: SEO_DEFAULT_OG,
     extraOgMeta: [],
-    extraJsonLd: [infoBreadcrumb('Contact Us', url), localBusinessLd(store, SEO_SITE_BASE)],
+    extraJsonLd: [
+      infoBreadcrumb(SL('Contact Us', 'Nous joindre'), url),
+      localBusinessLd(store, SEO_SITE_BASE),
+    ],
   });
   return replaceNoscript(
     html,
     `
     <noscript>
       <article class="seo-fallback">
-        <h1>Contact Us</h1>
-        <p>We’d love to hear from you. Drop in to taste teas with us, or reach out by phone or email — we’ll get back to you within one business day.</p>
+        <h1>${SL('Contact Us', 'Nous joindre')}</h1>
+        <p>${SL(
+          'We’d love to hear from you. Drop in to taste teas with us, or reach out by phone or email — we’ll get back to you within one business day.',
+          'Nous serions ravis d’avoir de vos nouvelles. Passez déguster nos thés, ou écrivez-nous ou appelez-nous — nous vous répondrons en un jour ouvrable.',
+        )}</p>
         <dl>
-          ${store.address ? `<dt>Address</dt><dd>${store.mapsUrl ? `<a href="${seoEscHtml(store.mapsUrl)}">${seoEscHtml(store.address)}</a>` : seoEscHtml(store.address)}</dd>` : ''}
-          ${tel ? `<dt>Phone</dt><dd><a href="tel:${seoEscHtml(tel)}">${seoEscHtml(store.phone)}</a></dd>` : ''}
-          ${store.email ? `<dt>Email</dt><dd><a href="mailto:${seoEscHtml(store.email)}">${seoEscHtml(store.email)}</a></dd>` : ''}
-          ${hours ? `<dt>Hours</dt><dd>${seoEscHtml(hours)}</dd>` : ''}
+          ${store.address ? `<dt>${SL('Address', 'Adresse')}</dt><dd>${store.mapsUrl ? `<a href="${seoEscHtml(store.mapsUrl)}">${seoEscHtml(store.address)}</a>` : seoEscHtml(store.address)}</dd>` : ''}
+          ${tel ? `<dt>${SL('Phone', 'Téléphone')}</dt><dd><a href="tel:${seoEscHtml(tel)}">${seoEscHtml(store.phone)}</a></dd>` : ''}
+          ${store.email ? `<dt>${SL('Email', 'Courriel')}</dt><dd><a href="mailto:${seoEscHtml(store.email)}">${seoEscHtml(store.email)}</a></dd>` : ''}
+          ${hours ? `<dt>${SL('Hours', 'Heures')}</dt><dd>${seoEscHtml(hours)}</dd>` : ''}
         </dl>
-        <p><a href="${SEO_SITE_BASE}/cafe">Café menu</a> · <a href="${SEO_SITE_BASE}/products">Shop our teas</a></p>
+        <p><a href="${seoUrl('/cafe')}">${SL('Café menu', 'Menu du café')}</a> · <a href="${seoUrl('/products')}">${SL('Shop our teas', 'Nos thés')}</a></p>
       </article>
     </noscript>`,
   );
@@ -6052,19 +6401,12 @@ function patchHeadForContact(template: string): string {
 // ── /franchise: franchise inquiries (lib/franchise.ts) ─────────────────────
 
 function patchHeadForFranchise(template: string): string {
-  const url = `${SEO_SITE_BASE}/franchise`;
+  const url = seoUrl('/franchise');
   const email = SEO_STORE.email || FRANCHISE_EMAIL_FALLBACK;
-  const breadcrumbLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SEO_SITE_BASE },
-      { '@type': 'ListItem', position: 2, name: 'Franchise', item: url },
-    ],
-  };
+  const breadcrumbLd = infoBreadcrumb('Franchise', url);
   const html = patchTemplateHead(template, {
-    title: FRANCHISE_TITLE,
-    description: seoClamp(FRANCHISE_DESCRIPTION),
+    title: SL(FRANCHISE_TITLE, FRANCHISE_TITLE_FR),
+    description: seoClamp(SL(FRANCHISE_DESCRIPTION, FRANCHISE_DESCRIPTION_FR)),
     canonical: url,
     ogType: 'website',
     ogImage: SEO_DEFAULT_OG,
@@ -6077,24 +6419,24 @@ function patchHeadForFranchise(template: string): string {
     <noscript>
       <article class="seo-fallback">
         <header>
-          <p>Franchise opportunities</p>
-          <h1>Open an Ele Café in your city</h1>
-          <p>${seoEscHtml(franchiseIntro())}</p>
-          <p><a href="${seoEscHtml(franchiseMailto(email))}">Email us about franchising</a> (${seoEscHtml(email)})</p>
+          <p>${SL('Franchise opportunities', 'Occasions de franchise')}</p>
+          <h1>${SL('Open an Ele Café in your city', 'Ouvrez un Ele Café dans votre ville')}</h1>
+          <p>${seoEscHtml(franchiseIntro(SEO_LANG))}</p>
+          <p><a href="${seoEscHtml(franchiseMailto(email, SEO_LANG))}">${SL('Email us about franchising', 'Écrivez-nous au sujet de la franchise')}</a> (${seoEscHtml(email)})</p>
         </header>
         <section>
-          <h2>The concept</h2>
+          <h2>${SL('The concept', 'Le concept')}</h2>
           <ul>
-          ${FRANCHISE_CONCEPT.map((p) => `<li><strong>${seoEscHtml(p.title)}</strong> — ${seoEscHtml(p.text)}</li>`).join('\n          ')}
+          ${FRANCHISE_CONCEPT.map((p) => `<li><strong>${seoEscHtml(SL(p.title, p.titleFr))}</strong> — ${seoEscHtml(SL(p.text, p.textFr))}</li>`).join('\n          ')}
           </ul>
         </section>
         <section>
-          <h2>Who we're looking for</h2>
+          <h2>${SL("Who we're looking for", 'Qui nous recherchons')}</h2>
           <ul>
-          ${FRANCHISE_PARTNER.map((p) => `<li>${seoEscHtml(p.en)}</li>`).join('\n          ')}
+          ${FRANCHISE_PARTNER.map((p) => `<li>${seoEscHtml(SL(p.en, p.fr))}</li>`).join('\n          ')}
           </ul>
         </section>
-        <p><a href="${SEO_SITE_BASE}/cafe">Café menu</a> · <a href="${SEO_SITE_BASE}/about">About Ele Café</a></p>
+        <p><a href="${seoUrl('/cafe')}">${SL('Café menu', 'Menu du café')}</a> · <a href="${seoUrl('/about')}">${SL('About Ele Café', 'À propos d’Ele Café')}</a></p>
         ${seoContactHtml(SEO_STORE)}
       </article>
     </noscript>`,
@@ -6104,19 +6446,12 @@ function patchHeadForFranchise(template: string): string {
 // ── /rewards: Ele Rewards loyalty program (lib/rewards.ts) ─────────────────
 
 function patchHeadForRewards(template: string): string {
-  const url = `${SEO_SITE_BASE}/rewards`;
-  const faq = buildRewardsFaq();
-  const breadcrumbLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SEO_SITE_BASE },
-      { '@type': 'ListItem', position: 2, name: 'Ele Rewards', item: url },
-    ],
-  };
+  const url = seoUrl('/rewards');
+  const faq = buildRewardsFaq(SEO_LANG);
+  const breadcrumbLd = infoBreadcrumb('Ele Rewards', url);
   const html = patchTemplateHead(template, {
-    title: REWARDS_TITLE,
-    description: seoClamp(REWARDS_DESCRIPTION),
+    title: SL(REWARDS_TITLE, REWARDS_TITLE_FR),
+    description: seoClamp(SL(REWARDS_DESCRIPTION, REWARDS_DESCRIPTION_FR)),
     canonical: url,
     ogType: 'website',
     ogImage: SEO_DEFAULT_OG,
@@ -6125,7 +6460,10 @@ function patchHeadForRewards(template: string): string {
   });
   const list = (items: typeof REWARDS_EARN) =>
     items
-      .map((i) => `<li><strong>${seoEscHtml(i.title)}</strong> — ${seoEscHtml(i.detail)}</li>`)
+      .map(
+        (i) =>
+          `<li><strong>${seoEscHtml(SL(i.title, i.titleFr))}</strong> — ${seoEscHtml(SL(i.detail, i.detailFr))}</li>`,
+      )
       .join('\n          ');
   const faqHtml = faq
     .map((f) => `<dt>${seoEscHtml(f.q)}</dt><dd>${seoEscHtml(f.a)}</dd>`)
@@ -6136,30 +6474,30 @@ function patchHeadForRewards(template: string): string {
     <noscript>
       <article class="seo-fallback">
         <header>
-          <p>Ele Café loyalty program</p>
+          <p>${SL('Ele Café loyalty program', 'Programme de fidélité d’Ele Café')}</p>
           <h1>Ele Rewards</h1>
-          <p>${seoEscHtml(rewardsIntro())}</p>
-          <p><a href="${REWARDS_URL}">Join Ele Rewards and get 10% off</a></p>
+          <p>${seoEscHtml(rewardsIntro(SEO_LANG))}</p>
+          <p><a href="${REWARDS_URL}">${SL('Join Ele Rewards and get 10% off', 'Joignez Ele Rewards et obtenez 10 % de rabais')}</a></p>
         </header>
         <section>
-          <h2>Ways to earn points</h2>
+          <h2>${SL('Ways to earn points', 'Façons d’accumuler des points')}</h2>
           <ul>
           ${list(REWARDS_EARN)}
           </ul>
         </section>
         <section>
-          <h2>Ways to redeem</h2>
+          <h2>${SL('Ways to redeem', 'Façons d’échanger vos points')}</h2>
           <ul>
           ${list(REWARDS_REDEEM)}
           </ul>
         </section>
         <section>
-          <h2>Ele Rewards FAQ</h2>
+          <h2>${SL('Ele Rewards FAQ', 'FAQ Ele Rewards')}</h2>
           <dl>
           ${faqHtml}
           </dl>
         </section>
-        <p><a href="${SEO_SITE_BASE}/cafe">Café menu</a> · <a href="${SEO_SITE_BASE}/products">Shop our loose leaf teas</a></p>
+        <p><a href="${seoUrl('/cafe')}">${SL('Café menu', 'Menu du café')}</a> · <a href="${seoUrl('/products')}">${SL('Shop our loose leaf teas', 'Nos thés en vrac')}</a></p>
         ${seoContactHtml(SEO_STORE)}
       </article>
     </noscript>`,
@@ -6186,42 +6524,38 @@ async function fetchCafeCombos(): Promise<CafeCombo[]> {
       imageUrl: d.imageUrl,
       description: typeof d.description === 'string' ? d.description : undefined,
       slug: typeof d.slug === 'string' && d.slug.trim() ? d.slug.trim() : undefined,
+      titleFr: typeof d.titleFr === 'string' && d.titleFr.trim() ? d.titleFr : undefined,
+      descriptionFr: typeof d.descriptionFr === 'string' ? d.descriptionFr : undefined,
     });
   }
   return out;
 }
 
-function patchHeadForCafe(template: string, combos: CafeCombo[]): string {
+function patchHeadForCafe(template: string, rawCombos: CafeCombo[]): string {
   const store = SEO_STORE;
-  const url = `${SEO_SITE_BASE}/cafe`;
-  const faq = buildCafeFaq(store);
-  const breadcrumbLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SEO_SITE_BASE },
-      { '@type': 'ListItem', position: 2, name: 'Café Menu', item: url },
-    ],
-  };
+  const combos = seoCombos(rawCombos);
+  const url = seoUrl('/cafe');
+  const faq = buildCafeFaq(store, SEO_LANG);
+  const breadcrumbLd = infoBreadcrumb(SL('Café Menu', 'Menu du café'), url);
   let html = patchTemplateHead(template, {
-    title: CAFE_TITLE,
-    description: seoClamp(CAFE_DESCRIPTION),
+    title: SL(CAFE_TITLE, CAFE_TITLE_FR),
+    description: seoClamp(SL(CAFE_DESCRIPTION, CAFE_DESCRIPTION_FR)),
     canonical: url,
     ogType: 'website',
     ogImage: combos[0]?.imageUrl || SEO_DEFAULT_OG,
     extraOgMeta: [],
-    extraJsonLd: [cafeMenuLd(SEO_SITE_BASE, combos), faqJsonLd(faq), breadcrumbLd],
+    extraJsonLd: [cafeMenuLd(seoUrl('/'), combos, SEO_LANG), faqJsonLd(faq), breadcrumbLd],
   });
   const drinkPrice = (d: { price?: number; price12?: number; price16?: number }) =>
     typeof d.price === 'number'
-      ? ` — ${money(d.price)}`
+      ? ` — ${seoMoney(d.price)}`
       : typeof d.price12 === 'number'
-        ? ` — ${money(d.price12)} (12 oz) / ${money(d.price16 ?? d.price12)} (16 oz)`
+        ? ` — ${seoMoney(d.price12)} (12 oz) / ${seoMoney(d.price16 ?? d.price12)} (16 oz)`
         : '';
   const drinks = CAFE_MENU.map(
     (sec) => `<section>
-          <h2>${seoEscHtml(sec.title)}</h2>
-          <p>${seoEscHtml(sec.tagline)}</p>
+          <h2>${seoEscHtml(SL(sec.title, sec.titleFr))}</h2>
+          <p>${seoEscHtml(SL(sec.tagline, sec.taglineFr))}</p>
           <ul>
           ${[
             ...sec.drinks,
@@ -6229,16 +6563,16 @@ function patchHeadForCafe(template: string, combos: CafeCombo[]): string {
           ]
             .map(
               (d) =>
-                `<li><strong>${seoEscHtml(d.name)}</strong>${seoEscHtml(drinkPrice(d))} — ${seoEscHtml(d.description)}</li>`,
+                `<li><strong>${seoEscHtml(SL(d.name, d.nameFr))}</strong>${seoEscHtml(drinkPrice(d))} — ${seoEscHtml(SL(d.description, d.descriptionFr))}</li>`,
             )
             .join('\n          ')}
           </ul>
           ${
             sec.favourites?.length
-              ? `<p>House favourites, as a hot tea latte or iced milk tea: ${sec.favourites
+              ? `<p>${SL('House favourites, as a hot tea latte or iced milk tea:', 'Favoris de la maison, en thé latté chaud ou en thé au lait glacé :')} ${sec.favourites
                   .map(
                     (f) =>
-                      `<a href="${SEO_SITE_BASE}/tea-profile/${seoEscHtml(f.tea.category)}/${seoEscHtml(f.tea.slug)}">${seoEscHtml(f.name)}</a>`,
+                      `<a href="${seoUrl(`/tea-profile/${seoEscHtml(f.tea.category)}/${seoEscHtml(f.tea.slug)}`)}">${seoEscHtml(SL(f.name, f.nameFr))}</a>`,
                   )
                   .join(', ')}.</p>`
               : ''
@@ -6248,9 +6582,9 @@ function patchHeadForCafe(template: string, combos: CafeCombo[]): string {
   const pastries = combos
     .map((c) => {
       const name = c.slug
-        ? `<a href="${SEO_SITE_BASE}/pairings/${seoEscHtml(c.slug)}">${seoEscHtml(c.title)}</a>`
+        ? `<a href="${seoUrl(`/pairings/${seoEscHtml(c.slug)}`)}">${seoEscHtml(c.title)}</a>`
         : seoEscHtml(c.title);
-      return `<li>${name} with tea or Americano — ${seoEscHtml(money(c.price))}</li>`;
+      return `<li>${name} ${SL('with tea or Americano', 'avec thé ou Americano')} — ${seoEscHtml(seoMoney(c.price))}</li>`;
     })
     .join('\n          ');
   const faqHtml = faq
@@ -6261,14 +6595,14 @@ function patchHeadForCafe(template: string, combos: CafeCombo[]): string {
       <article class="seo-fallback">
         <header>
           <p>Ele Café · Vancouver</p>
-          <h1>Café Menu</h1>
-          <p>${seoEscHtml(cafeIntro(store))}</p>
+          <h1>${SL('Café Menu', 'Menu du café')}</h1>
+          <p>${seoEscHtml(cafeIntro(store, SEO_LANG))}</p>
         </header>
         ${drinks}
         ${
           pastries
             ? `<section>
-          <h2>Pastry combos — with tea or Americano</h2>
+          <h2>${SL('Pastry combos — with tea or Americano', 'Combos pâtisserie — avec thé ou Americano')}</h2>
           <ul>
           ${pastries}
           </ul>
@@ -6276,12 +6610,12 @@ function patchHeadForCafe(template: string, combos: CafeCombo[]): string {
             : ''
         }
         <section>
-          <h2>Café FAQ</h2>
+          <h2>${SL('Café FAQ', 'FAQ du café')}</h2>
           <dl>
           ${faqHtml}
           </dl>
         </section>
-        <p><a href="${SEO_SITE_BASE}/products">Shop our loose leaf teas</a> · <a href="${SEO_SITE_BASE}/pairings">Tea &amp; pastry pairings</a></p>
+        <p><a href="${seoUrl('/products')}">${SL('Shop our loose leaf teas', 'Nos thés en vrac')}</a> · <a href="${seoUrl('/pairings')}">${SL('Tea &amp; pastry pairings', 'Accords thé et pâtisserie')}</a></p>
         ${seoContactHtml(store)}
       </article>
     </noscript>`;
@@ -6290,20 +6624,21 @@ function patchHeadForCafe(template: string, combos: CafeCombo[]): string {
 
 function patchHeadForHome(template: string, teas: TeaSummary[]): string {
   const store = SEO_STORE;
-  const faq = buildHomeFaq(store);
-  const desc = seoClamp(homeDescription(teas.length, store));
+  const faq = buildHomeFaq(store, SEO_LANG);
+  const desc = seoClamp(homeDescription(teas.length, store, SEO_LANG));
 
-  const catLinks = Object.entries(SEO_CATEGORY_LABELS)
-    .map(([id, label]) => {
+  const catLinks = Object.keys(SEO_CATEGORY_LABELS)
+    .map((id) => {
       const n = teas.filter((t) => t.category === id).length;
       if (!n) return '';
-      return `<li><a href="${SEO_SITE_BASE}/products/${id}">${seoEscHtml(label)}</a> (${n})</li>`;
+      return `<li><a href="${seoUrl(`/products/${id}`)}">${seoEscHtml(seoCatLabel(id))}</a> (${n})</li>`;
     })
     .filter(Boolean)
     .join('\n          ');
   const collLinks = SEO_COLLECTIONS.filter((c) => teas.some(c.match))
     .map(
-      (c) => `<li><a href="${SEO_SITE_BASE}/collections/${c.slug}">${seoEscHtml(c.title)}</a></li>`,
+      (c) =>
+        `<li><a href="${seoUrl(`/collections/${c.slug}`)}">${seoEscHtml(seoCollTitle(c))}</a></li>`,
     )
     .join('\n          ');
   const faqHtml = faq
@@ -6311,9 +6646,9 @@ function patchHeadForHome(template: string, teas: TeaSummary[]): string {
     .join('\n          ');
 
   let html = patchTemplateHead(template, {
-    title: HOME_TITLE,
+    title: SL(HOME_TITLE, HOME_TITLE_FR),
     description: desc,
-    canonical: SEO_SITE_BASE,
+    canonical: seoUrl('/'),
     ogType: 'website',
     ogImage: SEO_DEFAULT_OG,
     extraOgMeta: [],
@@ -6333,16 +6668,19 @@ function patchHeadForHome(template: string, teas: TeaSummary[]): string {
     <noscript>
       <article class="seo-fallback">
         <header>
-          <h1>${seoEscHtml(store.name)} — Premium Loose Leaf Tea, Vancouver</h1>
-          <p>${teas.length ? `${teas.length} loose leaf teas` : 'Loose leaf teas'} — black, green, white, oolong, rooibos, herbal, flower and fruit tea${teas.some((t) => t.category === 'powder') ? ', plus matcha and hojicha powder' : ''} — shipped across Canada or ready for free pickup in Vancouver. ${seoEscHtml(shippingText(store))}</p>
+          <h1>${seoEscHtml(store.name)} — ${SL('Premium Loose Leaf Tea, Vancouver', 'Thé en vrac haut de gamme, Vancouver')}</h1>
+          <p>${SL(
+            `${teas.length ? `${teas.length} loose leaf teas` : 'Loose leaf teas'} — black, green, white, oolong, rooibos, herbal, flower and fruit tea${teas.some((t) => t.category === 'powder') ? ', plus matcha and hojicha powder' : ''} — shipped across Canada or ready for free pickup in Vancouver.`,
+            `${teas.length ? `${teas.length} thés en vrac` : 'Thés en vrac'} — noir, vert, blanc, oolong, rooibos, tisanes, thés aux fleurs et aux fruits${teas.some((t) => t.category === 'powder') ? ', ainsi que matcha et hojicha en poudre' : ''} — expédiés partout au Canada ou prêts pour la cueillette gratuite à Vancouver.`,
+          )} ${seoEscHtml(seoShipping(store))}</p>
           ${seoTasteLine(store)}
         </header>
         <section>
-          <h2>Shop loose leaf tea by type</h2>
+          <h2>${SL('Shop loose leaf tea by type', 'Magasinez le thé en vrac par type')}</h2>
           <ul>
           ${catLinks}
           </ul>
-          <p><a href="${SEO_SITE_BASE}/products">All teas</a> · <a href="${SEO_SITE_BASE}/cafe">Café menu: matcha lattes, tea &amp; croissants</a></p>
+          <p><a href="${seoUrl('/products')}">${SL('All teas', 'Tous les thés')}</a> · <a href="${seoUrl('/cafe')}">${SL('Café menu: matcha lattes, tea &amp; croissants', 'Menu du café : lattes au matcha, thé et croissants')}</a></p>
         </section>
         ${(() => {
           // Featured teas (Admin → Products → Featured), else the most
@@ -6357,15 +6695,15 @@ function patchHeadForHome(template: string, teas: TeaSummary[]): string {
             .slice(0, 8);
           return picks.length
             ? `<section>
-          <h2>Featured teas</h2>
-          ${teaListHtml(picks.map((t) => ({ name: t.name, slug: t.slug, category: t.category, price: t.price, description: t.description, available: t.available })))}
+          <h2>${SL('Featured teas', 'Thés en vedette')}</h2>
+          ${teaListHtml(picks.map((t) => ({ name: t.name, slug: t.slug, category: t.category, price: t.price, description: t.description, available: t.available, nameFr: t.nameFr, descriptionFr: t.descriptionFr })))}
         </section>`
             : '';
         })()}
         ${
           collLinks
             ? `<section>
-          <h2>Popular tea collections</h2>
+          <h2>${SL('Popular tea collections', 'Collections de thé populaires')}</h2>
           <ul>
           ${collLinks}
           </ul>
@@ -6373,7 +6711,7 @@ function patchHeadForHome(template: string, teas: TeaSummary[]): string {
             : ''
         }
         <section>
-          <h2>Tea shop FAQ</h2>
+          <h2>${SL('Tea shop FAQ', 'FAQ de la boutique de thé')}</h2>
           <dl>
           ${faqHtml}
           </dl>
@@ -6407,6 +6745,25 @@ function patchTemplateHead(template: string, h: SeoHeadPatch): string {
   const im = seoEscHtml(h.ogImage);
 
   out = out.replace(/<title>[^<]*<\/title>/i, `<title>${t}</title>`);
+  // Language: <html lang>, og:locale, and hreflang links between the English
+  // page and its /fr twin (every server-rendered page has both).
+  const enUrl = h.canonical.replace(/^(https:\/\/[^/]+)\/fr(?=\/|$)/, '$1');
+  const frUrl =
+    enUrl === SEO_SITE_BASE
+      ? `${SEO_SITE_BASE}/fr`
+      : enUrl.replace(SEO_SITE_BASE, `${SEO_SITE_BASE}/fr`);
+  out = out.replace(/<html lang="[^"]*"/i, `<html lang="${seoFr() ? 'fr-CA' : 'en-CA'}"`);
+  out = out.replace(
+    /<meta\s+property="og:locale"\s+content="[^"]*"\s*\/?>/i,
+    `<meta property="og:locale" content="${seoFr() ? 'fr_CA' : 'en_CA'}" />\n    <meta property="og:locale:alternate" content="${seoFr() ? 'en_CA' : 'fr_CA'}" />`,
+  );
+  const langLinks = [
+    `<link rel="alternate" hreflang="en" href="${seoEscHtml(enUrl)}" />`,
+    `<link rel="alternate" hreflang="fr" href="${seoEscHtml(frUrl)}" />`,
+    `<link rel="alternate" hreflang="x-default" href="${seoEscHtml(enUrl)}" />`,
+    `<meta name="ele:lang" content="${SEO_LANG}" />`,
+  ].join('\n    ');
+  out = out.replace(/<\/title>/i, () => `</title>\n    ${langLinks}`);
   out = out.replace(
     /<meta\s+name="description"\s+content="[^"]*"\s*\/?>/i,
     `<meta name="description" content="${d}" />`,
@@ -6559,7 +6916,13 @@ export const renderSeo = functions.https.onRequest(
 async function renderSeoHandler(req: functions.https.Request, res: SeoResponse): Promise<void> {
   {
     await refreshSeoSettings();
-    const reqPath = req.path || '/';
+    // /fr/… is the French version of the same page.
+    const rawPath = req.path || '/';
+    const lang: SeoLang = rawPath === '/fr' || rawPath.startsWith('/fr/') ? 'fr' : 'en';
+    const reqPath = lang === 'fr' ? rawPath.slice(3) || '/' : rawPath;
+    // Run a (synchronous) page builder in this request's language.
+    const render = <A extends unknown[]>(fn: (...args: A) => string, ...args: A): string =>
+      withSeoLang(lang, () => fn(...args));
 
     // getSeoTemplate always returns something — either the cached/fresh
     // SPA shell or the embedded fallback. We can't 503 here.
@@ -6568,7 +6931,7 @@ async function renderSeoHandler(req: functions.https.Request, res: SeoResponse):
     // Homepage
     if (reqPath === '/' || reqPath === '/index.html') {
       try {
-        const html = patchHeadForHome(template, await fetchActiveTeaSummaries());
+        const html = render(patchHeadForHome, template, await fetchActiveTeaSummaries());
         res.set('Content-Type', 'text/html; charset=utf-8');
         // Browser always revalidates (new deploys must reach users at
         // once); the CDN keeps it 10 min, then serves stale while it
@@ -6588,7 +6951,7 @@ async function renderSeoHandler(req: functions.https.Request, res: SeoResponse):
     // /pairings — the pairings index (individual pairings are below).
     if (reqPath === '/pairings' || reqPath === '/pairings/') {
       try {
-        const html = patchHeadForPairings(template, await fetchCafeCombos());
+        const html = render(patchHeadForPairings, template, await fetchCafeCombos());
         res.set('Content-Type', 'text/html; charset=utf-8');
         res.set('Cache-Control', 'public, max-age=0, s-maxage=600, stale-while-revalidate=3600');
         res.status(200).send(html);
@@ -6606,8 +6969,8 @@ async function renderSeoHandler(req: functions.https.Request, res: SeoResponse):
       reqPath === '/contact/'
     ) {
       const html = reqPath.startsWith('/about')
-        ? patchHeadForAbout(template)
-        : patchHeadForContact(template);
+        ? render(patchHeadForAbout, template)
+        : render(patchHeadForContact, template);
       res.set('Content-Type', 'text/html; charset=utf-8');
       res.set('Cache-Control', 'public, max-age=0, s-maxage=600, stale-while-revalidate=3600');
       res.status(200).send(html);
@@ -6616,7 +6979,7 @@ async function renderSeoHandler(req: functions.https.Request, res: SeoResponse):
 
     // /franchise — franchise inquiries.
     if (reqPath === '/franchise' || reqPath === '/franchise/') {
-      const html = patchHeadForFranchise(template);
+      const html = render(patchHeadForFranchise, template);
       res.set('Content-Type', 'text/html; charset=utf-8');
       res.set('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
       res.status(200).send(html);
@@ -6625,7 +6988,7 @@ async function renderSeoHandler(req: functions.https.Request, res: SeoResponse):
 
     // /rewards — Ele Rewards loyalty program.
     if (reqPath === '/rewards' || reqPath === '/rewards/') {
-      const html = patchHeadForRewards(template);
+      const html = render(patchHeadForRewards, template);
       res.set('Content-Type', 'text/html; charset=utf-8');
       res.set('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
       res.status(200).send(html);
@@ -6635,7 +6998,7 @@ async function renderSeoHandler(req: functions.https.Request, res: SeoResponse):
     // /cafe — in-store café menu (drinks + live pastry combos).
     if (reqPath === '/cafe' || reqPath === '/cafe/') {
       try {
-        const html = patchHeadForCafe(template, await fetchCafeCombos());
+        const html = render(patchHeadForCafe, template, await fetchCafeCombos());
         res.set('Content-Type', 'text/html; charset=utf-8');
         res.set('Cache-Control', 'public, max-age=0, s-maxage=600, stale-while-revalidate=3600');
         res.status(200).send(html);
@@ -6664,7 +7027,7 @@ async function renderSeoHandler(req: functions.https.Request, res: SeoResponse):
             } catch {
               /* related teas are optional */
             }
-            const html = patchHeadForTea(template, data, catalog);
+            const html = render(patchHeadForTea, template, data, catalog);
             res.set('Content-Type', 'text/html; charset=utf-8');
             res.set(
               'Cache-Control',
@@ -6687,7 +7050,7 @@ async function renderSeoHandler(req: functions.https.Request, res: SeoResponse):
     // /products — the whole catalog, grouped by category.
     if (reqPath === '/products' || reqPath === '/products/') {
       try {
-        const html = patchHeadForProducts(template, await fetchCatalogForSeo());
+        const html = render(patchHeadForProducts, template, await fetchCatalogForSeo());
         res.set('Content-Type', 'text/html; charset=utf-8');
         res.set(
           'Cache-Control',
@@ -6715,7 +7078,7 @@ async function renderSeoHandler(req: functions.https.Request, res: SeoResponse):
         } catch (err) {
           console.warn('renderSeo: catalog fetch failed', err);
         }
-        const html = patchHeadForCategory(template, catId, catalog);
+        const html = render(patchHeadForCategory, template, catId, catalog);
         res.set('Content-Type', 'text/html; charset=utf-8');
         res.set(
           'Cache-Control',
@@ -6739,7 +7102,7 @@ async function renderSeoHandler(req: functions.https.Request, res: SeoResponse):
       if (def) {
         try {
           const teas = await buildCollectionData(def);
-          const html = patchHeadForCollection(template, def, teas);
+          const html = render(patchHeadForCollection, template, def, teas);
           res.set('Content-Type', 'text/html; charset=utf-8');
           res.set(
             'Cache-Control',
@@ -6769,7 +7132,7 @@ async function renderSeoHandler(req: functions.https.Request, res: SeoResponse):
       try {
         const combo = await fetchComboBySlug(pairSlug);
         if (combo) {
-          const html = patchHeadForPairing(template, combo);
+          const html = render(patchHeadForPairing, template, combo);
           res.set('Content-Type', 'text/html; charset=utf-8');
           res.set(
             'Cache-Control',
