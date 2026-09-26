@@ -1192,7 +1192,7 @@
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(184, 146, 74, 0.65);
+  color: rgb(184, 146, 74);
   margin-bottom: 8px;
 }
 .tpf-brew-title {
@@ -1231,7 +1231,7 @@
   font-size: var(--text-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--on-dark-3);
+  color: var(--on-dark-2);
   margin-bottom: 10px;
   font-family: var(--font-sans);
   font-weight: 600;
