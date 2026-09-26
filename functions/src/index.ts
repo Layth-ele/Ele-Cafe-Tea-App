@@ -77,6 +77,8 @@ import {
   phoneTel,
   money,
   RETURN_POLICY_LD,
+  addressLines,
+  FOUNDING_YEAR,
   type StoreContent,
 } from './lib/storeContent';
 import {
@@ -5678,6 +5680,87 @@ async function fetchActiveTeaSummaries(): Promise<TeaSummary[]> {
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// ── /about and /contact ─────────────────────────────────────────────────────
+// Same copy and the same Admin → Settings values (address, phone, email,
+// hours) as AboutPage / ContactPage, so crawlers and AI tools see exactly
+// the facts visitors do — one source of truth.
+
+function infoBreadcrumb(name: string, url: string) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SEO_SITE_BASE },
+      { '@type': 'ListItem', position: 2, name, item: url },
+    ],
+  };
+}
+
+function patchHeadForAbout(template: string): string {
+  const store = SEO_STORE;
+  const url = `${SEO_SITE_BASE}/about`;
+  const [street] = addressLines(store.address);
+  const desc = `Learn about ${store.name} — Vancouver's loose-leaf tea destination${street ? ` at ${street}` : ''}.`;
+  const html = patchTemplateHead(template, {
+    title: 'About Us | Ele Café',
+    description: seoClamp(desc),
+    canonical: url,
+    ogType: 'website',
+    ogImage: SEO_DEFAULT_OG,
+    extraOgMeta: [],
+    extraJsonLd: [infoBreadcrumb('About Us', url), localBusinessLd(store, SEO_SITE_BASE)],
+  });
+  return replaceNoscript(
+    html,
+    `
+    <noscript>
+      <article class="seo-fallback">
+        <h1>About Us</h1>
+        <p>Ele Café began its journey in Vancouver, BC in ${FOUNDING_YEAR} with a passion for sharing exceptional loose-leaf teas from around the world. Every tea in our collection is carefully selected for its quality, character, and the unique story behind its origin.</p>
+        <p>Our location${street ? ` at ${seoEscHtml(street)}` : ''} is more than a café — it is a place for anyone who believes a great cup of tea is one of life’s simple pleasures, from Japanese ceremonial matcha whisked to order to rare oolongs and distinctive black teas.</p>
+        <h2>Our Values</h2>
+        <p>We value transparency in the origin of every tea we offer and strive to create a welcoming space where people can discover the taste, aroma, and natural benefits of teas from around the world.</p>
+        <p><a href="${SEO_SITE_BASE}/products">Shop our teas</a> · <a href="${SEO_SITE_BASE}/cafe">Café menu</a> · <a href="${SEO_SITE_BASE}/contact">Contact us</a></p>
+        ${seoContactHtml(store)}
+      </article>
+    </noscript>`,
+  );
+}
+
+function patchHeadForContact(template: string): string {
+  const store = SEO_STORE;
+  const url = `${SEO_SITE_BASE}/contact`;
+  const hours = hoursText(store.hours);
+  const desc = `Visit ${store.name}${store.address ? ` at ${store.address}` : ' in Vancouver'}.${hours ? ` Open ${hours}.` : ''} Phone, email and directions.`;
+  const tel = phoneTel(store.phone);
+  const html = patchTemplateHead(template, {
+    title: 'Contact Us | Ele Café',
+    description: seoClamp(desc),
+    canonical: url,
+    ogType: 'website',
+    ogImage: SEO_DEFAULT_OG,
+    extraOgMeta: [],
+    extraJsonLd: [infoBreadcrumb('Contact Us', url), localBusinessLd(store, SEO_SITE_BASE)],
+  });
+  return replaceNoscript(
+    html,
+    `
+    <noscript>
+      <article class="seo-fallback">
+        <h1>Contact Us</h1>
+        <p>We’d love to hear from you. Drop in to taste teas with us, or reach out by phone or email — we’ll get back to you within one business day.</p>
+        <dl>
+          ${store.address ? `<dt>Address</dt><dd>${store.mapsUrl ? `<a href="${seoEscHtml(store.mapsUrl)}">${seoEscHtml(store.address)}</a>` : seoEscHtml(store.address)}</dd>` : ''}
+          ${tel ? `<dt>Phone</dt><dd><a href="tel:${seoEscHtml(tel)}">${seoEscHtml(store.phone)}</a></dd>` : ''}
+          ${store.email ? `<dt>Email</dt><dd><a href="mailto:${seoEscHtml(store.email)}">${seoEscHtml(store.email)}</a></dd>` : ''}
+          ${hours ? `<dt>Hours</dt><dd>${seoEscHtml(hours)}</dd>` : ''}
+        </dl>
+        <p><a href="${SEO_SITE_BASE}/cafe">Café menu</a> · <a href="${SEO_SITE_BASE}/products">Shop our teas</a></p>
+      </article>
+    </noscript>`,
+  );
+}
+
 // ── /franchise: franchise inquiries (lib/franchise.ts) ─────────────────────
 
 function patchHeadForFranchise(template: string): string {
@@ -6126,6 +6209,22 @@ export const renderSeo = functions.https.onRequest(
       res.set('Content-Type', 'text/html; charset=utf-8');
       res.set('Cache-Control', 'public, max-age=0, s-maxage=60');
       res.status(200).send(template);
+      return;
+    }
+
+    // /about and /contact — facts from Admin → Settings.
+    if (
+      reqPath === '/about' ||
+      reqPath === '/about/' ||
+      reqPath === '/contact' ||
+      reqPath === '/contact/'
+    ) {
+      const html = reqPath.startsWith('/about')
+        ? patchHeadForAbout(template)
+        : patchHeadForContact(template);
+      res.set('Content-Type', 'text/html; charset=utf-8');
+      res.set('Cache-Control', 'public, max-age=0, s-maxage=600, stale-while-revalidate=3600');
+      res.status(200).send(html);
       return;
     }
 

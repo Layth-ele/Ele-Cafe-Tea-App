@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { SearchBar } from './SearchBar';
 
 const meta = {
-  title:     'UI Primitives/SearchBar',
+  title: 'UI Primitives/SearchBar',
   component: SearchBar,
   parameters: {
     layout: 'centered',
@@ -41,7 +41,7 @@ function Demo(props: Omit<React.ComponentProps<typeof SearchBar>, 'value' | 'onC
 }
 
 export const Default: Story = {
-  render: () => <Demo placeholder="Search 79 teas…" />,
+  render: () => <Demo placeholder="Search teas…" />,
 };
 
 export const Small: Story = {
@@ -78,13 +78,29 @@ export const SizeMatrix: Story = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 320 }}>
       <div>
-        <p style={{ fontSize: 11, color: 'var(--muted)', margin: '0 0 6px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <p
+          style={{
+            fontSize: 11,
+            color: 'var(--muted)',
+            margin: '0 0 6px',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+          }}
+        >
           Medium (storefront default)
         </p>
         <Demo size="md" placeholder="Search teas…" />
       </div>
       <div>
-        <p style={{ fontSize: 11, color: 'var(--muted)', margin: '0 0 6px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <p
+          style={{
+            fontSize: 11,
+            color: 'var(--muted)',
+            margin: '0 0 6px',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+          }}
+        >
           Small (admin tables)
         </p>
         <Demo size="sm" placeholder="Filter rows…" />

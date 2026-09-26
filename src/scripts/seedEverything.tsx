@@ -10,15 +10,22 @@
  */
 
 import {
-  collection, doc, setDoc, writeBatch,
-  serverTimestamp, getDoc, getDocs,
+  collection,
+  doc,
+  setDoc,
+  writeBatch,
+  serverTimestamp,
+  getDoc,
+  getDocs,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Modal, ModalBtn } from '@/app/components/modals/Modal';
 import { mockProducts, categories } from '@/data/mockProducts';
 import { useState } from 'react';
 import { Button } from '@/app/components/ui/button';
-type SeedResult = { ok: true; teasWritten: number; teasBackfilled: number; teasSkipped: number } | { ok: false; error: string };
+type SeedResult =
+  | { ok: true; teasWritten: number; teasBackfilled: number; teasSkipped: number }
+  | { ok: false; error: string };
 
 /**
  * Seed mode determines how the seeder treats existing teas.
@@ -49,7 +56,10 @@ export async function seedEverything({
   // Backward-compat: callers using `overwrite: true` map to 'overwrite' mode.
   // New callers should pass `mode` directly.
   const seedMode: SeedMode = mode ?? (overwrite ? 'overwrite' : 'skip');
-  const log = (msg: string) => { onProgress?.(msg); console.log(msg); };
+  const log = (msg: string) => {
+    onProgress?.(msg);
+    console.log(msg);
+  };
 
   try {
     log('Reading existing teas...');
@@ -57,7 +67,7 @@ export async function seedEverything({
     // Get existing slugs + data in one query (data needed for backfill mode).
     const existingSnap = await getDocs(collection(db, 'teas'));
     const existingMap = new Map<string, Record<string, unknown>>();
-    existingSnap.docs.forEach(d => existingMap.set(d.id, d.data() as Record<string, unknown>));
+    existingSnap.docs.forEach((d) => existingMap.set(d.id, d.data() as Record<string, unknown>));
     const existingSlugs = new Set(existingMap.keys());
     log(`Found ${existingSlugs.size} existing teas in Firestore (mode: ${seedMode})`);
 
@@ -70,7 +80,7 @@ export async function seedEverything({
       toWrite = mockProducts;
     } else {
       // 'skip' — only new teas.
-      toWrite = mockProducts.filter(p => !existingSlugs.has(p.slug ?? p.id ?? ''));
+      toWrite = mockProducts.filter((p) => !existingSlugs.has(p.slug ?? p.id ?? ''));
     }
 
     const toSkip = mockProducts.length - toWrite.length;
@@ -110,47 +120,47 @@ export async function seedEverything({
         // add it to mockProducts.ts → tea() defaults, then add it here.
         const fullSeed = {
           // Identity
-          id:            slug,
+          id: slug,
           slug,
           // Bilingual name + description
-          name:          product.name ?? '',
-          nameFr:        (product as { nameFr?: string }).nameFr ?? null,
-          description:   product.description ?? '',
+          name: product.name ?? '',
+          nameFr: (product as { nameFr?: string }).nameFr ?? null,
+          description: product.description ?? '',
           descriptionFr: (product as { descriptionFr?: string }).descriptionFr ?? null,
           // Pricing
-          price:         product.price ?? 0,
-          image:         product.image ?? '',
-          category:      product.category ?? 'black',
+          price: product.price ?? 0,
+          image: product.image ?? '',
+          category: product.category ?? 'black',
           // Turn 6: stock dropped from the schema. Seeded teas have
           // their inventory auto-provisioned by the onTeaCreate
           // trigger (Turn 1) at level=10, which projects available=
           // true via onInventoryWrite. No need to write stock here.
-          weight:        product.weight ?? '90g',
+          weight: product.weight ?? '90g',
           // Flags
-          featured:      product.featured ?? false,
-          isActive:      product.isActive ?? true,
-          isOrganic:     product.isOrganic ?? false,
+          featured: product.featured ?? false,
+          isActive: product.isActive ?? true,
+          isOrganic: product.isOrganic ?? false,
           gstApplicable: product.gstApplicable ?? false,
-          allergens:     product.allergens ?? [],
+          allergens: product.allergens ?? [],
           // Tea details
-          caffeine:      product.caffeine ?? null,
-          antioxidants:  product.antioxidants ?? null,
-          benefits:      product.benefits ?? '',
-          benefitsFr:    (product as { benefitsFr?: string }).benefitsFr ?? null,
-          ingredients:   product.ingredients ?? '',
+          caffeine: product.caffeine ?? null,
+          antioxidants: product.antioxidants ?? null,
+          benefits: product.benefits ?? '',
+          benefitsFr: (product as { benefitsFr?: string }).benefitsFr ?? null,
+          ingredients: product.ingredients ?? '',
           ingredientsFr: (product as { ingredientsFr?: string }).ingredientsFr ?? null,
-          origin:        product.origin ?? '',
-          originFr:      (product as { originFr?: string }).originFr ?? null,
-          regions:       product.regions ?? '',
-          regionsFr:     (product as { regionsFr?: string }).regionsFr ?? null,
+          origin: product.origin ?? '',
+          originFr: (product as { originFr?: string }).originFr ?? null,
+          regions: product.regions ?? '',
+          regionsFr: (product as { regionsFr?: string }).regionsFr ?? null,
           // Brewing
-          brewingTemp:   product.brewingTemp ?? '',
-          brewingTime:   product.brewingTime ?? '',
+          brewingTemp: product.brewingTemp ?? '',
+          brewingTime: product.brewingTime ?? '',
           // Serving options (Enjoy at Ele Café widget)
           servingSuggestions: product.servingSuggestions ?? [],
           // Reviews aggregate
-          avgRating:     product.avgRating ?? 0,
-          ratingCount:   product.ratingCount ?? 0,
+          avgRating: product.avgRating ?? 0,
+          ratingCount: product.ratingCount ?? 0,
         };
 
         if (seedMode === 'backfill' && !isNewDoc) {
@@ -159,13 +169,14 @@ export async function seedEverything({
           // updatedAt (only bump if we actually fill something),
           // featured/isActive/stock/price (admin business decisions).
           const SKIP_BACKFILL = new Set([
-            'id', 'slug',         // never need to backfill identity
-            'createdAt',           // preserve original creation date
-            'featured',            // admin business decision
-            'price',               // admin business decision
-            'stock',               // live inventory
-            'isActive',            // admin business decision
-            'image',               // admin uploaded photo
+            'id',
+            'slug', // never need to backfill identity
+            'createdAt', // preserve original creation date
+            'featured', // admin business decision
+            'price', // admin business decision
+            'stock', // live inventory
+            'isActive', // admin business decision
+            'image', // admin uploaded photo
           ]);
 
           const updates: Record<string, unknown> = {};
@@ -216,10 +227,10 @@ export async function seedEverything({
     const catBatch = writeBatch(db);
     categories.forEach((cat, i) => {
       catBatch.set(doc(db, 'categories', cat.id), {
-        id:      cat.id,
-        name:    cat.name,
-        nameFr:  cat.nameFr ?? '',
-        order:   i,
+        id: cat.id,
+        name: cat.name,
+        nameFr: cat.nameFr ?? '',
+        order: i,
         createdAt: serverTimestamp(),
       });
     });
@@ -245,8 +256,12 @@ export async function seedEverything({
     // both teas we never tried to process AND teas that were already
     // complete (in backfill mode). The dialog can display this as a
     // single number.
-    return { ok: true, teasWritten: written, teasBackfilled: backfilled, teasSkipped: toSkip + skippedNothing };
-
+    return {
+      ok: true,
+      teasWritten: written,
+      teasBackfilled: backfilled,
+      teasSkipped: toSkip + skippedNothing,
+    };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
     console.error('seedEverything failed:', err);
@@ -256,13 +271,13 @@ export async function seedEverything({
 
 // ── SeedButton UI component ────────────────────────────────────────────────────
 export function SeedButton() {
-  const [open,      setOpen]      = useState(false);
-  const [busy,      setBusy]      = useState(false);
-  const [mode,      setMode]      = useState<SeedMode>('backfill');
-  const [log,       setLog]       = useState<string[]>([]);
-  const [result,    setResult]    = useState<SeedResult | null>(null);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<SeedMode>('backfill');
+  const [log, setLog] = useState<string[]>([]);
+  const [result, setResult] = useState<SeedResult | null>(null);
 
-  const addLog = (msg: string) => setLog(prev => [...prev, msg]);
+  const addLog = (msg: string) => setLog((prev) => [...prev, msg]);
 
   const run = async () => {
     setBusy(true);
@@ -273,7 +288,11 @@ export function SeedButton() {
     setBusy(false);
   };
 
-  const handleOpen = () => { setLog([]); setResult(null); setOpen(true); };
+  const handleOpen = () => {
+    setLog([]);
+    setResult(null);
+    setOpen(true);
+  };
 
   // Mode metadata for the radio cards
   const MODES: { value: SeedMode; title: string; desc: string; tone: string }[] = [
@@ -303,24 +322,32 @@ export function SeedButton() {
         Seed Database
       </Button>
 
-      <Modal open={open} onClose={() => { if (!busy) setOpen(false); }}
+      <Modal
+        open={open}
+        onClose={() => {
+          if (!busy) setOpen(false);
+        }}
         title="Seed Firestore Database"
         size="md"
         footer={
           <>
-            <ModalBtn variant="outline" onClick={() => setOpen(false)} disabled={busy}>Cancel</ModalBtn>
-            <ModalBtn onClick={run} loading={busy} disabled={!!result}>Run Seed</ModalBtn>
+            <ModalBtn variant="outline" onClick={() => setOpen(false)} disabled={busy}>
+              Cancel
+            </ModalBtn>
+            <ModalBtn onClick={run} loading={busy} disabled={!!result}>
+              Run Seed
+            </ModalBtn>
           </>
         }
       >
         <div className="se-body">
           <p className="se-lead">
-            Writes 79 teas, 8 categories, and counters from <code>mockProducts.ts</code>.
+            Writes the starter teas, categories and counters from <code>mockProducts.ts</code>.
             Choose a mode based on what you want to do.
           </p>
 
           <div className="se-modes">
-            {MODES.map(m => {
+            {MODES.map((m) => {
               const selected = mode === m.value;
               return (
                 <label
@@ -342,12 +369,8 @@ export function SeedButton() {
                     style={{ accentColor: m.tone }}
                   />
                   <div className="se-mode-info">
-                    <div className="se-mode-title">
-                      {m.title}
-                    </div>
-                    <div className="se-mode-desc">
-                      {m.desc}
-                    </div>
+                    <div className="se-mode-title">{m.title}</div>
+                    <div className="se-mode-desc">{m.desc}</div>
                   </div>
                 </label>
               );
@@ -360,7 +383,9 @@ export function SeedButton() {
                 <div
                   key={i}
                   className="se-log-row"
-                  data-tone={line.startsWith('✅') || line.startsWith('  ✓') ? 'success' : 'default'}
+                  data-tone={
+                    line.startsWith('✅') || line.startsWith('  ✓') ? 'success' : 'default'
+                  }
                 >
                   {line}
                 </div>
@@ -369,7 +394,10 @@ export function SeedButton() {
           )}
 
           {result && (
-            <div className="rounded-lg px-4 py-3 text-sm se-result" data-ok={result.ok ? 'true' : 'false'}>
+            <div
+              className="rounded-lg px-4 py-3 text-sm se-result"
+              data-ok={result.ok ? 'true' : 'false'}
+            >
               {result.ok === true ? (
                 <>
                   ✅ {result.teasWritten} new

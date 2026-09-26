@@ -40,7 +40,7 @@ export const SkeletonCardList: Story = {
   name: 'Skeleton — card list (known layout)',
   render: () => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, maxWidth: 720 }}>
-      {[1, 2, 3, 4, 5, 6].map(i => (
+      {[1, 2, 3, 4, 5, 6].map((i) => (
         <Skeleton.Card key={i} />
       ))}
     </div>
@@ -75,7 +75,12 @@ export const SkeletonTextBlock: Story = {
 export const SpinnerButton: Story = {
   name: 'Spinner — button submit (action in flight)',
   render: () => (
-    <button type="button" className="btn btn-dark btn-lg" disabled style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+    <button
+      type="button"
+      className="btn btn-dark btn-lg"
+      disabled
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}
+    >
       <Loader2 size={14} className="icon-spin" />
       Placing order…
     </button>
@@ -85,9 +90,17 @@ export const SpinnerButton: Story = {
 export const SpinnerInline: Story = {
   name: 'Spinner — inline (search filtering)',
   render: () => (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--muted)' }}>
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        fontSize: 13,
+        color: 'var(--muted)',
+      }}
+    >
       <Loader2 size={12} className="icon-spin" />
-      Filtering 79 teas…
+      Filtering teas…
     </div>
   ),
 };

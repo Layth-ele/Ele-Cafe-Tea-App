@@ -92,6 +92,14 @@
         "function": "renderSeo"
       },
       {
+        "source": "/about",
+        "function": "renderSeo"
+      },
+      {
+        "source": "/contact",
+        "function": "renderSeo"
+      },
+      {
         "source": "/pairings/*",
         "function": "renderSeo"
       },
