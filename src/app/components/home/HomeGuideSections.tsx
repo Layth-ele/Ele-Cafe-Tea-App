@@ -35,7 +35,9 @@ export function ShopByMood({ giftBuilderEnabled }: { giftBuilderEnabled: boolean
       <div className="container">
         <div className="hg-header">
           <span className="overline">{t('Find your tea')}</span>
-          <h2 id="hg-mood-title" className="hp-section-h2">{t('Shop Tea by Mood')}</h2>
+          <h2 id="hg-mood-title" className="hp-section-h2">
+            {t('Shop Tea by Mood')}
+          </h2>
         </div>
         <div className="hg-mood-grid">
           {moods.map((m) => (
@@ -61,7 +63,9 @@ export function TeaGuide() {
         <Header
           overline={t('Loose Leaf Tea 101')}
           title={t('A Guide to Tea Types & Brewing')}
-          intro={t('Not sure where to start? Here’s how each of our collections tastes, whether it has caffeine, and how to brew it. Use about one teaspoon (2–3 g) of leaves per 250 ml cup.')}
+          intro={t(
+            'Not sure where to start? Here’s how each of our collections tastes, whether it has caffeine, and how to brew it. Use about one teaspoon (2–3 g) of leaves per 250 ml cup.',
+          )}
         />
         <div className="hg-guide-grid">
           {TEA_GUIDE.filter((g) => visibleCats.has(g.id)).map((g) => {
@@ -72,12 +76,22 @@ export function TeaGuide() {
                 <h3 className="hg-guide-name">{t(cat.name)}</h3>
                 <p className="hg-guide-desc">{lang === 'fr' ? g.descriptionFr : g.description}</p>
                 <dl className="hg-guide-facts">
-                  <div><dt>{t('Water')}</dt><dd>{g.temp}</dd></div>
-                  <div><dt>{g.timeFr ? t('Prepare') : t('Steep')}</dt><dd>{lang === 'fr' && g.timeFr ? g.timeFr : g.time}</dd></div>
-                  <div><dt>{t('Caffeine')}</dt><dd>{t(g.caffeine)}</dd></div>
+                  <div>
+                    <dt>{t('Water')}</dt>
+                    <dd>{g.temp}</dd>
+                  </div>
+                  <div>
+                    <dt>{g.timeFr ? t('Prepare') : t('Steep')}</dt>
+                    <dd>{lang === 'fr' && g.timeFr ? g.timeFr : g.time}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('Caffeine')}</dt>
+                    <dd>{t(g.caffeine)}</dd>
+                  </div>
                 </dl>
                 <Link to={ROUTES.PRODUCTS_CAT(g.id)} className="hg-guide-link">
-                  {t('Shop {category}', { category: t(cat.name).toLowerCase() })} <ArrowRight size={13} aria-hidden="true" />
+                  {t('Shop {category}', { category: t(cat.name).toLowerCase() })}{' '}
+                  <ArrowRight size={13} aria-hidden="true" />
                 </Link>
               </article>
             );
@@ -94,16 +108,58 @@ export function WhyEleCafe({ store }: { store: StoreContent }) {
   const perDollar = store.pointsPerDollar;
   const [street] = store.address.split(',');
   const points = [
-    { title: t('A real Vancouver tea café'), body: street
-      ? t('Visit us at {street} to smell and taste our loose leaf teas before you buy.', { street: street.trim() })
-      : t('Visit us to smell and taste our loose leaf teas before you buy.') },
-    { title: t('Free pickup or Canada-wide shipping'), body: threshold > 0
-      ? t('Pick up free in Vancouver, usually within 2 hours, or get free shipping across Canada on orders over {amount}.', { amount: money(threshold) })
-      : t('Pick up free in Vancouver, usually within 2 hours, or get free shipping anywhere in Canada.') },
-    { title: t('Charged only when it’s in stock'), body: t('We place a hold, confirm every tea is in stock, and only then charge your card — no refunds to chase for sold-out teas.') },
-    { title: t('A free sample with every order'), body: t('Every online order includes a complimentary sample, so each order introduces you to something new.') },
-    { title: t('Certified organic options'), body: t('A selection of certified organic loose leaf teas, clearly labelled and easy to filter in the shop.') },
-    ...(perDollar > 0 ? [{ title: t('Rewards on every cup'), body: t('Earn {count} points per dollar and turn them into credit on future orders.', { count: perDollar }) }] : []),
+    {
+      title: t('A real Vancouver tea café'),
+      body: street
+        ? t('Visit us at {street} to smell and taste our loose leaf teas before you buy.', {
+            street: street.trim(),
+          })
+        : t('Visit us to smell and taste our loose leaf teas before you buy.'),
+    },
+    {
+      title: t('Free pickup or Canada-wide shipping'),
+      body:
+        threshold > 0
+          ? t(
+              'Pick up free in Vancouver, usually within 2 hours, or get free shipping across Canada on orders over {amount}.',
+              { amount: money(threshold) },
+            )
+          : t(
+              'Pick up free in Vancouver, usually within 2 hours, or get free shipping anywhere in Canada.',
+            ),
+    },
+    {
+      title: t('Charged only when it’s in stock'),
+      body: t(
+        'We place a hold, confirm every tea is in stock, and only then charge your card — no refunds to chase for sold-out teas.',
+      ),
+    },
+    ...(store.freeSample
+      ? [
+          {
+            title: t('A free sample with every order'),
+            body: t(
+              'Every online order includes a complimentary sample, so each order introduces you to something new.',
+            ),
+          },
+        ]
+      : []),
+    {
+      title: t('Certified organic options'),
+      body: t(
+        'A selection of certified organic loose leaf teas, clearly labelled and easy to filter in the shop.',
+      ),
+    },
+    ...(perDollar > 0
+      ? [
+          {
+            title: t('Rewards on every cup'),
+            body: t('Earn {count} points per dollar and turn them into credit on future orders.', {
+              count: perDollar,
+            }),
+          },
+        ]
+      : []),
   ];
   return (
     <section className="section-sm hg-why-section">
@@ -118,7 +174,9 @@ export function WhyEleCafe({ store }: { store: StoreContent }) {
           ))}
         </ul>
         <p className="hg-why-more">
-          <Link to={ROUTES.ABOUT}>{t('Our story')}</Link> · <Link to={ROUTES.SHIPPING_POLICY}>{t('Shipping')}</Link> · <Link to={ROUTES.REFUND_POLICY}>{t('Refunds')}</Link>
+          <Link to={ROUTES.ABOUT}>{t('Our story')}</Link> ·{' '}
+          <Link to={ROUTES.SHIPPING_POLICY}>{t('Shipping')}</Link> ·{' '}
+          <Link to={ROUTES.REFUND_POLICY}>{t('Refunds')}</Link>
         </p>
       </div>
     </section>

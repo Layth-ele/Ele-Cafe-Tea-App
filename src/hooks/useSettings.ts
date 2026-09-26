@@ -44,6 +44,9 @@ export const SETTING_DEFAULTS = {
   // is $12.99 flat unless the order qualifies for free shipping at $100+.
   // Admin can override both via AdminSettings.
   freeShippingThreshold: 100,
+  /** Every online order ships with a free tea sample (Admin → Order Rules).
+   *  Off hides the promise everywhere (tea pages, cart, footer, FAQ). */
+  freeSampleWithOrders: true as boolean,
   pointsPerDollar: 100,
   minRedemptionPts: 10000,
   creditValuePer1000: 1,

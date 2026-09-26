@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router';
 import { useEffect } from 'react';
 import { ROUTES, loginWithReturn } from '@/lib/routes';
 import { prefetchRoutesForPage } from '@/lib/prefetchRoute';
-import { Minus, Plus, ArrowRight } from 'lucide-react';
+import { Minus, Plus, ArrowRight, Gift } from 'lucide-react';
 import { useOptimisticCart } from '@/hooks/useOptimisticCart';
 import { useSettings } from '@/hooks/useSettings';
 import { useAuth } from '@/contexts/AuthContext';
@@ -125,6 +125,12 @@ export function CartPage() {
                 style={{ width: `${progress}%` }}
               />
             </div>
+            {settings.freeSampleWithOrders !== false && (
+              <p className="cart-sample-note">
+                <Gift size={14} aria-hidden="true" />{' '}
+                {t('A free tea sample is included with your order')}
+              </p>
+            )}
             <CartUpsell className="cp-upsell" />
           </div>
         </div>

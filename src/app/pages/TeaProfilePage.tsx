@@ -16,10 +16,39 @@ import { RelatedTeas } from '@/app/components/RelatedTeas';
 import { ShareButtons } from '@/app/components/ShareButtons';
 import { EmailVerificationModal } from '@/app/components/modals/EmailVerificationModal';
 import { ensureAuth } from '@/contexts/AuthContext';
-import { AlertTriangle, ArrowLeft, Bell, BellRing, Coffee, Flame, Flower2, Globe, Heart, Leaf, MapPin, Minus, Package, Plus, ShoppingCart, Sparkles, Star, Thermometer, Timer } from 'lucide-react';
 import {
-  doc, collection, onSnapshot,
-  query, orderBy, limit, serverTimestamp, runTransaction, Timestamp,
+  AlertTriangle,
+  ArrowLeft,
+  Bell,
+  BellRing,
+  Coffee,
+  Flame,
+  Flower2,
+  Gift,
+  Globe,
+  Heart,
+  Leaf,
+  MapPin,
+  Minus,
+  Package,
+  Plus,
+  ShoppingCart,
+  Sparkles,
+  Star,
+  Thermometer,
+  Timer,
+} from 'lucide-react';
+import { useSettingsQuery } from '@/hooks/useSettings';
+import {
+  doc,
+  collection,
+  onSnapshot,
+  query,
+  orderBy,
+  limit,
+  serverTimestamp,
+  runTransaction,
+  Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import {
@@ -48,41 +77,44 @@ import { formatPricePerWeight } from '@/lib/priceFormat';
 // (dark) blocks. All 161 downstream usages (style={{ color: C.text }},
 // style={{ background: C.surface }}, etc.) stay identical.
 const C = {
-  midnight:  'var(--midnight)',
-  surface:   'var(--surface)',
-  surface2:  'var(--surface-2)',
-  bg:        'var(--bg)',
-  border:    'var(--border)',
-  text:      'var(--text)',
-  text2:     'var(--text-2)',
-  muted:     'var(--muted)',
-  gold:      'var(--gold)',
-  goldText:  'var(--gold-text)',
-  goldSoft:  'var(--gold-soft)',
-  accent20:  'var(--accent-20)',
+  midnight: 'var(--midnight)',
+  surface: 'var(--surface)',
+  surface2: 'var(--surface-2)',
+  bg: 'var(--bg)',
+  border: 'var(--border)',
+  text: 'var(--text)',
+  text2: 'var(--text-2)',
+  muted: 'var(--muted)',
+  gold: 'var(--gold)',
+  goldText: 'var(--gold-text)',
+  goldSoft: 'var(--gold-soft)',
+  accent20: 'var(--accent-20)',
   // Section colour palette — resolves to sky-blue / lavender in light mode,
   // muted blue/lavender tints against dark surface in dark mode. Dark values
   // live in tokens.css's .dark block.
   servingBg: 'var(--serving-bg)',
   servingBd: 'var(--serving-border)',
-  brewBg:    'var(--midnight)',   // brew guide uses midnight — in dark
-                                   // mode .dark redefines --midnight to a
-                                   // light colour so brew bg inverts
-                                   // correctly and its light-on-dark text
-                                   // stays readable.
-  success:   'var(--success)',
-  danger:    'var(--danger)',
+  brewBg: 'var(--midnight)', // brew guide uses midnight — in dark
+  // mode .dark redefines --midnight to a
+  // light colour so brew bg inverts
+  // correctly and its light-on-dark text
+  // stays readable.
+  success: 'var(--success)',
+  danger: 'var(--danger)',
 };
 
 // ── Star display ───────────────────────────────────────────────────────────────
 function Stars({ rating, size = 16 }: { rating: number; size?: number }) {
   return (
     <div className="tpf-stars">
-      {[1,2,3,4,5].map(i => (
-        <Star key={i} size={size}
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Star
+          key={i}
+          size={size}
           fill={i <= Math.round(rating) ? C.gold : 'none'}
           className="tpf-star"
-          data-on={i <= Math.round(rating) ? 'true' : 'false'} />
+          data-on={i <= Math.round(rating) ? 'true' : 'false'}
+        />
       ))}
     </div>
   );
@@ -93,22 +125,36 @@ function StarInput({ value, onChange }: { value: number; onChange: (n: number) =
   const t = useT();
   return (
     <div className="tpf-star-input" role="group" aria-label={t('Star rating')}>
-      {[1,2,3,4,5].map(i => (
-        <button key={i} type="button" onClick={() => onChange(i)}
-          aria-label={tNow(i === 1 ? '{n} star' : '{n} stars', { n: i })} aria-pressed={i === value}
+      {[1, 2, 3, 4, 5].map((i) => (
+        <button
+          key={i}
+          type="button"
+          onClick={() => onChange(i)}
+          aria-label={tNow(i === 1 ? '{n} star' : '{n} stars', { n: i })}
+          aria-pressed={i === value}
           className="tpf-star-btn"
           // Pointer transforms are imperative because they need to
           // run on every pointerdown/up without re-render. The CSS
           // sets the transition; the inline style mutations supply
           // the target transform value. Filed-only style is `transform`
           // which can't be encoded as a class on a per-event basis.
-          onPointerDown={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(0.82)'; }}
-          onPointerUp={e   => { (e.currentTarget as HTMLElement).style.transform = i <= value ? 'scale(1.18)' : 'scale(1)'; }}
-          onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+          onPointerDown={(e) => {
+            (e.currentTarget as HTMLElement).style.transform = 'scale(0.82)';
+          }}
+          onPointerUp={(e) => {
+            (e.currentTarget as HTMLElement).style.transform =
+              i <= value ? 'scale(1.18)' : 'scale(1)';
+          }}
+          onPointerLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
+          }}
         >
-          <Star size={30} fill={i <= value ? C.gold : 'none'}
+          <Star
+            size={30}
+            fill={i <= value ? C.gold : 'none'}
             className="tpf-star-input-icon"
-            data-on={i <= value ? 'true' : 'false'} />
+            data-on={i <= value ? 'true' : 'false'}
+          />
         </button>
       ))}
     </div>
@@ -116,8 +162,12 @@ function StarInput({ value, onChange }: { value: number; onChange: (n: number) =
 }
 
 interface ReviewDoc {
-  id: string; userId: string; userName: string;
-  rating: number; comment?: string; createdAt: Timestamp | null;
+  id: string;
+  userId: string;
+  userName: string;
+  rating: number;
+  comment?: string;
+  createdAt: Timestamp | null;
 }
 
 // ── Skeleton ────────────────────────────────────────────────────────────────────
@@ -146,6 +196,7 @@ function PageSkeleton() {
 
 // ── Main page ───────────────────────────────────────────────────────────────────
 export function TeaProfilePage() {
+  const { data: settingsLive } = useSettingsQuery();
   const t = useT();
   const tx = useTx();
   const { language } = useLanguageStore();
@@ -158,7 +209,7 @@ export function TeaProfilePage() {
   // continues the user's actual journey: "Home > Pairings >
   // <pairing title> > <tea>".
   const [tpSearchParams] = useSearchParams();
-  const fromPairingSlug  = tpSearchParams.get('fromPairing');
+  const fromPairingSlug = tpSearchParams.get('fromPairing');
   const fromPairingTitle = tpSearchParams.get('fromPairingTitle');
 
   // ── Slug canonicalization (URL robustness) ───────────────────────────────
@@ -175,12 +226,15 @@ export function TeaProfilePage() {
   const canonicalSlug = slug ? normalizeSlugFromUrl(slug) : '';
   useEffect(() => {
     if (slug && canonicalSlug && slug !== canonicalSlug) {
-      navigate(`/tea-profile/${encodeURIComponent(category ?? '')}/${encodeURIComponent(canonicalSlug)}`, { replace: true });
+      navigate(
+        `/tea-profile/${encodeURIComponent(category ?? '')}/${encodeURIComponent(canonicalSlug)}`,
+        { replace: true },
+      );
     }
   }, [slug, canonicalSlug, category, navigate]);
   const { addToCart, items, updateQuantity, removeFromCart } = useCart();
   // Out-of-stock "Notify me" plumbing — see lib/backInStock.ts.
-  const wishlistAdd       = useWishlist((s) => s.add);
+  const wishlistAdd = useWishlist((s) => s.add);
   const wishlistSetNotify = useWishlist((s) => s.setNotify);
   // Phase 10 — +1 fly animation to cart icon on add. Hook is stateless;
   // reduced-motion users skip the fly token automatically.
@@ -205,8 +259,8 @@ export function TeaProfilePage() {
     // apostrophes, spaces, uppercase, etc. The effect above redirects
     // the address bar to the canonical form on next paint.
     queryKey: queryKeys.tea(canonicalSlug),
-    queryFn:  () => fetchTea(canonicalSlug),
-    enabled:  !!canonicalSlug,
+    queryFn: () => fetchTea(canonicalSlug),
+    enabled: !!canonicalSlug,
   });
   // Tea text in the current language (French fields from the /teas doc).
   const teaText = localizeTea(product, language as Lang);
@@ -216,7 +270,8 @@ export function TeaProfilePage() {
   // notify:true; onInventoryWrite emails once when the tea is restocked.
   // Guests: sent to /login and back with ?notify=1, then saved here.
   const notifyRequested = useWishlist((s) =>
-    s.items.some((i) => i.slug === product?.slug && i.notify === true));
+    s.items.some((i) => i.slug === product?.slug && i.notify === true),
+  );
   const [notifyBusy, setNotifyBusy] = useState(false);
 
   const wantsNotify = tpSearchParams.get('notify') === '1';
@@ -227,10 +282,10 @@ export function TeaProfilePage() {
     setNotifyBusy(true);
     try {
       wishlistAdd({
-        slug:        slugToSave,
-        name:        product.name ?? slugToSave,
-        category:    product.category ?? 'other',
-        image:       product.image ?? '',
+        slug: slugToSave,
+        name: product.name ?? slugToSave,
+        category: product.category ?? 'other',
+        image: product.image ?? '',
         priceAtSave: typeof product.price === 'number' ? product.price : 0,
       });
       const item = useWishlist.getState().items.find((i) => i.slug === slugToSave);
@@ -249,18 +304,15 @@ export function TeaProfilePage() {
   const handleNotifyMe = () => {
     const returnParams = new URLSearchParams(tpSearchParams);
     returnParams.set('notify', '1');
-    requireAuth(
-      () => {
-        if (!user?.uid) return;
-        // Must be called straight from the click — browsers ignore
-        // permission requests that aren't tied to a user gesture.
-        // "Notify me" is a high-intent moment to offer phone/desktop push
-        // too. No-op when push isn't configured or was already decided.
-        if (canUsePush()) void requestPushPermission();
-        void saveNotifyRequest(user.uid);
-      },
-      `${window.location.pathname}?${returnParams.toString()}`,
-    );
+    requireAuth(() => {
+      if (!user?.uid) return;
+      // Must be called straight from the click — browsers ignore
+      // permission requests that aren't tied to a user gesture.
+      // "Notify me" is a high-intent moment to offer phone/desktop push
+      // too. No-op when push isn't configured or was already decided.
+      if (canUsePush()) void requestPushPermission();
+      void saveNotifyRequest(user.uid);
+    }, `${window.location.pathname}?${returnParams.toString()}`);
   };
 
   const handleCancelNotify = async () => {
@@ -292,7 +344,7 @@ export function TeaProfilePage() {
 
   const [reviews, setReviews] = useState<ReviewDoc[]>([]);
   const [reviewsError, setReviewsError] = useState<string | null>(null);
-  const [rating,  setRating]  = useState(0);
+  const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   // Verification modal state — review submit gates on emailVerified.
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
@@ -300,18 +352,17 @@ export function TeaProfilePage() {
   const submitReviewMutation = useMutation({
     mutationFn: async ({ rating: r, comment: c }: { rating: number; comment: string }) => {
       const reviewRef = doc(db, 'teas', slug ?? '', 'reviews', user!.uid);
-      const teaRef    = doc(db, 'teas', slug ?? '');
+      const teaRef = doc(db, 'teas', slug ?? '');
       await runTransaction(db, async (tx) => {
         // Read both docs first — Firestore requires all reads before
         // any writes inside a transaction.
-        const [existing, teaSnap] = await Promise.all([
-          tx.get(reviewRef),
-          tx.get(teaRef),
-        ]);
-        const teaData     = teaSnap.data() ?? {};
-        const rawOldAvg   = (teaData.avgRating  as number | undefined) ?? 0;
-        const oldCount    = (teaData.ratingCount as number | undefined) ?? 0;
-        const oldRating   = existing.exists() ? ((existing.data().rating as number | undefined) ?? 0) : 0;
+        const [existing, teaSnap] = await Promise.all([tx.get(reviewRef), tx.get(teaRef)]);
+        const teaData = teaSnap.data() ?? {};
+        const rawOldAvg = (teaData.avgRating as number | undefined) ?? 0;
+        const oldCount = (teaData.ratingCount as number | undefined) ?? 0;
+        const oldRating = existing.exists()
+          ? ((existing.data().rating as number | undefined) ?? 0)
+          : 0;
         // Legacy data correction: an earlier writer stored avgRating as
         // a SUM (e.g. 30 for six 5★ reviews) instead of an average. If
         // we see a value above 5 or one that doesn't divide cleanly into
@@ -319,7 +370,7 @@ export function TeaProfilePage() {
         // fresh average from this point. Once the new value lands, all
         // subsequent reviews use the corrected average.
         const isLegacy = rawOldAvg > 5 || rawOldAvg < 0;
-        const oldAvg   = isLegacy ? 0 : rawOldAvg;
+        const oldAvg = isLegacy ? 0 : rawOldAvg;
         const useCount = isLegacy ? 0 : oldCount;
 
         tx.set(reviewRef, {
@@ -343,34 +394,40 @@ export function TeaProfilePage() {
         } else {
           // New review OR legacy reset path. For legacy: treat this as
           // the first reliable review and reset the count to 1.
-          const newCount = isLegacy ? 1 : (useCount + 1);
-          const newSum   = isLegacy ? r : (oldAvg * useCount + r);
-          const newAvg   = newSum / newCount;
+          const newCount = isLegacy ? 1 : useCount + 1;
+          const newSum = isLegacy ? r : oldAvg * useCount + r;
+          const newAvg = newSum / newCount;
           tx.update(teaRef, {
             ratingCount: newCount,
-            avgRating:   Math.max(0, Math.min(5, newAvg)),
+            avgRating: Math.max(0, Math.min(5, newAvg)),
           });
         }
       });
     },
     onSuccess: () => {
-      toast.success(tNow('Review submitted!')); setRating(0); setComment('');
+      toast.success(tNow('Review submitted!'));
+      setRating(0);
+      setComment('');
       qClient.invalidateQueries({ queryKey: queryKeys.tea(slug ?? '') });
     },
     onError: (err: Error) => toast.error(err.message || 'Failed to submit review'),
   });
 
   const submitting = submitReviewMutation.isPending;
-  const cartQty = product?.id ? (items.find(i => i.id === product.id)?.quantity ?? 0) : 0;
+  const cartQty = product?.id ? (items.find((i) => i.id === product.id)?.quantity ?? 0) : 0;
 
   useEffect(() => {
     if (!slug) return;
-    const q = query(collection(db,'teas',slug,'reviews'), orderBy('createdAt','desc'), limit(100));
+    const q = query(
+      collection(db, 'teas', slug, 'reviews'),
+      orderBy('createdAt', 'desc'),
+      limit(100),
+    );
     setReviewsError(null);
     return onSnapshot(
       q,
-      snap => setReviews(snap.docs.map(d => ({ ...d.data(), id: d.id } as ReviewDoc))),
-      err => {
+      (snap) => setReviews(snap.docs.map((d) => ({ ...d.data(), id: d.id }) as ReviewDoc)),
+      (err) => {
         console.error('[TeaProfilePage] reviews subscription failed:', err);
         setReviewsError(tNow('Reviews are temporarily unavailable.'));
       },
@@ -384,13 +441,20 @@ export function TeaProfilePage() {
   useEffect(() => {
     if (!product?.slug || !product?.name) return;
     recordRecentlyViewed({
-      slug:        product.slug,
-      name:        product.name,
-      category:    product.category ?? 'other',
-      image:       product.image ?? '',
+      slug: product.slug,
+      name: product.name,
+      category: product.category ?? 'other',
+      image: product.image ?? '',
       priceAtView: typeof product.price === 'number' ? product.price : 0,
     });
-  }, [product?.slug, product?.name, product?.category, product?.image, product?.price, recordRecentlyViewed]);
+  }, [
+    product?.slug,
+    product?.name,
+    product?.category,
+    product?.image,
+    product?.price,
+    recordRecentlyViewed,
+  ]);
 
   const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!product) return;
@@ -403,10 +467,15 @@ export function TeaProfilePage() {
     // R3 Bugs #11 + #12: addToCart now returns { added, reason? }.
     // Skip the success toast if the store rejected the add (sold out,
     // cap reached) — the store has already toasted the reason.
-    const result = addToCart({ id:product.id??'', name:product.name??'Unknown', nameFr: product.nameFr ?? undefined,
-      price: typeof product.price==='number'?product.price:0,
-      image:product.image??'', category:product.category??'other',
-      gstApplicable:product.gstApplicable??false });
+    const result = addToCart({
+      id: product.id ?? '',
+      name: product.name ?? 'Unknown',
+      nameFr: product.nameFr ?? undefined,
+      price: typeof product.price === 'number' ? product.price : 0,
+      image: product.image ?? '',
+      category: product.category ?? 'other',
+      gstApplicable: product.gstApplicable ?? false,
+    });
     if (result.added) {
       // Phase 10 — +1 fly to cart icon. Reduced-motion users still see
       // the cart-icon bump and the toast; no flying token.
@@ -422,20 +491,28 @@ export function TeaProfilePage() {
     if (!isProductAvailable(product)) return;
     // No success toast needed for increment — the +/- stepper is its
     // own visual feedback; rejection still gets the store's toast.
-    addToCart({ id:product.id??'', name:product.name??'Unknown', nameFr: product.nameFr ?? undefined,
-      price:typeof product.price==='number'?product.price:0,
-      image:product.image??'', category:product.category??'other',
-      gstApplicable:product.gstApplicable??false });
+    addToCart({
+      id: product.id ?? '',
+      name: product.name ?? 'Unknown',
+      nameFr: product.nameFr ?? undefined,
+      price: typeof product.price === 'number' ? product.price : 0,
+      image: product.image ?? '',
+      category: product.category ?? 'other',
+      gstApplicable: product.gstApplicable ?? false,
+    });
     fly(e.currentTarget, '+1');
   };
   const handleDecrease = () => {
     if (!product) return;
-    if (cartQty <= 1) removeFromCart(product.id??'');
-    else updateQuantity(product.id??'', cartQty - 1);
+    if (cartQty <= 1) removeFromCart(product.id ?? '');
+    else updateQuantity(product.id ?? '', cartQty - 1);
   };
   const handleSubmitReview = () => {
     requireAuth(async () => {
-      if (rating === 0) { toast.error(tNow('Please select a star rating')); return; }
+      if (rating === 0) {
+        toast.error(tNow('Please select a star rating'));
+        return;
+      }
       // Email-verification gate — same shape as CheckoutPage. The
       // /teas/{id}/reviews rule + the avgRating update on /teas
       // both gate on email_verified=true; without this client-side
@@ -444,7 +521,7 @@ export function TeaProfilePage() {
       // toast. Refresh User + token first so users who verified in
       // another tab don't get stuck on a stale-token false block.
       if (user) {
-        const hasPasswordProvider = user.providerData.some(p => p.providerId === 'password');
+        const hasPasswordProvider = user.providerData.some((p) => p.providerId === 'password');
         if (hasPasswordProvider && !user.emailVerified) {
           try {
             const { mod } = await ensureAuth();
@@ -464,37 +541,50 @@ export function TeaProfilePage() {
       // The original code validated against a full schema that required
       // those server-side fields, so every submit failed silently.
       const inputSchema = z.object({
-        rating:  z.number().int().min(1).max(5),
+        rating: z.number().int().min(1).max(5),
         comment: z.string().min(10, 'Review must be at least 10 characters').max(1000).optional(),
       });
       const r = inputSchema.safeParse({ rating, comment: comment || undefined });
-      if (!r.success) { toast.error(r.error.issues[0].message); return; }
+      if (!r.success) {
+        toast.error(r.error.issues[0].message);
+        return;
+      }
       submitReviewMutation.mutate({ rating: r.data.rating, comment: r.data.comment ?? '' });
     });
   };
 
   if (loading) return <PageSkeleton />;
-  if (!product) return (
-    <>
-      <title>{t('Tea Not Found | Ele Cafe')}</title>
-      <div className="tpf-notfound">
-        <div className="tpf-notfound-inner">
-          <h1 className="tpf-notfound-title">{t('Tea Not Found')}</h1>
-          <p className="tpf-notfound-msg">{t('The tea you\'re looking for doesn\'t exist.')}</p>
-          <Link to={category ? ROUTES.PRODUCTS_CAT(category) : ROUTES.PRODUCTS} className="btn btn-dark">{t('Back to Teas')}</Link>
+  if (!product)
+    return (
+      <>
+        <title>{t('Tea Not Found | Ele Cafe')}</title>
+        <div className="tpf-notfound">
+          <div className="tpf-notfound-inner">
+            <h1 className="tpf-notfound-title">{t('Tea Not Found')}</h1>
+            <p className="tpf-notfound-msg">{t("The tea you're looking for doesn't exist.")}</p>
+            <Link
+              to={category ? ROUTES.PRODUCTS_CAT(category) : ROUTES.PRODUCTS}
+              className="btn btn-dark"
+            >
+              {t('Back to Teas')}
+            </Link>
+          </div>
         </div>
-      </div>
-    </>
-  );
+      </>
+    );
 
-  const catLabel    = categories.find(c => c.id === product.category)?.name ?? product.category ?? 'Tea';
+  const catLabel =
+    categories.find((c) => c.id === product.category)?.name ?? product.category ?? 'Tea';
   // Phase 11 URL fix — emit a canonical URL for og:url + rel=canonical
   // even when the DB has drifted slugs. Without this, Google indexes
   // both /monk's-blend and /monks-blend as separate pages.
   const canonicalUrl = `${SITE_BASE}/tea-profile/${encodeURIComponent(product.category ?? 'other')}/${encodeURIComponent(toSlug(product.slug ?? ''))}`;
-  const metaDesc    = product.description?.slice(0,155) || `${product.name??'Tea'} — premium ${catLabel} from Ele Cafe Vancouver.`;
-  const userReview  = user ? reviews.find(r => r.userId === user.uid) : undefined;
-  const avgRating   = reviews.length > 0 ? reviews.reduce((s,r) => s + (r.rating??0), 0) / reviews.length : 0;
+  const metaDesc =
+    product.description?.slice(0, 155) ||
+    `${product.name ?? 'Tea'} — premium ${catLabel} from Ele Cafe Vancouver.`;
+  const userReview = user ? reviews.find((r) => r.userId === user.uid) : undefined;
+  const avgRating =
+    reviews.length > 0 ? reviews.reduce((s, r) => s + (r.rating ?? 0), 0) / reviews.length : 0;
 
   // Serving suggestions — the data may be in legacy format (plain
   // strings) or new format ({ label, enabled? }) depending on when
@@ -502,10 +592,11 @@ export function TeaProfilePage() {
   type ServingItem = { label: string; enabled?: boolean };
   const servingVisible: ServingItem[] = (product.servingSuggestions ?? [])
     .map((s: string | ServingItem): ServingItem =>
-      typeof s === 'string' ? { label: s, enabled: true } : s
+      typeof s === 'string' ? { label: s, enabled: true } : s,
     )
     .filter((s: ServingItem) => s.enabled !== false);
   const cafeMenuId = cafeSectionForTea(product);
+  const freeSample = settingsLive?.freeSampleWithOrders !== false;
 
   return (
     <>
@@ -521,27 +612,37 @@ export function TeaProfilePage() {
 
       <SeoHead
         title={`${product.name} | ${catLabel} | Ele Café Vancouver`}
-        description={metaDesc} image={product.image??''} url={canonicalUrl}
+        description={metaDesc}
+        image={product.image ?? ''}
+        url={canonicalUrl}
         type="product"
         breadcrumbs={
           fromPairingSlug && fromPairingTitle
             ? [
-                { name: 'Home',            url: SITE_BASE },
-                { name: 'Pairings',        url: `${SITE_BASE}/pairings` },
-                { name: fromPairingTitle,  url: `${SITE_BASE}/pairings/${fromPairingSlug}` },
-                { name: product.name??'',  url: canonicalUrl },
+                { name: 'Home', url: SITE_BASE },
+                { name: 'Pairings', url: `${SITE_BASE}/pairings` },
+                { name: fromPairingTitle, url: `${SITE_BASE}/pairings/${fromPairingSlug}` },
+                { name: product.name ?? '', url: canonicalUrl },
               ]
             : [
-                { name: 'Home',           url: SITE_BASE },
-                { name: 'Our Teas',       url: `${SITE_BASE}/products` },
-                { name: catLabel,         url: `${SITE_BASE}/products?category=${product.category}` },
-                { name: product.name??'', url: canonicalUrl },
+                { name: 'Home', url: SITE_BASE },
+                { name: 'Our Teas', url: `${SITE_BASE}/products` },
+                { name: catLabel, url: `${SITE_BASE}/products?category=${product.category}` },
+                { name: product.name ?? '', url: canonicalUrl },
               ]
         }
-        product={{ name:product.name??'', description:metaDesc, image:product.image??'',
-          price:product.price??0, currency:'CAD', inStock:isProductAvailable(product),
-          sku:product.slug, category:catLabel,
-          avgRating:product.avgRating??0, reviewCount:product.ratingCount??reviews.length }}
+        product={{
+          name: product.name ?? '',
+          description: metaDesc,
+          image: product.image ?? '',
+          price: product.price ?? 0,
+          currency: 'CAD',
+          inStock: isProductAvailable(product),
+          sku: product.slug,
+          category: catLabel,
+          avgRating: product.avgRating ?? 0,
+          reviewCount: product.ratingCount ?? reviews.length,
+        }}
       />
 
       {/* Visible breadcrumbs — JSON-LD already handled by <SeoHead breadcrumbs=…>
@@ -555,25 +656,29 @@ export function TeaProfilePage() {
           items={
             fromPairingSlug && fromPairingTitle
               ? [
-                  { name: t('Home'),        url: ROUTES.HOME },
-                  { name: t('Pairings'),    url: ROUTES.PAIRINGS },
+                  { name: t('Home'), url: ROUTES.HOME },
+                  { name: t('Pairings'), url: ROUTES.PAIRINGS },
                   { name: fromPairingTitle, url: ROUTES.PAIRING(fromPairingSlug) },
-                  { name: teaText.name, url: ROUTES.TEA_PROFILE(product.category ?? '', product.slug ?? '') },
+                  {
+                    name: teaText.name,
+                    url: ROUTES.TEA_PROFILE(product.category ?? '', product.slug ?? ''),
+                  },
                 ]
               : [
-                  { name: t('Home'),     url: ROUTES.HOME },
-                  { name: t('Teas'),     url: ROUTES.PRODUCTS },
-                  { name: t(catLabel),   url: ROUTES.PRODUCTS_CAT(product.category ?? '') },
-                  { name: teaText.name, url: ROUTES.TEA_PROFILE(product.category ?? '', product.slug ?? '') },
+                  { name: t('Home'), url: ROUTES.HOME },
+                  { name: t('Teas'), url: ROUTES.PRODUCTS },
+                  { name: t(catLabel), url: ROUTES.PRODUCTS_CAT(product.category ?? '') },
+                  {
+                    name: teaText.name,
+                    url: ROUTES.TEA_PROFILE(product.category ?? '', product.slug ?? ''),
+                  },
                 ]
           }
         />
         <StaleIndicator visible={productStale && productFetching} />
       </div>
 
-
       <div className="tpf-page">
-
         {/* ── Back ────────────────────────────────────────────────────────────
             Smart back: if the visitor has meaningful in-app history (e.g.
             they came from /products), we honor it. If they arrived from a
@@ -607,7 +712,11 @@ export function TeaProfilePage() {
               ? ROUTES.PRODUCTS_CAT(product.category)
               : ROUTES.PRODUCTS;
             const fallbackLabel = product.category
-              ? t('All {category}', { category: t(categories.find(c => c.id === product.category)?.name ?? 'Teas').toLowerCase() })
+              ? t('All {category}', {
+                  category: t(
+                    categories.find((c) => c.id === product.category)?.name ?? 'Teas',
+                  ).toLowerCase(),
+                })
               : t('All teas');
 
             const onBack = () => {
@@ -626,7 +735,6 @@ export function TeaProfilePage() {
         {/* ── Hero — 2 col grid ─────────────────────────────────────────────── */}
         <section className="tpf-hero-section">
           <div className="tpf-hero-grid">
-
             {/* ── Left: image ────────────────────────────────────────────────── */}
             <div className="tpf-hero">
               {/* Phase 4.5 shared-element View Transition: the
@@ -639,15 +747,16 @@ export function TeaProfilePage() {
               <div
                 className="tpf-hero-img"
                 // eslint-disable-next-line react/forbid-dom-props -- viewTransitionName is dynamic per-product for the shared-element transition
-                style={{ ['viewTransitionName' as string]: `tea-img-${product.id ?? product.slug ?? ''}` }}
+                style={{
+                  ['viewTransitionName' as string]: `tea-img-${product.id ?? product.slug ?? ''}`,
+                }}
               >
                 {/* Hero image — LCP element on this route. priority=true
                     sets fetchpriority=high + decoding=sync + skips lazy
                     load. variant="hero" uses sizes="(min-width: 768px)
                     50vw, 100vw" so phones download a 320–640w variant
                     instead of the full-resolution 1280w. */}
-                <TeaImage product={product} variant="hero" priority
-                  className="tpf-hero-img-el" />
+                <TeaImage product={product} variant="hero" priority className="tpf-hero-img-el" />
                 {/* Badges */}
                 <div className="tpf-badges">
                   {product.isOrganic && (
@@ -656,9 +765,7 @@ export function TeaProfilePage() {
                     </span>
                   )}
                   {product.caffeine === 'None' && (
-                    <span className="tpf-badge tpf-badge-decaf">
-                      {t('✦ Caffeine-free')}
-                    </span>
+                    <span className="tpf-badge tpf-badge-decaf">{t('✦ Caffeine-free')}</span>
                   )}
                 </div>
                 {/* Stock — Turn 5 cutover: uses inventory-projected
@@ -673,9 +780,11 @@ export function TeaProfilePage() {
                     // reuse the result for the data-status mapping.
                     const status = getAvailabilityStatus(product);
                     const dataStatus =
-                      status === 'out_of_stock' ? 'oos' :
-                      status === 'low_stock'    ? 'low' :
-                                                  'instock';
+                      status === 'out_of_stock'
+                        ? 'oos'
+                        : status === 'low_stock'
+                          ? 'low'
+                          : 'instock';
                     return (
                       <span className="tpf-stock-badge" data-status={dataStatus}>
                         <Package size={11} />
@@ -696,27 +805,28 @@ export function TeaProfilePage() {
             <div className="tpf-info">
               {/* Category + allergens */}
               <div className="tpf-cat-row">
-                <span className="tpf-cat-label">
-                  {t(catLabel)}
-                </span>
+                <span className="tpf-cat-label">{t(catLabel)}</span>
                 {product.allergens?.length > 0 && (
                   <span className="tpf-allergens">
-                    <AlertTriangle size={11} /> {product.allergens.map((a:string) => a.charAt(0).toUpperCase()+a.slice(1)).join(' · ')}
+                    <AlertTriangle size={11} />{' '}
+                    {product.allergens
+                      .map((a: string) => a.charAt(0).toUpperCase() + a.slice(1))
+                      .join(' · ')}
                   </span>
                 )}
               </div>
 
               {/* Name */}
-              <h1 className="tpf-name">
-                {teaText.name || t('Tea')}
-              </h1>
+              <h1 className="tpf-name">{teaText.name || t('Tea')}</h1>
 
               {/* Stars */}
               {avgRating > 0 && (
                 <div className="tpf-rating-row">
                   <Stars rating={avgRating} />
                   <span className="tpf-rating-num">{avgRating.toFixed(1)}</span>
-                  <span className="tpf-rating-count">({reviews.length} {reviews.length===1?'review':'reviews'})</span>
+                  <span className="tpf-rating-count">
+                    ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})
+                  </span>
                 </div>
               )}
 
@@ -734,14 +844,13 @@ export function TeaProfilePage() {
               <div className="tpf-gold-rule" />
 
               {/* Description */}
-              {teaText.description && (
-                <p className="tpf-desc">
-                  {teaText.description}
-                </p>
-              )}
+              {teaText.description && <p className="tpf-desc">{teaText.description}</p>}
 
               {/* Spec chips */}
-              {(product.caffeine||product.origin||product.brewingTemp||product.brewingTime) && (
+              {(product.caffeine ||
+                product.origin ||
+                product.brewingTemp ||
+                product.brewingTime) && (
                 <div className="tpf-specs">
                   {product.caffeine && (
                     <div className="tpf-spec-chip">
@@ -752,7 +861,9 @@ export function TeaProfilePage() {
                   {product.origin && (
                     <div className="tpf-spec-chip">
                       <Globe size={14} className="tpf-spec-icon" />
-                      <span className="tpf-spec-text">{(teaText.origin || product.origin).split('/')[0].trim()}</span>
+                      <span className="tpf-spec-text">
+                        {(teaText.origin || product.origin).split('/')[0].trim()}
+                      </span>
                     </div>
                   )}
                   {product.brewingTemp && (
@@ -784,24 +895,37 @@ export function TeaProfilePage() {
                   </button>
                 ) : (
                   <div className="tpf-cart-stepper-shell">
-                    <button onClick={handleDecrease} className="tpf-cart-minus tpf-cart-step-btn"
-                      aria-label={t('Decrease quantity')}>
+                    <button
+                      onClick={handleDecrease}
+                      className="tpf-cart-minus tpf-cart-step-btn"
+                      aria-label={t('Decrease quantity')}
+                    >
                       <Minus size={16} />
                     </button>
                     <div className="tpf-cart-step-display">
                       <span className="tpf-cart-step-qty">{cartQty}</span>
                     </div>
-                    <button onClick={handleIncrease} className="tpf-cart-plus tpf-cart-step-btn"
-                      aria-label={t('Increase quantity')}>
+                    <button
+                      onClick={handleIncrease}
+                      className="tpf-cart-plus tpf-cart-step-btn"
+                      aria-label={t('Increase quantity')}
+                    >
                       <Plus size={16} />
                     </button>
                   </div>
                 )}
               </div>
+              {freeSample && isProductAvailable(product) && (
+                <p className="tpf-sample-note">
+                  <Gift size={16} aria-hidden="true" />
+                  {t('Free tea sample with every order')}
+                </p>
+              )}
 
               {/* Out-of-stock: back-in-stock email request. */}
-              {!isProductAvailable(product) && product.slug && (
-                notifyRequested ? (
+              {!isProductAvailable(product) &&
+                product.slug &&
+                (notifyRequested ? (
                   <div className="tpf-oos-prompt tpf-oos-prompt-saved" role="status">
                     <BellRing size={16} aria-hidden="true" />
                     <div className="tpf-oos-prompt-text">
@@ -842,15 +966,16 @@ export function TeaProfilePage() {
                       {t('Notify me')}
                     </button>
                   </div>
-                )
-              )}
+                ))}
 
               {/* Share */}
               <div>
                 <p className="tpf-share-label">{t('Share')}</p>
                 <div className="tpf-share-row">
                   <ShareButtons
-                    title={t('{name} — premium tea from Ele Café Vancouver', { name: teaText.name })}
+                    title={t('{name} — premium tea from Ele Café Vancouver', {
+                      name: teaText.name,
+                    })}
                     url={typeof window !== 'undefined' ? window.location.href : ''}
                     size="sm"
                   />
@@ -866,102 +991,117 @@ export function TeaProfilePage() {
             <div className="tpf-desc-inner">
               <div className="tpf-desc-card">
                 {/* DESCRIPTION pill */}
-                <span className="tpf-desc-pill">
-                  {t('Description')}
-                </span>
-                <p className="tpf-desc-text">
-                  {teaText.description}
-                </p>
+                <span className="tpf-desc-pill">{t('Description')}</span>
+                <p className="tpf-desc-text">{teaText.description}</p>
               </div>
             </div>
           </section>
         )}
 
         {/* ── Tea Details — blue card section (matches screenshot) ─────────── */}
-        {(product.benefits||product.ingredients||product.caffeine||product.antioxidants||product.origin||product.regions) && (
+        {(product.benefits ||
+          product.ingredients ||
+          product.caffeine ||
+          product.antioxidants ||
+          product.origin ||
+          product.regions) && (
           <section className="tpf-details-section">
             <div className="tpf-details-inner">
-              <h2 className="tpf-details-title">
-                {t('Tea Details')}
-              </h2>
+              <h2 className="tpf-details-title">{t('Tea Details')}</h2>
               {/* Locale-aware reads — prefer the admin-supplied FR
                   translation when language is French, fall back to
                   the English field if the FR mirror is empty so we
                   never leave a missing-data hole. */}
               {(() => {
-                const displayBenefits    = teaText.benefits;
+                const displayBenefits = teaText.benefits;
                 const displayIngredients = teaText.ingredients;
-                const displayOrigin      = teaText.origin;
-                const displayRegions     = teaText.regions;
+                const displayOrigin = teaText.origin;
+                const displayRegions = teaText.regions;
                 return (
-              <div>
-                {displayBenefits && (
-                  <div className="tpf-detail-section tpf-detail-row">
-                    <div className="tpf-detail-row-inner">
-                      <span className="ph-icon tpf-detail-row-icon" data-color="leaf"><Leaf size={20} /></span>
-                      <div>
-                        <p className="tpf-detail-row-title">{t('Benefits')}:</p>
-                        <p className="tpf-detail-row-body">{displayBenefits}</p>
+                  <div>
+                    {displayBenefits && (
+                      <div className="tpf-detail-section tpf-detail-row">
+                        <div className="tpf-detail-row-inner">
+                          <span className="ph-icon tpf-detail-row-icon" data-color="leaf">
+                            <Leaf size={20} />
+                          </span>
+                          <div>
+                            <p className="tpf-detail-row-title">{t('Benefits')}:</p>
+                            <p className="tpf-detail-row-body">{displayBenefits}</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                )}
-                {displayIngredients && (
-                  <div className="tpf-detail-section tpf-detail-row">
-                    <div className="tpf-detail-row-inner">
-                      <span className="ph-icon tpf-detail-row-icon" data-color="flower"><Flower2 size={20} /></span>
-                      <div>
-                        <p className="tpf-detail-row-title">{t('Ingredients')}:</p>
-                        <p className="tpf-detail-row-body">{displayIngredients}</p>
+                    )}
+                    {displayIngredients && (
+                      <div className="tpf-detail-section tpf-detail-row">
+                        <div className="tpf-detail-row-inner">
+                          <span className="ph-icon tpf-detail-row-icon" data-color="flower">
+                            <Flower2 size={20} />
+                          </span>
+                          <div>
+                            <p className="tpf-detail-row-title">{t('Ingredients')}:</p>
+                            <p className="tpf-detail-row-body">{displayIngredients}</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                )}
-                {product.caffeine && (
-                  <div className="tpf-detail-section tpf-detail-row">
-                    <div className="tpf-detail-row-inner">
-                      <span className="ph-icon tpf-detail-row-icon" data-color="coffee"><Coffee size={20} /></span>
-                      <div>
-                        <p className="tpf-detail-row-title">{t('Caffeine')}:</p>
-                        <p className="tpf-detail-row-body">{product.caffeine === 'None' ? t('Caffeine Free') : t(product.caffeine)}</p>
+                    )}
+                    {product.caffeine && (
+                      <div className="tpf-detail-section tpf-detail-row">
+                        <div className="tpf-detail-row-inner">
+                          <span className="ph-icon tpf-detail-row-icon" data-color="coffee">
+                            <Coffee size={20} />
+                          </span>
+                          <div>
+                            <p className="tpf-detail-row-title">{t('Caffeine')}:</p>
+                            <p className="tpf-detail-row-body">
+                              {product.caffeine === 'None'
+                                ? t('Caffeine Free')
+                                : t(product.caffeine)}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                )}
-                {product.antioxidants && (
-                  <div className="tpf-detail-section tpf-detail-row">
-                    <div className="tpf-detail-row-inner">
-                      <span className="ph-icon tpf-detail-row-icon" data-color="fire"><Sparkles size={20} /></span>
-                      <div>
-                        <p className="tpf-detail-row-title">{t('Antioxidants')}:</p>
-                        <p className="tpf-detail-row-body">{t(product.antioxidants)}</p>
+                    )}
+                    {product.antioxidants && (
+                      <div className="tpf-detail-section tpf-detail-row">
+                        <div className="tpf-detail-row-inner">
+                          <span className="ph-icon tpf-detail-row-icon" data-color="fire">
+                            <Sparkles size={20} />
+                          </span>
+                          <div>
+                            <p className="tpf-detail-row-title">{t('Antioxidants')}:</p>
+                            <p className="tpf-detail-row-body">{t(product.antioxidants)}</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                )}
-                {displayOrigin && (
-                  <div className="tpf-detail-section tpf-detail-row">
-                    <div className="tpf-detail-row-inner">
-                      <span className="ph-icon tpf-detail-row-icon" data-color="fire"><MapPin size={20} /></span>
-                      <div>
-                        <p className="tpf-detail-row-title">{t('From')}:</p>
-                        <p className="tpf-detail-row-body">{displayOrigin}</p>
+                    )}
+                    {displayOrigin && (
+                      <div className="tpf-detail-section tpf-detail-row">
+                        <div className="tpf-detail-row-inner">
+                          <span className="ph-icon tpf-detail-row-icon" data-color="fire">
+                            <MapPin size={20} />
+                          </span>
+                          <div>
+                            <p className="tpf-detail-row-title">{t('From')}:</p>
+                            <p className="tpf-detail-row-body">{displayOrigin}</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                )}
-                {displayRegions && (
-                  <div className="tpf-detail-section tpf-detail-row">
-                    <div className="tpf-detail-row-inner">
-                      <span className="ph-icon tpf-detail-row-icon" data-color="fire"><Globe size={20} /></span>
-                      <div>
-                        <p className="tpf-detail-row-title">{t('Regions')}:</p>
-                        <p className="tpf-detail-row-body">{displayRegions}</p>
+                    )}
+                    {displayRegions && (
+                      <div className="tpf-detail-section tpf-detail-row">
+                        <div className="tpf-detail-row-inner">
+                          <span className="ph-icon tpf-detail-row-icon" data-color="fire">
+                            <Globe size={20} />
+                          </span>
+                          <div>
+                            <p className="tpf-detail-row-title">{t('Regions')}:</p>
+                            <p className="tpf-detail-row-body">{displayRegions}</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
-                )}
-              </div>
                 );
               })()}
             </div>
@@ -969,14 +1109,12 @@ export function TeaProfilePage() {
         )}
 
         {/* ── Brew Guide ───────────────────────────────────── */}
-        {(product.brewingTemp||product.brewingTime) && (
+        {(product.brewingTemp || product.brewingTime) && (
           <section className="tpf-brew-section">
             <div className="tpf-brew-inner">
               <div className="tpf-brew-head">
                 <span className="tpf-brew-eyebrow">{t('Brew Guide')}</span>
-                <h2 className="tpf-brew-title">
-                  {t('Perfect Cup')}
-                </h2>
+                <h2 className="tpf-brew-title">{t('Perfect Cup')}</h2>
               </div>
               <div className="tpf-brew-grid">
                 {product.brewingTemp && (
@@ -1011,13 +1149,11 @@ export function TeaProfilePage() {
                   <div className="tpf-serving-icon-wrap">
                     <Heart size={16} color={C.goldText} />
                   </div>
-                  <h2 className="tpf-serving-title">
-                    {t('Enjoy at Ele Café')}
-                  </h2>
+                  <h2 className="tpf-serving-title">{t('Enjoy at Ele Café')}</h2>
                 </div>
                 <div className="tpf-serving-rule" />
                 <div className="tpf-serving-list">
-                  {servingVisible.map(s => (
+                  {servingVisible.map((s) => (
                     <div key={s.label} className="tpf-serving-pill">
                       <Flame size={14} color={C.gold} />
                       {t(s.label)}
@@ -1062,7 +1198,12 @@ export function TeaProfilePage() {
                 <div className="tpf-reviews-summary">
                   <Stars rating={avgRating} size={15} />
                   <span className="tpf-reviews-num">{avgRating.toFixed(1)}</span>
-                  <span className="tpf-reviews-count">· {t(reviews.length === 1 ? '{count} review' : '{count} reviews', { count: reviews.length })}</span>
+                  <span className="tpf-reviews-count">
+                    ·{' '}
+                    {t(reviews.length === 1 ? '{count} review' : '{count} reviews', {
+                      count: reviews.length,
+                    })}
+                  </span>
                 </div>
               )}
             </div>
@@ -1073,15 +1214,23 @@ export function TeaProfilePage() {
                 <div>
                   <p className="tpf-review-eyebrow">{t('Your review')}</p>
                   <Stars rating={userReview.rating} />
-                  {userReview.comment && <p className="tpf-review-mine-text">{userReview.comment}</p>}
+                  {userReview.comment && (
+                    <p className="tpf-review-mine-text">{userReview.comment}</p>
+                  )}
                 </div>
               ) : (
                 <div className="tpf-review-stack">
                   <p className="tpf-review-prompt">{t('Rate this tea')}</p>
                   <StarInput value={rating} onChange={setRating} />
-                  <textarea className="field tpf-review-textarea" placeholder={t('Share your thoughts (optional)…')}
+                  <textarea
+                    className="field tpf-review-textarea"
+                    placeholder={t('Share your thoughts (optional)…')}
                     aria-label={t('Review comment')}
-                    value={comment} onChange={e => setComment(e.target.value)} rows={3} maxLength={1000} />
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    rows={3}
+                    maxLength={1000}
+                  />
                   <div className="tpf-review-actions">
                     <button
                       onClick={handleSubmitReview}
@@ -1089,12 +1238,22 @@ export function TeaProfilePage() {
                       className="tpf-cta tpf-review-submit"
                       data-rating={rating === 0 ? 'empty' : 'set'}
                     >
-                      <Star size={13} fill={rating>0?C.gold:'none'} color={rating>0?C.gold:C.muted} />
-                      {submitting?t('Submitting…'):t('Submit Review')}
+                      <Star
+                        size={13}
+                        fill={rating > 0 ? C.gold : 'none'}
+                        color={rating > 0 ? C.gold : C.muted}
+                      />
+                      {submitting ? t('Submitting…') : t('Submit Review')}
                     </button>
                     {!user && (
                       <p className="tpf-review-signin">
-                        {tx('{signIn} to leave a review', { signIn: <Link to={ROUTES.LOGIN} className="tpf-review-signin-link">{t('Sign in')}</Link> })}
+                        {tx('{signIn} to leave a review', {
+                          signIn: (
+                            <Link to={ROUTES.LOGIN} className="tpf-review-signin-link">
+                              {t('Sign in')}
+                            </Link>
+                          ),
+                        })}
                       </p>
                     )}
                   </div>
@@ -1118,7 +1277,7 @@ export function TeaProfilePage() {
               </div>
             ) : (
               <div className="tpf-review-list">
-                {reviews.map(r => (
+                {reviews.map((r) => (
                   <div key={r.id} className="tpf-review-card">
                     <div className="tpf-review-card-head">
                       <div>
@@ -1127,7 +1286,13 @@ export function TeaProfilePage() {
                       </div>
                       {r.createdAt && (
                         <span className="tpf-review-card-date">
-                          {r.createdAt.toDate().toLocaleDateString(localeFor(language as Lang),{ month:'short', day:'numeric', year:'numeric' })}
+                          {r.createdAt
+                            .toDate()
+                            .toLocaleDateString(localeFor(language as Lang), {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
                         </span>
                       )}
                     </div>
@@ -1145,7 +1310,6 @@ export function TeaProfilePage() {
             user navigation. The component renders nothing if there aren't
             at least 4 sibling teas. */}
         <RelatedTeas currentSlug={slug ?? ''} currentCategory={category ?? ''} />
-
       </div>
     </>
   );

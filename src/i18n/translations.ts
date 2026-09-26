@@ -1850,4 +1850,8 @@ export const STRINGS: Record<string, { fr: string }> = {
     fr: 'Ajoutez l’un de ceux-ci pour la livraison gratuite',
   },
   'Unlocks free shipping': { fr: 'Livraison gratuite débloquée' },
+  'Free tea sample with every order': { fr: 'Un échantillon de thé gratuit avec chaque commande' },
+  'A free tea sample is included with your order': {
+    fr: 'Un échantillon de thé gratuit est inclus dans votre commande',
+  },
 };
