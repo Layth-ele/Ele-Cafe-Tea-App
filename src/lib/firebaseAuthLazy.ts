@@ -23,6 +23,7 @@ import {
   getAuth,
   connectAuthEmulator,
   onAuthStateChanged,
+  signInAnonymously,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
@@ -54,13 +55,16 @@ const functions = getFunctions(app, 'us-central1');
 // blocks at the call sites continue to work unchanged.
 
 const _sendBrandedVerify = httpsCallable<unknown, { ok: boolean; alreadyVerified?: boolean }>(
-  functions, 'sendBrandedVerifyEmail',
+  functions,
+  'sendBrandedVerifyEmail',
 );
 const _sendBrandedReset = httpsCallable<{ email: string; lang: Lang }, { ok: boolean }>(
-  functions, 'sendBrandedPasswordReset',
+  functions,
+  'sendBrandedPasswordReset',
 );
 const _sendBrandedChange = httpsCallable<{ newEmail: string; lang: Lang }, { ok: boolean }>(
-  functions, 'sendBrandedEmailChange',
+  functions,
+  'sendBrandedEmailChange',
 );
 
 /**
@@ -77,8 +81,8 @@ const _sendBrandedChange = httpsCallable<{ newEmail: string; lang: Lang }, { ok:
  * message instead of an opaque error toast.
  */
 export async function sendEmailVerification(
-  _user: User,                                   // unused — server reads request.auth.uid
-  _settings?: unknown,                            // unused — see comment above
+  _user: User, // unused — server reads request.auth.uid
+  _settings?: unknown, // unused — see comment above
 ): Promise<void> {
   await _sendBrandedVerify({ lang: siteLang() });
 }
@@ -100,10 +104,7 @@ export async function sendEmailVerification(
  * link." Differential modals ("we sent it" vs "no such account") are
  * the leak that prompted this change.
  */
-export async function sendPasswordResetEmail(
-  _auth: unknown,
-  email: string,
-): Promise<void> {
+export async function sendPasswordResetEmail(_auth: unknown, email: string): Promise<void> {
   await _sendBrandedReset({ email, lang: siteLang() });
 }
 
@@ -113,15 +114,13 @@ export async function sendPasswordResetEmail(
  * happens server-side when the user clicks the link (Firebase's hosted
  * action handler processes the code and updates the account email).
  */
-export async function verifyBeforeUpdateEmail(
-  _user: User,
-  newEmail: string,
-): Promise<void> {
+export async function verifyBeforeUpdateEmail(_user: User, newEmail: string): Promise<void> {
   await _sendBrandedChange({ newEmail, lang: siteLang() });
 }
 
 export {
   onAuthStateChanged,
+  signInAnonymously,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
@@ -131,4 +130,3 @@ export {
   GoogleAuthProvider,
   reload,
 };
-

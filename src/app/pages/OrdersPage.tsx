@@ -366,9 +366,9 @@ export function OrdersPage() {
                         Pass them via inline style so the class stays
                         meta-agnostic. The eslint rule ignores this because
                         we genuinely need the per-status palette. */}
-                    {/* eslint-disable-next-line react/forbid-dom-props */}
                     <span
                       className="orders-card-status-pill"
+                      // eslint-disable-next-line react/forbid-dom-props -- per-status palette from STATUS
                       style={{ background: meta.bg, color: meta.color }}
                     >
                       <Icon size={13} /> {t(meta.label)}

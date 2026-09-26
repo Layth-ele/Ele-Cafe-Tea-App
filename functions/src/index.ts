@@ -1169,7 +1169,8 @@ export const onOrderWrite = functions.firestore.onDocumentWritten(
     // when no shipping name is available. The email comes from there too
     // since shippingAddress only carries a phone, not an email.
     let customerName = (after.shippingAddress?.name as string | undefined) ?? '';
-    let customerEmail = '';
+    let customerEmail =
+      after.isGuest === true && typeof after.customerEmail === 'string' ? after.customerEmail : '';
     if (userId && (!customerName || customerName === 'Customer')) {
       try {
         const userSnap = await db.doc(`users/${userId}`).get();
@@ -1786,6 +1787,19 @@ export const onOrderWrite = functions.firestore.onDocumentWritten(
         break;
 
       case 'delivered': {
+        if (after.isGuest === true) {
+          // Guest orders don't earn points (there's no account to hold them).
+          await notifyOnce(
+            keyForOrderStatus(orderIdOf(orderId), 'delivered', 'user'),
+            userId,
+            'customer_order_delivered',
+            `Order ${orderId} delivered`,
+            'Enjoy your tea!',
+            { orderId, pointsEarned: 0 },
+            'orderUpdates',
+          );
+          break;
+        }
         const subtotal = (after.subtotal as number) ?? 0;
         const creditApplied = (after.creditApplied as number) ?? 0;
         // Order docs carry the discount under `promoDiscount` (the field
@@ -2012,7 +2026,23 @@ export const placeOrder = functions.https.onCall(
     if (!request.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
     }
-    if (request.auth.token?.email_verified !== true) {
+    // Guest checkout: an anonymous Firebase session plus the email the
+    // guest typed. Guests can't redeem credit or use per-customer-limited
+    // codes, and card declines are rate-limited per network address.
+    const isGuest = request.auth.token?.firebase?.sign_in_provider === 'anonymous';
+    const guestEmail = isGuest
+      ? String((request.data as { guestEmail?: unknown })?.guestEmail ?? '')
+          .trim()
+          .toLowerCase()
+      : '';
+    if (isGuest) {
+      if (!/^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,24}$/i.test(guestEmail)) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'Please enter a valid email address.',
+        );
+      }
+    } else if (request.auth.token?.email_verified !== true) {
       throw new functions.https.HttpsError(
         'failed-precondition',
         'Please verify your email before placing an order.',
@@ -2331,6 +2361,12 @@ export const placeOrder = functions.https.onCall(
         );
       }
       const promo = promoSnap.data() ?? {};
+      if (isGuest && Number(promo.perUserLimit) > 0) {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'Please sign in to use this code — it’s limited per customer.',
+        );
+      }
       const usage = await db
         .collection('promotionUsage')
         .where('promotionId', '==', data.promotionId)
@@ -2415,7 +2451,14 @@ export const placeOrder = functions.https.onCall(
       }
       // Card-testing protection: stolen-card testers try many cards fast.
       // After CARD_DECLINE_LIMIT declines in an hour the account is paused.
-      const attemptsRef = db.doc(`paymentAttempts/${request.auth.uid}`);
+      const attemptsKey = isGuest
+        ? `guest_${crypto
+            .createHash('sha256')
+            .update(String(request.rawRequest?.ip ?? 'unknown'))
+            .digest('hex')
+            .slice(0, 32)}`
+        : request.auth.uid;
+      const attemptsRef = db.doc(`paymentAttempts/${attemptsKey}`);
       const attempts = (await attemptsRef.get()).data() as
         { windowStart?: number; declines?: number } | undefined;
       const windowOpen =
@@ -2472,6 +2515,7 @@ export const placeOrder = functions.https.onCall(
       userId: request.auth.uid,
       // From the user profile — never the client's claim.
       customerId: cleanText(userSnap.data()?.customerId, 40),
+      ...(isGuest ? { isGuest: true, customerEmail: guestEmail } : {}),
       // R2 Bug #16 — write resolvedItems with canonical prices.
       items: resolvedItems,
       subtotal,
@@ -2846,7 +2890,12 @@ export const onOrderEmail = functions.firestore.onDocumentWritten(
     if (!userId) return;
 
     // Resolve email and store settings in parallel
-    const [customerEmail, brand] = await Promise.all([getCustomerEmail(userId), getEmailBrand()]);
+    const guestEmail =
+      after.isGuest === true && typeof after.customerEmail === 'string' ? after.customerEmail : '';
+    const [customerEmail, brand] = await Promise.all([
+      guestEmail || getCustomerEmail(userId),
+      getEmailBrand(),
+    ]);
     if (!customerEmail) return;
 
     // Settings → "Send fulfilment emails" switch. Covers the ready-for-
@@ -3528,6 +3577,8 @@ export const onNewUser = functionsV1.auth.user().onCreate(async (user) => {
   // Per-employee inventory sessions (uid inv-…) are staff identities, not
   // customers: no signup alert, no credits.
   if (isInventorySessionUid(user.uid)) return;
+  // Guest-checkout sessions are anonymous: no email, no account.
+  if (!user.email && user.providerData.length === 0) return;
   if (isInventoryEmail(user.email)) {
     console.log('[onNewUser] Skipping welcome credits for inventory account');
     return;

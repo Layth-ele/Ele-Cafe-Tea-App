@@ -2621,3 +2621,31 @@
   text-decoration: none;
 }
 .orders-rate-link:hover { background: var(--gold-soft); }
+
+/* ── Guest checkout (CheckoutPage) ─────────────────────────────────── */
+.cp2-gate {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: var(--section-y-sm) var(--gutter);
+}
+.cp2-gate-title {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: clamp(26px, 5vw, 36px);
+  text-align: center;
+  color: var(--midnight);
+  margin: 0 0 var(--sp-6);
+}
+.cp2-gate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: var(--sp-4);
+}
+.cp2-gate-card { display: flex; flex-direction: column; gap: var(--sp-3); }
+.cp2-gate-card > :last-child { margin-top: auto; }
+.cp2-gate-h2 { margin: 0; font-size: var(--text-lg); font-weight: 600; color: var(--midnight); }
+.cp2-gate-p { margin: 0; font-size: var(--text-sm); line-height: 1.6; color: var(--muted); }
+.cp2-guest-email { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--sp-4); }
+.cp2-guest-email-label { font-size: var(--text-sm); font-weight: 600; color: var(--midnight); }
+.cp2-guest-signup { margin: var(--sp-3) 0 0; text-align: center; font-size: var(--text-sm); color: var(--muted); }
+.cp2-guest-signup a { color: var(--midnight); font-weight: 600; }

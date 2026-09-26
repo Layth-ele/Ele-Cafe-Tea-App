@@ -27,7 +27,7 @@ const SUPPRESS_WRITE_MS = 300;
 
 function mergeCartItems(local: CartItem[], remote: CartItem[]): CartItem[] {
   const map = new Map<string, CartItem>();
-  for (const i of local)  map.set(i.id, i);
+  for (const i of local) map.set(i.id, i);
   for (const i of remote) {
     const ex = map.get(i.id);
     map.set(i.id, ex ? { ...ex, quantity: Math.max(ex.quantity, i.quantity) } : i);
@@ -37,12 +37,12 @@ function mergeCartItems(local: CartItem[], remote: CartItem[]): CartItem[] {
 
 export function useCartSync() {
   // Individual selectors — stable refs, subscribe only to what we use.
-  const items    = useCartStore(s => s.items);
-  const setItems = useCartStore(s => s.setItems);
+  const items = useCartStore((s) => s.items);
+  const setItems = useCartStore((s) => s.setItems);
 
-  const uidRef            = useRef<string | null>(null);
+  const uidRef = useRef<string | null>(null);
   // Epoch ms until which we should skip persisting (0 = never suppress).
-  const suppressUntilRef  = useRef<number>(0);
+  const suppressUntilRef = useRef<number>(0);
 
   // On login: load remote cart + merge.
   // The auth import is async (lazy-loaded) — we hold the unsubscribe
@@ -64,66 +64,74 @@ export function useCartSync() {
     let cancelled = false;
     let unsubscribe: (() => void) | null = null;
 
-    ensureAuth().then(({ auth, mod }) => {
-      if (cancelled) return;
-      unsubscribe = mod.onAuthStateChanged(auth, async user => {
-        if (!user) {
-          // Logout — clear local cart so the next visitor on a shared
-          // device starts fresh. Order matters: nullify uidRef BEFORE
-          // setItems([]) so the persist effect's `if (!uidRef.current)
-          // return` guard fires and we don't wipe the logged-out user's
-          // remote cart. Their items stay in /carts/{uid} for next login.
-          const wasLoggedIn = uidRef.current !== null;
-          uidRef.current = null;
-          if (wasLoggedIn) setItems([]);
-          return;
-        }
-        // New-user detection — if uidRef previously held a DIFFERENT
-        // uid, we're switching users on a shared device. Clear local
-        // cart so User A's items don't contaminate User B's remote
-        // when User B's first cart change triggers a persist.
-        //
-        // CRITICAL: set the suppress window BEFORE the setItems([]) call.
-        // setItems triggers the persist effect synchronously on the next
-        // render with the NEW uid (already assigned to uidRef.current
-        // above), and without the window, that effect commits an empty
-        // items array to /carts/{newUserUid} — wiping User B's remote
-        // cart before the getDoc below has a chance to merge it back.
-        const prevUid = uidRef.current;
-        uidRef.current = user.uid;
-        if (prevUid && prevUid !== user.uid) {
-          suppressUntilRef.current = Date.now() + SUPPRESS_WRITE_MS;
-          setItems([]);
-        }
-        // Capture the uid this callback is for. After the await, if
-        // uidRef.current has changed (rapid user switch on a shared
-        // device), this response is stale — discard rather than
-        // committing User A's remote cart into User B's session.
-        const targetUid = user.uid;
-        // Firestore can throw "client is offline" during the early
-        // mount window — the SDK is initialised but the long-poll
-        // handshake to firestore.googleapis.com hasn't completed
-        // yet. Use the shared retry helper which handles backoff
-        // and downgrades final failures to a soft `null` return.
-        // The user keeps their local cart; the persist effect will
-        // sync to /carts on their next cart action.
-        const snap = await tryReadWithOfflineRetry(
-          () => getDoc(doc(db, 'carts', targetUid)),
-          '[useCartSync] /carts read',
-          { cancelled: () => cancelled || uidRef.current !== targetUid },
-        );
-        if (cancelled || uidRef.current !== targetUid) return;
-        if (snap && snap.exists()) {
-          const remote: CartItem[] = snap.data().items ?? [];
-          if (remote.length > 0) {
-            suppressUntilRef.current = Date.now() + SUPPRESS_WRITE_MS;
-            setItems(mergeCartItems(useCartStore.getState().items, remote));
+    ensureAuth()
+      .then(({ auth, mod }) => {
+        if (cancelled) return;
+        unsubscribe = mod.onAuthStateChanged(auth, async (user) => {
+          // Guest-checkout sessions keep the local cart as-is (no remote
+          // cart to merge, nothing to clear).
+          if (user?.isAnonymous) {
+            uidRef.current = null;
+            return;
           }
-        }
+          if (!user) {
+            // Logout — clear local cart so the next visitor on a shared
+            // device starts fresh. Order matters: nullify uidRef BEFORE
+            // setItems([]) so the persist effect's `if (!uidRef.current)
+            // return` guard fires and we don't wipe the logged-out user's
+            // remote cart. Their items stay in /carts/{uid} for next login.
+            const wasLoggedIn = uidRef.current !== null;
+            uidRef.current = null;
+            if (wasLoggedIn) setItems([]);
+            return;
+          }
+          // New-user detection — if uidRef previously held a DIFFERENT
+          // uid, we're switching users on a shared device. Clear local
+          // cart so User A's items don't contaminate User B's remote
+          // when User B's first cart change triggers a persist.
+          //
+          // CRITICAL: set the suppress window BEFORE the setItems([]) call.
+          // setItems triggers the persist effect synchronously on the next
+          // render with the NEW uid (already assigned to uidRef.current
+          // above), and without the window, that effect commits an empty
+          // items array to /carts/{newUserUid} — wiping User B's remote
+          // cart before the getDoc below has a chance to merge it back.
+          const prevUid = uidRef.current;
+          uidRef.current = user.uid;
+          if (prevUid && prevUid !== user.uid) {
+            suppressUntilRef.current = Date.now() + SUPPRESS_WRITE_MS;
+            setItems([]);
+          }
+          // Capture the uid this callback is for. After the await, if
+          // uidRef.current has changed (rapid user switch on a shared
+          // device), this response is stale — discard rather than
+          // committing User A's remote cart into User B's session.
+          const targetUid = user.uid;
+          // Firestore can throw "client is offline" during the early
+          // mount window — the SDK is initialised but the long-poll
+          // handshake to firestore.googleapis.com hasn't completed
+          // yet. Use the shared retry helper which handles backoff
+          // and downgrades final failures to a soft `null` return.
+          // The user keeps their local cart; the persist effect will
+          // sync to /carts on their next cart action.
+          const snap = await tryReadWithOfflineRetry(
+            () => getDoc(doc(db, 'carts', targetUid)),
+            '[useCartSync] /carts read',
+            { cancelled: () => cancelled || uidRef.current !== targetUid },
+          );
+          if (cancelled || uidRef.current !== targetUid) return;
+          if (snap && snap.exists()) {
+            const remote: CartItem[] = snap.data().items ?? [];
+            if (remote.length > 0) {
+              suppressUntilRef.current = Date.now() + SUPPRESS_WRITE_MS;
+              setItems(mergeCartItems(useCartStore.getState().items, remote));
+            }
+          }
+        });
+      })
+      .catch((err) => {
+        console.error('[useCartSync] auth init failed:', err);
       });
-    }).catch(err => {
-      console.error('[useCartSync] auth init failed:', err);
-    });
 
     return () => {
       cancelled = true;
@@ -150,14 +158,13 @@ export function useCartSync() {
   useEffect(() => {
     if (!uidRef.current) return;
     if (Date.now() < suppressUntilRef.current) return;
-    setDoc(doc(db, 'carts', uidRef.current), { items, updatedAt: Date.now() })
-      .catch(e => {
-        const code = (e as { code?: string })?.code;
-        if (code === 'unavailable' || (e as { message?: string })?.message?.includes?.('offline')) {
-          // Firestore SDK retries this internally — no action needed.
-          return;
-        }
-        console.warn('[useCartSync] cart persist failed:', e);
-      });
+    setDoc(doc(db, 'carts', uidRef.current), { items, updatedAt: Date.now() }).catch((e) => {
+      const code = (e as { code?: string })?.code;
+      if (code === 'unavailable' || (e as { message?: string })?.message?.includes?.('offline')) {
+        // Firestore SDK retries this internally — no action needed.
+        return;
+      }
+      console.warn('[useCartSync] cart persist failed:', e);
+    });
   }, [items]);
 }

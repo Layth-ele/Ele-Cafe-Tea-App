@@ -1868,4 +1868,21 @@ export const STRINGS: Record<string, { fr: string }> = {
   },
   'Verified purchase': { fr: 'Achat vérifié' },
   'Rated {rating} out of 5 from {count} reviews': { fr: 'Noté {rating} sur 5 selon {count} avis' },
+  'How would you like to check out?': { fr: 'Comment souhaitez-vous passer à la caisse?' },
+  'Continue as guest': { fr: 'Continuer sans compte' },
+  'No account needed. We’ll email your order updates.': {
+    fr: 'Aucun compte requis. Nous vous enverrons les mises à jour de commande par courriel.',
+  },
+  'Sign in or create an account': { fr: 'Se connecter ou créer un compte' },
+  'Earn points on this order, use your credits and track every order.': {
+    fr: 'Cumulez des points sur cette commande, utilisez vos crédits et suivez chaque commande.',
+  },
+  'Email for your order updates': { fr: 'Courriel pour les mises à jour de votre commande' },
+  'Guest checkout is unavailable right now — please sign in to place your order.': {
+    fr: 'Le paiement sans compte est indisponible pour le moment — veuillez vous connecter pour commander.',
+  },
+  'Want to earn points and track orders?': {
+    fr: 'Envie de cumuler des points et de suivre vos commandes?',
+  },
+  'Create a free account': { fr: 'Créer un compte gratuit' },
 };

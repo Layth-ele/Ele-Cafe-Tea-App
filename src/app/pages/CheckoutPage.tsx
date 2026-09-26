@@ -16,7 +16,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle2, ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { ROUTES, loginWithReturn } from '@/lib/routes';
 import { calcShippingFee } from '@/lib/shipping';
 
@@ -35,7 +35,11 @@ import { useCredit } from '@/contexts/CreditContext';
 import { useCreditConfig } from '@/hooks/useCreditConfig';
 import { CreditSelector } from '@/app/components/CreditWidget';
 import { CartSummary } from '@/app/components/CartSummary';
-import { CardPaymentForm, type CardPaymentFormHandle, type CardToken } from '@/app/components/CardPaymentForm';
+import {
+  CardPaymentForm,
+  type CardPaymentFormHandle,
+  type CardToken,
+} from '@/app/components/CardPaymentForm';
 import { usePromoCode } from '@/hooks/usePromoCode';
 import { generateOrderId } from '@/schemas/notification.schema';
 import {
@@ -78,11 +82,11 @@ function Steps({ current }: { current: Step }) {
   const t = useT();
   const steps = [
     { id: 'delivery' as Step, label: 'Delivery' },
-    { id: 'payment'  as Step, label: 'Payment'  },
-    { id: 'review'   as Step, label: 'Review'   },
-    { id: 'placed'   as Step, label: 'Placed'   },
+    { id: 'payment' as Step, label: 'Payment' },
+    { id: 'review' as Step, label: 'Review' },
+    { id: 'placed' as Step, label: 'Placed' },
   ];
-  const idx = steps.findIndex(s => s.id === current);
+  const idx = steps.findIndex((s) => s.id === current);
 
   return (
     <div className="steps co-steps">
@@ -92,9 +96,7 @@ function Steps({ current }: { current: Step }) {
             {i < idx ? '✓' : i + 1}
           </div>
           <span className={`step-label${i === idx ? ' active' : ''}`}>{t(s.label)}</span>
-          {i < steps.length - 1 && (
-            <div className={`step-line${i < idx ? ' done' : ''}`} />
-          )}
+          {i < steps.length - 1 && <div className={`step-line${i < idx ? ' done' : ''}`} />}
         </div>
       ))}
     </div>
@@ -114,11 +116,11 @@ export function CheckoutPage() {
   const t = useT();
   const tx = useTx();
   const { items, totalPrice, clearCart } = useCart();
-  const { currentUser }   = useAuth();
-  const { redeemCredit }  = useCredit();
-  const cc                = useCreditConfig();
-  const navigate          = useNavigate();
-  const settings          = useSettings();
+  const { currentUser, guestUser, startGuestSession } = useAuth();
+  const { redeemCredit } = useCredit();
+  const cc = useCreditConfig();
+  const navigate = useNavigate();
+  const settings = useSettings();
 
   // Phase 6.5: multi-step. Step state is persisted to the URL hash
   // (`#delivery`, `#payment`, `#review`) so the browser back/forward
@@ -129,7 +131,7 @@ export function CheckoutPage() {
     const hash = (typeof window !== 'undefined' ? window.location.hash.slice(1) : '') as Step;
     return STEP_ORDER.includes(hash) && hash !== 'placed' ? hash : 'delivery';
   })();
-  const [step, setStep]             = useState<Step>(initialStep);
+  const [step, setStep] = useState<Step>(initialStep);
   // Sync the URL hash whenever the step changes — without this, the
   // initial step is set from the hash but subsequent step changes
   // wouldn't update it. Browser back/forward listeners catch the
@@ -144,7 +146,11 @@ export function CheckoutPage() {
       // (the 'placed' transition) is the one case where pushState
       // would arguably be nicer — but our happy path navigates away
       // to the order success page so it's moot.
-      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${want}`);
+      window.history.replaceState(
+        null,
+        '',
+        `${window.location.pathname}${window.location.search}${want}`,
+      );
     }
   }, [step]);
   // Browser back/forward — sync state from the new hash.
@@ -159,12 +165,12 @@ export function CheckoutPage() {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, [step]);
-  const [orderId, setOrderId]       = useState('');
+  const [orderId, setOrderId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   // Verification modal state — opens when an unverified user clicks
   // "Place Order". Replaces the previous (uninformative) toast.
-  const [verifyModalOpen,   setVerifyModalOpen]   = useState(false);
+  const [verifyModalOpen, setVerifyModalOpen] = useState(false);
   const [verifyModalReason, setVerifyModalReason] = useState<string>('');
 
   /** Stable order ID generated once per checkout session.
@@ -215,12 +221,11 @@ export function CheckoutPage() {
   const [placedHold, setPlacedHold] = useState<{ amount: number; last4?: string } | null>(null);
   // Returning to the payment step remounts the card fields, so any
   // earlier token is discarded.
-  useEffect(() => { if (step === 'payment') setCard(null); }, [step]);
+  useEffect(() => {
+    if (step === 'payment') setCard(null);
+  }, [step]);
 
   // Auth + empty-cart guards — in useEffect to respect hooks rules (must not return early before hooks)
-  useEffect(() => {
-    if (!currentUser) navigate(loginWithReturn(ROUTES.CHECKOUT), { replace: true });
-  }, [currentUser, navigate]);
   useEffect(() => {
     if (items.length === 0 && step !== 'placed') navigate(ROUTES.CART, { replace: true });
   }, [items.length, step, navigate]);
@@ -239,12 +244,17 @@ export function CheckoutPage() {
   // erred once, re-validate on every keystroke until clean.
   const checkoutForm = useForm<CheckoutFormInput>({
     resolver: zodResolver(checkoutFormSchema),
-    mode:     'onTouched',
+    mode: 'onTouched',
     reValidateMode: 'onChange',
     defaultValues: {
       fulfillmentMethod: 'delivery',
-      name: '', phone: '', address: '', city: '',
-      province: '', postalCode: '', country: 'Canada',
+      name: '',
+      phone: '',
+      address: '',
+      city: '',
+      province: '',
+      postalCode: '',
+      country: 'Canada',
     },
   });
   const { register, handleSubmit, watch, setValue, trigger, getValues, formState } = checkoutForm;
@@ -256,17 +266,43 @@ export function CheckoutPage() {
   const fulfillmentMethod = watch('fulfillmentMethod');
 
   const [creditApplied, setCreditApplied] = useState(0);
-  const [creditPoints,  setCreditPoints]  = useState(0);
-  const { applyCode, clearPromo, promo: appliedPromo, applying: promoApplying, error: promoError } = usePromoCode();
+  const [creditPoints, setCreditPoints] = useState(0);
+  // Guest checkout — chosen on the "How would you like to check out?"
+  // screen; remembered for this browser tab.
+  const [guestMode, setGuestMode] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('ele:guestCheckout') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const [guestEmail, setGuestEmail] = useState('');
+  const guestEmailValid = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(guestEmail.trim());
+  const isGuest = !currentUser;
+  const chooseGuest = () => {
+    setGuestMode(true);
+    try {
+      sessionStorage.setItem('ele:guestCheckout', '1');
+    } catch {
+      /* storage blocked */
+    }
+  };
+  const {
+    applyCode,
+    clearPromo,
+    promo: appliedPromo,
+    applying: promoApplying,
+    error: promoError,
+  } = usePromoCode();
   const [promoInput, setPromoInput] = useState('');
 
   // Auth guard — using useEffect to avoid calling hooks conditionally
   // The hooks above have already been called; we defer the redirect to avoid rules violation
 
   // ── Derived totals ─────────────────────────────────────────────────────────
-  const subtotal      = totalPrice;
+  const subtotal = totalPrice;
   const promoDiscount = appliedPromo?.discountAmount ?? 0;
-  const afterPromo    = Math.max(0, subtotal - promoDiscount);
+  const afterPromo = Math.max(0, subtotal - promoDiscount);
   // creditCapped is still computed defensively, but the CreditSelector now
   // filters tiers to only those whose dollar value is ≤ afterPromo, so this
   // floor is rarely the active constraint. The `useEffect` below catches
@@ -275,8 +311,8 @@ export function CheckoutPage() {
   // creditApplied AND creditPoints together (silently capping `creditApplied`
   // while leaving creditPoints at its original value let the customer pay
   // 50,000 pts for a $25 discount they intended to be $50).
-  const creditCapped  = Math.min(creditApplied, afterPromo);
-  const afterCredit   = Math.max(0, afterPromo - creditCapped);
+  const creditCapped = Math.min(creditApplied, afterPromo);
+  const afterCredit = Math.max(0, afterPromo - creditCapped);
 
   // Drift guard: if the user applies credit and then changes the cart
   // (or applies/clears a promo) such that their applied credit dollar
@@ -306,18 +342,17 @@ export function CheckoutPage() {
   // $105, customer applies a $20 promo at checkout, and watches
   // shipping reappear because afterPromo dropped below threshold.
   // Drawer-says-X, checkout-says-X consistency wins.
-  const shippingFee = fulfillmentMethod === 'pickup'
-    ? 0
-    : calcShippingFee(subtotal, settings);
+  const shippingFee = fulfillmentMethod === 'pickup' ? 0 : calcShippingFee(subtotal, settings);
 
   // GST — computed per-item on taxable lines (same logic as CartSummary / cartStore)
-  const totalGst = items.reduce((sum, i: CartItem) =>
-    sum + (i.gstApplicable ? i.price * i.quantity * GST_RATE : 0), 0
+  const totalGst = items.reduce(
+    (sum, i: CartItem) => sum + (i.gstApplicable ? i.price * i.quantity * GST_RATE : 0),
+    0,
   );
   // The amount held on the card. placeOrder recomputes it server-side and
   // refuses to hold more than this (expectedTotal).
   const orderTotal = Math.round((afterCredit + shippingFee + totalGst) * 100) / 100;
-  const needsCard  = orderTotal > 0;
+  const needsCard = orderTotal > 0;
 
   // Points earned on amount actually paid (after credit, before shipping, excl. GST).
   // Uses useCreditConfig.calcPointsEarned, which is the same validated source
@@ -340,15 +375,23 @@ export function CheckoutPage() {
       // only name + phone need to clear. For delivery, the whole
       // address block does too — superRefine in the schema sees
       // fulfillmentMethod and gates the address rules accordingly.
-      const fields = fulfillmentMethod === 'delivery'
-        ? DELIVERY_STEP_FIELDS_DELIVERY
-        : DELIVERY_STEP_FIELDS_PICKUP;
+      const fields =
+        fulfillmentMethod === 'delivery'
+          ? DELIVERY_STEP_FIELDS_DELIVERY
+          : DELIVERY_STEP_FIELDS_PICKUP;
       const ok = await trigger(fields as unknown as (keyof CheckoutFormInput)[]);
+      if (isGuest && !guestEmailValid) {
+        toast.error(tNow('Please enter a valid email address.'));
+        requestAnimationFrame(() => document.getElementById('guest-email')?.focus());
+        return;
+      }
       if (!ok) {
         // RHF will set aria-invalid on each errored Field.Input. Find
         // the first one and scroll/focus it for users on a long form.
         requestAnimationFrame(() => {
-          const firstInvalid = document.querySelector('input[aria-invalid="true"]') as HTMLElement | null;
+          const firstInvalid = document.querySelector(
+            'input[aria-invalid="true"]',
+          ) as HTMLElement | null;
           if (firstInvalid) {
             firstInvalid.focus();
             firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -402,19 +445,33 @@ export function CheckoutPage() {
     // we collapse empty strings to undefined to keep the wire shape.
     const shipParsedData = isDelivery
       ? {
-          name:       data.name,
-          phone:      data.phone,
-          address:    data.address,
-          city:       data.city,
-          province:   data.province   || undefined,
+          name: data.name,
+          phone: data.phone,
+          address: data.address,
+          city: data.city,
+          province: data.province || undefined,
           postalCode: data.postalCode || undefined,
-          country:    data.country,
+          country: data.country,
         }
       : undefined;
 
-    if (!currentUser) {
-      navigate(loginWithReturn(ROUTES.CHECKOUT));
-      return;
+    // Guests: start (or reuse) an anonymous session for this order.
+    let buyer = currentUser;
+    if (!buyer) {
+      if (!guestEmailValid) {
+        toast.error(tNow('Please enter a valid email address.'));
+        setStep('delivery');
+        return;
+      }
+      try {
+        buyer = guestUser ?? (await startGuestSession());
+      } catch (guestErr) {
+        console.warn('[CheckoutPage] guest session failed:', guestErr);
+        toast.error(
+          tNow('Guest checkout is unavailable right now — please sign in to place your order.'),
+        );
+        return;
+      }
     }
 
     // Email verification gate: if the user has a password provider AND
@@ -450,7 +507,7 @@ export function CheckoutPage() {
     // Treating Google as always-verified made the order rule reject
     // these users with a generic "couldn't process" toast and no path
     // forward. Now they get the verify modal with resend + check-now.
-    if (!currentUser.emailVerified) {
+    if (currentUser && !currentUser.emailVerified) {
       // Cheap optimistic refresh — reload + token refresh.
       // Total round-trip is ~150-300ms; acceptable inline at submit.
       try {
@@ -482,7 +539,7 @@ export function CheckoutPage() {
       try {
         await updateDoc(doc(db, 'users', currentUser.uid), {
           emailVerified: true,
-          updatedAt:     serverTimestamp(),
+          updatedAt: serverTimestamp(),
         });
       } catch (syncErr) {
         console.warn('[CheckoutPage] /users emailVerified sync failed:', syncErr);
@@ -518,14 +575,16 @@ export function CheckoutPage() {
       // still preserved inside its own line item — the top-level mirror
       // only covers the first.
       const firstBundleItem = items.find((i: CartItem) => i.bundle);
-      const giftFields = firstBundleItem?.bundle ? {
-        isGift:         true,
-        recipientName:  firstBundleItem.bundle.personalization.recipientName,
-        senderName:     firstBundleItem.bundle.personalization.senderName,
-        giftMessage:    firstBundleItem.bundle.personalization.message,
-        occasion:       firstBundleItem.bundle.personalization.occasion,
-        customOccasion: firstBundleItem.bundle.personalization.customOccasion,
-      } : {};
+      const giftFields = firstBundleItem?.bundle
+        ? {
+            isGift: true,
+            recipientName: firstBundleItem.bundle.personalization.recipientName,
+            senderName: firstBundleItem.bundle.personalization.senderName,
+            giftMessage: firstBundleItem.bundle.personalization.message,
+            occasion: firstBundleItem.bundle.personalization.occasion,
+            customOccasion: firstBundleItem.bundle.personalization.customOccasion,
+          }
+        : {};
 
       // Idempotency / retry handling is delegated to the placeOrder
       // callable below — its Admin SDK getDoc bypasses rules and
@@ -564,7 +623,7 @@ export function CheckoutPage() {
       const cleanItems = items.filter((i: CartItem) => {
         if (!i.id || seenIds.has(i.id)) return false;
         if (typeof i.quantity !== 'number' || i.quantity < 1) return false;
-        if (typeof i.price !== 'number'    || i.price < 0)    return false;
+        if (typeof i.price !== 'number' || i.price < 0) return false;
         seenIds.add(i.id);
         return true;
       });
@@ -574,7 +633,9 @@ export function CheckoutPage() {
         return;
       }
       if (cleanItems.length > 100) {
-        toast.error(tNow('Order has too many line items (max 100). Please split into smaller orders.'));
+        toast.error(
+          tNow('Order has too many line items (max 100). Please split into smaller orders.'),
+        );
         setSubmitting(false);
         return;
       }
@@ -597,11 +658,14 @@ export function CheckoutPage() {
       // the checkout page doesn't need it. Same pattern as auth and
       // storage in src/lib/firebase.ts.
       const { functions, httpsCallable } = await getFunctionsLazy();
-      const placeOrderFn = httpsCallable<unknown, {
-        ok: boolean;
-        orderId: string;
-        alreadyExisted: boolean;
-      }>(functions, 'placeOrder');
+      const placeOrderFn = httpsCallable<
+        unknown,
+        {
+          ok: boolean;
+          orderId: string;
+          alreadyExisted: boolean;
+        }
+      >(functions, 'placeOrder');
       let result: HttpsCallableResult<{ ok: boolean; orderId: string; alreadyExisted: boolean }>;
       // Pricing is recomputed server-side from canonical prices, the
       // promotion doc and settings — shipping / GST / promo amounts are
@@ -611,48 +675,50 @@ export function CheckoutPage() {
       // (line ~660), which translates them to the right toast/modal
       // based on the HttpsError code prefix.
       result = await placeOrderFn({
-          orderId:              newOrderId,
-          userId:               currentUser.uid,
-          items: cleanItems.map((i: CartItem) => ({
-            productId:   i.id,
-            productName: i.name,
-            quantity:    i.quantity,
-            price:       i.price,
-            image:       i.image,
-            ...(i.bundle ? { bundle: i.bundle } : {}),
-          })),
-          // R2 Bug #1 + #2: send `creditCapped` (the value the customer
-          // saw on the right-hand summary) and a points count rounded
-          // to that capped dollar amount. The previous workaround
-          // (`creditApplied === creditCapped ? … : 0`) zeroed the
-          // submission whenever floating-point rounding made `afterPromo`
-          // diverge from `creditApplied` by even a hundredth of a cent
-          // — silently stealing the customer's redemption while the UI
-          // still showed the discount applied.
-          //
-          // The placeOrder callable performs the server-side rate
-          // validation (creditApplied ≤ creditPointsRedeemed × rate +
-          // 0.01 tolerance), so sending the capped pair is safe: if
-          // the customer's claimed pair was malformed, the cloud
-          // function rejects with `failed-precondition` and the catch
-          // block surfaces a real error — far better than silent loss.
-          creditApplied:        creditCapped,
-          promoCode:            appliedPromo?.code ?? null,
-          promotionId:          appliedPromo?.id   ?? null,
-          creditPointsRedeemed: creditCapped > 0
-            // Scale points proportionally to what's actually being
-            // redeemed after the cap. Rounding down avoids the rare
-            // case where rate-validation flags a 1-pt overage.
-            ? Math.floor(creditPoints * (creditCapped / Math.max(creditApplied, 1e-9)))
+        orderId: newOrderId,
+        userId: buyer.uid,
+        ...(currentUser ? {} : { guestEmail: guestEmail.trim() }),
+        items: cleanItems.map((i: CartItem) => ({
+          productId: i.id,
+          productName: i.name,
+          quantity: i.quantity,
+          price: i.price,
+          image: i.image,
+          ...(i.bundle ? { bundle: i.bundle } : {}),
+        })),
+        // R2 Bug #1 + #2: send `creditCapped` (the value the customer
+        // saw on the right-hand summary) and a points count rounded
+        // to that capped dollar amount. The previous workaround
+        // (`creditApplied === creditCapped ? … : 0`) zeroed the
+        // submission whenever floating-point rounding made `afterPromo`
+        // diverge from `creditApplied` by even a hundredth of a cent
+        // — silently stealing the customer's redemption while the UI
+        // still showed the discount applied.
+        //
+        // The placeOrder callable performs the server-side rate
+        // validation (creditApplied ≤ creditPointsRedeemed × rate +
+        // 0.01 tolerance), so sending the capped pair is safe: if
+        // the customer's claimed pair was malformed, the cloud
+        // function rejects with `failed-precondition` and the catch
+        // block surfaces a real error — far better than silent loss.
+        creditApplied: creditCapped,
+        promoCode: appliedPromo?.code ?? null,
+        promotionId: appliedPromo?.id ?? null,
+        creditPointsRedeemed:
+          creditCapped > 0
+            ? // Scale points proportionally to what's actually being
+              // redeemed after the cap. Rounding down avoids the rare
+              // case where rate-validation flags a 1-pt overage.
+              Math.floor(creditPoints * (creditCapped / Math.max(creditApplied, 1e-9)))
             : 0,
-          fulfillmentMethod,
-          expectedTotal:        orderTotal,
-          ...(needsCard && card ? { cardToken: card.token } : {}),
-          ...(shipParsedData ? { shippingAddress: shipParsedData } : {}),
-          ...giftFields,
-          // Order emails go out in the language the customer checked out in.
-          lang:                 useLanguageStore.getState().language,
-        });
+        fulfillmentMethod,
+        expectedTotal: orderTotal,
+        ...(needsCard && card ? { cardToken: card.token } : {}),
+        ...(shipParsedData ? { shippingAddress: shipParsedData } : {}),
+        ...giftFields,
+        // Order emails go out in the language the customer checked out in.
+        lang: useLanguageStore.getState().language,
+      });
       if (result.data.alreadyExisted) {
         // R2 Bug #7: previously this routed to the generic /orders
         // list with no signal of WHICH order is the one they just
@@ -664,8 +730,10 @@ export function CheckoutPage() {
         // page yet) but the toast tells the customer what to look for.
         const existingId = result.data.orderId || newOrderId;
         toast.info(
-          tNow('This order ({id}) was already submitted. Showing your orders now…', { id: existingId }),
-          { duration: 6000 }
+          tNow('This order ({id}) was already submitted. Showing your orders now…', {
+            id: existingId,
+          }),
+          { duration: 6000 },
         );
         stableOrderIdRef.current = generateOrderId();
         navigate(ROUTES.ORDERS);
@@ -714,7 +782,10 @@ export function CheckoutPage() {
           console.error('Credit validation failed after order placed:', creditErr);
           const msg = creditErr instanceof Error ? creditErr.message : 'Credit validation issue';
           toast.warning(
-            tNow("Heads up: {msg}. Your order is placed; we'll confirm the final credit deduction by email.", { msg }),
+            tNow(
+              "Heads up: {msg}. Your order is placed; we'll confirm the final credit deduction by email.",
+              { msg },
+            ),
             { duration: 8000 },
           );
         }
@@ -768,14 +839,17 @@ export function CheckoutPage() {
       // Direct Firestore writes use bare 'permission-denied'. Match
       // both paths so the error UX is consistent.
       const code = fbErr?.code ?? '';
-      const isPermissionDenied = code === 'permission-denied' || code === 'functions/permission-denied';
+      const isPermissionDenied =
+        code === 'permission-denied' || code === 'functions/permission-denied';
       const errMessage = fbErr?.message ?? '';
       // failed-precondition is also used for card declines, sold-out teas
       // and total changes — only the email gate mentions verification.
-      const isVerificationGate = (code === 'functions/failed-precondition' || code === 'failed-precondition')
-        && /verify your email/i.test(errMessage);
-      const isCardProblem = /card/i.test(errMessage)
-        && (code.endsWith('failed-precondition') || code.endsWith('invalid-argument'));
+      const isVerificationGate =
+        (code === 'functions/failed-precondition' || code === 'failed-precondition') &&
+        /verify your email/i.test(errMessage);
+      const isCardProblem =
+        /card/i.test(errMessage) &&
+        (code.endsWith('failed-precondition') || code.endsWith('invalid-argument'));
       // Transient / token-stale codes that benefit from the same
       // reload+retry recovery, distinct from a hard permission denial.
       // `unauthenticated` from a callable means the ID token wasn't
@@ -783,11 +857,12 @@ export function CheckoutPage() {
       // for the server's clock skew or a stale token immediately after
       // verification flip. `unavailable` and `deadline-exceeded` are
       // transient infra blips that one retry usually clears.
-      const isStaleTokenError    = code === 'functions/unauthenticated' || code === 'unauthenticated';
-      const isTransientInfra     = code === 'unavailable'
-        || code === 'functions/unavailable'
-        || code === 'deadline-exceeded'
-        || code === 'functions/deadline-exceeded';
+      const isStaleTokenError = code === 'functions/unauthenticated' || code === 'unauthenticated';
+      const isTransientInfra =
+        code === 'unavailable' ||
+        code === 'functions/unavailable' ||
+        code === 'deadline-exceeded' ||
+        code === 'functions/deadline-exceeded';
       // The set of codes we'll auto-retry. permission-denied is the
       // classic stale-token case; the others are infra/auth flap.
       const isRetryable = isPermissionDenied || isStaleTokenError || isTransientInfra;
@@ -825,6 +900,7 @@ export function CheckoutPage() {
         const canRetry = currentRetry < MAX_AUTO_RETRIES;
 
         let tokenRefreshed = false;
+        if (!currentUser) throw err;
         let tokenSaysVerified = currentUser.emailVerified;
         try {
           const { mod } = await ensureAuth();
@@ -835,7 +911,7 @@ export function CheckoutPage() {
           // re-submit reads `email_verified` from the new token.
           const backoffMs = 200 + currentRetry * 400;
           await new Promise((resolve) => setTimeout(resolve, backoffMs));
-          tokenRefreshed    = true;
+          tokenRefreshed = true;
           tokenSaysVerified = currentUser.emailVerified;
         } catch (refreshErr) {
           // Network or auth failure during refresh. Fall through to
@@ -849,7 +925,7 @@ export function CheckoutPage() {
           try {
             await updateDoc(doc(db, 'users', currentUser.uid), {
               emailVerified: true,
-              updatedAt:     serverTimestamp(),
+              updatedAt: serverTimestamp(),
             });
           } catch (err) {
             console.warn('[Place Order] Failed to sync verified flag back to Firestore:', err);
@@ -869,7 +945,8 @@ export function CheckoutPage() {
           // accepts. The only known recovery is a full sign-out / sign-in
           // cycle, which re-mints the token from scratch. Tell the user
           // that explicitly instead of a generic "contact support".
-          userMsg = "We couldn't process your order after retrying. Please sign out, sign back in, and try once more. If it still fails, contact support and we'll place the order manually.";
+          userMsg =
+            "We couldn't process your order after retrying. Please sign out, sign back in, and try once more. If it still fails, contact support and we'll place the order manually.";
         } else if (!tokenSaysVerified) {
           // Genuinely unverified per the refreshed token — modal is
           // the right affordance (resend button + "I've verified —
@@ -890,7 +967,8 @@ export function CheckoutPage() {
           // retries yet. Most likely a transient network blip. Tell
           // the user to retry manually — auto-retry would have no
           // fresh token to work with.
-          userMsg = "We couldn't reach our servers to place your order. Please check your connection and try again.";
+          userMsg =
+            "We couldn't reach our servers to place your order. Please check your connection and try again.";
         }
       } else {
         userMsg = err instanceof Error ? err.message : 'Failed to place order';
@@ -910,78 +988,167 @@ export function CheckoutPage() {
   // loose on small phones (oversized icon + serif title + 28px padding
   // ate ~70% of a 360-wide viewport).
   const ConfirmationModal = () => {
-  return (
-    <div className="confirm-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
-      <div className="confirm-modal-panel">
-
-        {/* Dark header */}
-        <div className="confirm-modal-header">
-          <div className="confirm-modal-checkmark">
-            <CheckCircle2 size={32} className="cp2-checkmark-icon icon-bounce-in" />
-          </div>
-          <p className="confirm-modal-overline">{t('Order Received')}</p>
-          <h2 id="confirm-modal-title" className="confirm-modal-title">
-            {t('Thank you for your order!')}
-          </h2>
-          <p className="confirm-modal-orderline">
-            {tx('Order {id}', { id: <span className="confirm-modal-orderid">{orderId}</span> })}
-          </p>
-        </div>
-
-        {/* Body */}
-        <div className="confirm-modal-body">
-          <p className="confirm-modal-lead">
-            {placedHold && placedHold.amount > 0 ? (
-              <>{placedHold.last4
-                ? t("We've placed a temporary hold of {amount} on your card ending {last4}.", { amount: formatMoney(placedHold.amount), last4: placedHold.last4 })
-                : t("We've placed a temporary hold of {amount} on your card.", { amount: formatMoney(placedHold.amount) })}
-              <strong className="cp2-strong-text"> {t('You won\'t be charged until we confirm your teas are in stock.')}</strong></>
-            ) : (
-              <>{t('We\'re confirming your teas are in stock — your credit covers this order.')}</>
-            )}
-          </p>
-
-          {/* Steps */}
-          <div className="confirm-modal-steps">
-            {[
-              { n: '1', title: 'Checking stock',           desc: 'Our team confirms every tea is in stock — usually within a few hours.', color: 'var(--warning)' },
-              { n: '2', title: 'Card charged',             desc: "Your card is charged only once the order is confirmed. If we can't fill it, the hold is released.", color: 'var(--info)' },
-              { n: '3', title: fulfillmentMethod === 'pickup' ? 'Ready for pickup' : 'We ship', desc: fulfillmentMethod === 'pickup' ? "We'll email you when it's at the counter." : "We'll email you tracking as soon as it ships.", color: 'var(--success)' },
-            ].map(({ n, title, desc, color }) => (
-              <div key={`modal-${n}`} className="confirm-modal-step">
-                <div
-                  className="confirm-modal-step-num"
-                  // eslint-disable-next-line react/forbid-dom-props -- per-step accent (warning/info/gold/success) varies at runtime; encoded as CSS vars so the same class can render any of the four palettes
-                  style={{ ['--cp2-step-color' as string]: color }}
-                >{n}</div>
-                <div>
-                  <p className="confirm-modal-step-title">{t(title)}</p>
-                  <p className="confirm-modal-step-desc">{t(desc)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Info note */}
-          <div className="confirm-modal-note">
-            <span className="confirm-modal-note-icon" aria-hidden="true">✉️</span>
-            <p>
-              {tx("We'll email updates to {email}.", { email: <strong className="cp2-strong-text">{currentUser?.email}</strong> })}
+    return (
+      <div
+        className="confirm-modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-modal-title"
+      >
+        <div className="confirm-modal-panel">
+          {/* Dark header */}
+          <div className="confirm-modal-header">
+            <div className="confirm-modal-checkmark">
+              <CheckCircle2 size={32} className="cp2-checkmark-icon icon-bounce-in" />
+            </div>
+            <p className="confirm-modal-overline">{t('Order Received')}</p>
+            <h2 id="confirm-modal-title" className="confirm-modal-title">
+              {t('Thank you for your order!')}
+            </h2>
+            <p className="confirm-modal-orderline">
+              {tx('Order {id}', { id: <span className="confirm-modal-orderid">{orderId}</span> })}
             </p>
           </div>
 
-          {/* CTA */}
-          <button
-            onClick={() => { setShowConfirm(false); navigate(ROUTES.ORDERS); }}
-            className="btn btn-dark btn-full btn-lg cp2-confirm-btn"
-          >
-            {t('View My Orders')} <ChevronRight size={16} />
-          </button>
+          {/* Body */}
+          <div className="confirm-modal-body">
+            <p className="confirm-modal-lead">
+              {placedHold && placedHold.amount > 0 ? (
+                <>
+                  {placedHold.last4
+                    ? t("We've placed a temporary hold of {amount} on your card ending {last4}.", {
+                        amount: formatMoney(placedHold.amount),
+                        last4: placedHold.last4,
+                      })
+                    : t("We've placed a temporary hold of {amount} on your card.", {
+                        amount: formatMoney(placedHold.amount),
+                      })}
+                  <strong className="cp2-strong-text">
+                    {' '}
+                    {t("You won't be charged until we confirm your teas are in stock.")}
+                  </strong>
+                </>
+              ) : (
+                <>{t("We're confirming your teas are in stock — your credit covers this order.")}</>
+              )}
+            </p>
+
+            {/* Steps */}
+            <div className="confirm-modal-steps">
+              {[
+                {
+                  n: '1',
+                  title: 'Checking stock',
+                  desc: 'Our team confirms every tea is in stock — usually within a few hours.',
+                  color: 'var(--warning)',
+                },
+                {
+                  n: '2',
+                  title: 'Card charged',
+                  desc: "Your card is charged only once the order is confirmed. If we can't fill it, the hold is released.",
+                  color: 'var(--info)',
+                },
+                {
+                  n: '3',
+                  title: fulfillmentMethod === 'pickup' ? 'Ready for pickup' : 'We ship',
+                  desc:
+                    fulfillmentMethod === 'pickup'
+                      ? "We'll email you when it's at the counter."
+                      : "We'll email you tracking as soon as it ships.",
+                  color: 'var(--success)',
+                },
+              ].map(({ n, title, desc, color }) => (
+                <div key={`modal-${n}`} className="confirm-modal-step">
+                  <div
+                    className="confirm-modal-step-num"
+                    // eslint-disable-next-line react/forbid-dom-props -- per-step accent (warning/info/gold/success) varies at runtime; encoded as CSS vars so the same class can render any of the four palettes
+                    style={{ ['--cp2-step-color' as string]: color }}
+                  >
+                    {n}
+                  </div>
+                  <div>
+                    <p className="confirm-modal-step-title">{t(title)}</p>
+                    <p className="confirm-modal-step-desc">{t(desc)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Info note */}
+            <div className="confirm-modal-note">
+              <span className="confirm-modal-note-icon" aria-hidden="true">
+                ✉️
+              </span>
+              <p>
+                {tx("We'll email updates to {email}.", {
+                  email: (
+                    <strong className="cp2-strong-text">{currentUser?.email ?? guestEmail}</strong>
+                  ),
+                })}
+              </p>
+            </div>
+
+            {/* CTA */}
+            {isGuest ? (
+              <>
+                <button
+                  onClick={() => {
+                    setShowConfirm(false);
+                    navigate(ROUTES.PRODUCTS);
+                  }}
+                  className="btn btn-dark btn-full btn-lg cp2-confirm-btn"
+                >
+                  {t('Continue shopping')} <ChevronRight size={16} />
+                </button>
+                <p className="cp2-guest-signup">
+                  {t('Want to earn points and track orders?')}{' '}
+                  <Link to={ROUTES.SIGNUP}>{t('Create a free account')}</Link>
+                </p>
+              </>
+            ) : (
+              <button
+                onClick={() => {
+                  setShowConfirm(false);
+                  navigate(ROUTES.ORDERS);
+                }}
+                className="btn btn-dark btn-full btn-lg cp2-confirm-btn"
+              >
+                {t('View My Orders')} <ChevronRight size={16} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
+
+  // Not signed in and hasn't chosen guest checkout yet: ask how to continue.
+  if (isGuest && !guestMode && !showConfirm) {
+    return (
+      <div className="cp2-gate">
+        <SeoHead title="Checkout | Ele Café" description="Checkout" noIndex={true} />
+        <h1 className="cp2-gate-title">{t('How would you like to check out?')}</h1>
+        <div className="cp2-gate-grid">
+          <div className="card card-body cp2-gate-card">
+            <h2 className="cp2-gate-h2">{t('Continue as guest')}</h2>
+            <p className="cp2-gate-p">{t('No account needed. We’ll email your order updates.')}</p>
+            <button type="button" className="btn btn-dark btn-full btn-lg" onClick={chooseGuest}>
+              {t('Continue as guest')}
+            </button>
+          </div>
+          <div className="card card-body cp2-gate-card">
+            <h2 className="cp2-gate-h2">{t('Sign in or create an account')}</h2>
+            <p className="cp2-gate-p">
+              {t('Earn points on this order, use your credits and track every order.')}
+            </p>
+            <Link to={loginWithReturn(ROUTES.CHECKOUT)} className="btn btn-outline btn-full btn-lg">
+              {t('Sign in')}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -1015,10 +1182,13 @@ export function CheckoutPage() {
                 user always knows where they are without reading the
                 Steps indicator. */}
             <h1>
-              {step === 'delivery' ? t('Delivery details')
-                : step === 'payment' ? t('Payment options')
-                : step === 'review'  ? t('Review & place order')
-                : t('Order placed')}
+              {step === 'delivery'
+                ? t('Delivery details')
+                : step === 'payment'
+                  ? t('Payment options')
+                  : step === 'review'
+                    ? t('Review & place order')
+                    : t('Order placed')}
             </h1>
           </div>
           <Steps current={step} />
@@ -1030,7 +1200,9 @@ export function CheckoutPage() {
               // a user who's scrolled past the form knows what to do.
               toast.error(tNow('Please fix the highlighted fields and try again'));
               requestAnimationFrame(() => {
-                const firstInvalid = document.querySelector('input[aria-invalid="true"]') as HTMLElement | null;
+                const firstInvalid = document.querySelector(
+                  'input[aria-invalid="true"]',
+                ) as HTMLElement | null;
                 if (firstInvalid) {
                   firstInvalid.focus();
                   firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1041,302 +1213,432 @@ export function CheckoutPage() {
             noValidate
           >
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
               {/* ── Left: shipping + credit ─────────────────────────── */}
               <div className="lg:col-span-2 co-left">
-
                 {/* Step 1 — Delivery (pickup vs delivery + name + phone + address) */}
-                {step === 'delivery' && (<>
-                {/* ── Pickup vs Delivery selection ─────────────────────
+                {step === 'delivery' && (
+                  <>
+                    {/* ── Pickup vs Delivery selection ─────────────────────
                     Before this card: the address section assumed every
                     order was a delivery. Now the customer chooses up-
                     front, and the cost summary on the right reflects
                     the choice immediately. Pickup is always free;
                     delivery is the flat-rate fee from settings (or
                     free over the threshold). */}
-                <div className="card card-body">
-                  <h2 className="cp2-section-h2">
-                    {t('How would you like to receive your order?')}
-                  </h2>
-                  <div className="cp2-fulfillment-grid">
-                    {([
-                      {
-                        id: 'pickup' as const,
-                        title: 'Pickup',
-                        sub: 'In-store · Free',
-                        icon: '📦',
-                      },
-                      {
-                        id: 'delivery' as const,
-                        title: 'Delivery',
-                        sub: shippingFee === 0
-                          ? 'Free · Order qualifies'
-                          : t('{amount} flat', { amount: formatMoney(settings?.defaultShippingFee ?? 12.99) }),
-                        icon: '🏠',
-                      },
-                    ]).map(opt => {
-                      const selected = fulfillmentMethod === opt.id;
-                      const isFree = opt.sub.startsWith('Free') || opt.sub.includes('Free');
-                      return (
-                        <button
-                          type="button"
-                          key={opt.id}
-                          onClick={() => setValue('fulfillmentMethod', opt.id, { shouldValidate: true, shouldDirty: true })}
-                          className="cp2-fulfillment-tile"
-                          data-selected={selected ? 'true' : 'false'}
-                        >
-                          <span className="cp2-fulfillment-icon" aria-hidden="true">{opt.icon}</span>
-                          <span className="cp2-fulfillment-title">{t(opt.title)}</span>
-                          <span className="cp2-fulfillment-sub" data-free={isFree ? 'true' : 'false'}>
-                            {t(opt.sub)}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {/* Free-delivery threshold nudge — encourages upsell
+                    <div className="card card-body">
+                      <h2 className="cp2-section-h2">
+                        {t('How would you like to receive your order?')}
+                      </h2>
+                      <div className="cp2-fulfillment-grid">
+                        {[
+                          {
+                            id: 'pickup' as const,
+                            title: 'Pickup',
+                            sub: 'In-store · Free',
+                            icon: '📦',
+                          },
+                          {
+                            id: 'delivery' as const,
+                            title: 'Delivery',
+                            sub:
+                              shippingFee === 0
+                                ? 'Free · Order qualifies'
+                                : t('{amount} flat', {
+                                    amount: formatMoney(settings?.defaultShippingFee ?? 12.99),
+                                  }),
+                            icon: '🏠',
+                          },
+                        ].map((opt) => {
+                          const selected = fulfillmentMethod === opt.id;
+                          const isFree = opt.sub.startsWith('Free') || opt.sub.includes('Free');
+                          return (
+                            <button
+                              type="button"
+                              key={opt.id}
+                              onClick={() =>
+                                setValue('fulfillmentMethod', opt.id, {
+                                  shouldValidate: true,
+                                  shouldDirty: true,
+                                })
+                              }
+                              className="cp2-fulfillment-tile"
+                              data-selected={selected ? 'true' : 'false'}
+                            >
+                              <span className="cp2-fulfillment-icon" aria-hidden="true">
+                                {opt.icon}
+                              </span>
+                              <span className="cp2-fulfillment-title">{t(opt.title)}</span>
+                              <span
+                                className="cp2-fulfillment-sub"
+                                data-free={isFree ? 'true' : 'false'}
+                              >
+                                {t(opt.sub)}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {/* Free-delivery threshold nudge — encourages upsell
                       when the customer is close to qualifying for free
                       shipping. Hidden for pickup (irrelevant) and when
                       already qualified. */}
-                  {fulfillmentMethod === 'delivery' && shippingFee > 0 && (() => {
-                    const threshold = Number(settings?.freeShippingThreshold) || 0;
-                    const remaining = Math.max(0, threshold - afterCredit);
-                    if (remaining <= 0 || threshold <= 0) return null;
-                    return (
-                      <p className="cp2-threshold-nudge">
-                        {tx('Add {amount} more for free delivery 🎁', { amount: <strong className="cp2-threshold-amt">{formatMoney(remaining)}</strong> })}
-                      </p>
-                    );
-                  })()}
-                </div>
+                      {fulfillmentMethod === 'delivery' &&
+                        shippingFee > 0 &&
+                        (() => {
+                          const threshold = Number(settings?.freeShippingThreshold) || 0;
+                          const remaining = Math.max(0, threshold - afterCredit);
+                          if (remaining <= 0 || threshold <= 0) return null;
+                          return (
+                            <p className="cp2-threshold-nudge">
+                              {tx('Add {amount} more for free delivery 🎁', {
+                                amount: (
+                                  <strong className="cp2-threshold-amt">
+                                    {formatMoney(remaining)}
+                                  </strong>
+                                ),
+                              })}
+                            </p>
+                          );
+                        })()}
+                    </div>
 
-                <div className="card card-body">
-                  <h2 className="cp2-section-h2 cp2-section-h2-lg">
-                    {fulfillmentMethod === 'pickup' ? t('Contact details') : t('Shipping address')}
-                  </h2>
-                  {fulfillmentMethod === 'pickup' && (
-                    <p className="cp2-pickup-hint">
-                      {t('We’ll call you at the number below when your order is ready for pickup at our café.')}
-                    </p>
-                  )}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field name="name" required>
-                      <Field.Label>{t('Full name')}</Field.Label>
-                      <Field.Input
-                        {...register('name')}
-                        autoComplete="name"
-                        placeholder={t('Jane Smith')}
-                      />
-                      <Field.Error>{errors.name?.message}</Field.Error>
-                    </Field>
-                    <Field name="phone" required>
-                      <Field.Label>{t('Phone')}</Field.Label>
-                      <Field.Input
-                        type="tel"
-                        {...register('phone')}
-                        autoComplete="tel"
-                        placeholder="+1 604 555 0100"
-                      />
-                      <Field.Error>{errors.phone?.message}</Field.Error>
-                    </Field>
-                  </div>
-                  {/* Address fields — shown only for delivery orders.
+                    <div className="card card-body">
+                      <h2 className="cp2-section-h2 cp2-section-h2-lg">
+                        {fulfillmentMethod === 'pickup'
+                          ? t('Contact details')
+                          : t('Shipping address')}
+                      </h2>
+                      {fulfillmentMethod === 'pickup' && (
+                        <p className="cp2-pickup-hint">
+                          {t(
+                            'We’ll call you at the number below when your order is ready for pickup at our café.',
+                          )}
+                        </p>
+                      )}
+                      {isGuest && (
+                        <div className="cp2-guest-email">
+                          <label htmlFor="guest-email" className="cp2-guest-email-label">
+                            {t('Email for your order updates')}
+                          </label>
+                          <input
+                            id="guest-email"
+                            type="email"
+                            autoComplete="email"
+                            inputMode="email"
+                            className="field"
+                            value={guestEmail}
+                            onChange={(e) => setGuestEmail(e.target.value)}
+                            aria-invalid={guestEmail.length > 0 && !guestEmailValid}
+                            placeholder="you@example.com"
+                            required
+                          />
+                        </div>
+                      )}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field name="name" required>
+                          <Field.Label>{t('Full name')}</Field.Label>
+                          <Field.Input
+                            {...register('name')}
+                            autoComplete="name"
+                            placeholder={t('Jane Smith')}
+                          />
+                          <Field.Error>{errors.name?.message}</Field.Error>
+                        </Field>
+                        <Field name="phone" required>
+                          <Field.Label>{t('Phone')}</Field.Label>
+                          <Field.Input
+                            type="tel"
+                            {...register('phone')}
+                            autoComplete="tel"
+                            placeholder="+1 604 555 0100"
+                          />
+                          <Field.Error>{errors.phone?.message}</Field.Error>
+                        </Field>
+                      </div>
+                      {/* Address fields — shown only for delivery orders.
                       Pickup orders skip the form entirely so customer
                       doesn't need to type their address for an order
                       they're picking up in person. The Zod schema's
                       superRefine gates address-field requirements on
                       fulfillmentMethod, so RHF won't report errors
                       against fields the user never sees. */}
-                  {fulfillmentMethod === 'delivery' && (
-                    <>
-                      <div className="cp2-addr-row">
-                        <Field name="address" required>
-                          <Field.Label>{t('Street address')}</Field.Label>
-                          <Field.Input
-                            {...register('address')}
-                            autoComplete="street-address"
-                            placeholder={t('123 Main Street')}
-                          />
-                          <Field.Error>{errors.address?.message}</Field.Error>
-                        </Field>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 cp2-addr-row">
-                        <Field name="city" required>
-                          <Field.Label>{t('City')}</Field.Label>
-                          <Field.Input
-                            {...register('city')}
-                            autoComplete="address-level2"
-                            placeholder={t('Vancouver')}
-                          />
-                          <Field.Error>{errors.city?.message}</Field.Error>
-                        </Field>
-                        <Field name="province" required>
-                          <Field.Label>{t('Province')}</Field.Label>
-                          <Field.Input
-                            {...register('province')}
-                            autoComplete="address-level1"
-                            placeholder={t('BC')}
-                          />
-                          <Field.Error>{errors.province?.message}</Field.Error>
-                        </Field>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 cp2-addr-row">
-                        <Field name="postalCode" required>
-                          <Field.Label>{t('Postal code')}</Field.Label>
-                          <Field.Input
-                            {...register('postalCode')}
-                            autoComplete="postal-code"
-                            placeholder="V5K 0A1"
-                          />
-                          <Field.Error>{errors.postalCode?.message}</Field.Error>
-                        </Field>
-                        <Field name="country" required>
-                          <Field.Label>{t('Country')}</Field.Label>
-                          <Field.Input
-                            {...register('country')}
-                            autoComplete="country-name"
-                            placeholder={t('Canada')}
-                          />
-                          <Field.Error>{errors.country?.message}</Field.Error>
-                        </Field>
-                      </div>
-                    </>
-                  )}
-                </div>
+                      {fulfillmentMethod === 'delivery' && (
+                        <>
+                          <div className="cp2-addr-row">
+                            <Field name="address" required>
+                              <Field.Label>{t('Street address')}</Field.Label>
+                              <Field.Input
+                                {...register('address')}
+                                autoComplete="street-address"
+                                placeholder={t('123 Main Street')}
+                              />
+                              <Field.Error>{errors.address?.message}</Field.Error>
+                            </Field>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 cp2-addr-row">
+                            <Field name="city" required>
+                              <Field.Label>{t('City')}</Field.Label>
+                              <Field.Input
+                                {...register('city')}
+                                autoComplete="address-level2"
+                                placeholder={t('Vancouver')}
+                              />
+                              <Field.Error>{errors.city?.message}</Field.Error>
+                            </Field>
+                            <Field name="province" required>
+                              <Field.Label>{t('Province')}</Field.Label>
+                              <Field.Input
+                                {...register('province')}
+                                autoComplete="address-level1"
+                                placeholder={t('BC')}
+                              />
+                              <Field.Error>{errors.province?.message}</Field.Error>
+                            </Field>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 cp2-addr-row">
+                            <Field name="postalCode" required>
+                              <Field.Label>{t('Postal code')}</Field.Label>
+                              <Field.Input
+                                {...register('postalCode')}
+                                autoComplete="postal-code"
+                                placeholder="V5K 0A1"
+                              />
+                              <Field.Error>{errors.postalCode?.message}</Field.Error>
+                            </Field>
+                            <Field name="country" required>
+                              <Field.Label>{t('Country')}</Field.Label>
+                              <Field.Input
+                                {...register('country')}
+                                autoComplete="country-name"
+                                placeholder={t('Canada')}
+                              />
+                              <Field.Error>{errors.country?.message}</Field.Error>
+                            </Field>
+                          </div>
+                        </>
+                      )}
+                    </div>
 
-                {/* Step 1 → 2 navigation */}
-                <div className="co-step-nav">
-                  <button type="button" onClick={goNextStep} className="btn btn-dark btn-lg co-nav-next">
-                    {t('Continue to Payment')} <ChevronRight size={16} />
-                  </button>
-                </div>
-                </>)}
-
-                {/* Step 2 — Payment (promo + credit) */}
-                {step === 'payment' && (<>
-                {/* Promo code */}
-                <div className="card card-body">
-                  <h3 className="cp2-h3">
-                    {t('Promo Code')}
-                  </h3>
-                  {appliedPromo ? (
-                    <div className="cp2-promo-applied">
-                      <div>
-                        <span className="cp2-promo-code">{appliedPromo.code}</span>
-                        <span className="cp2-promo-saving">
-                          {t('−{amount} off', { amount: formatMoney(appliedPromo.discountAmount) })}
-                        </span>
-                      </div>
-                      <button onClick={() => { clearPromo(); setPromoInput(''); }}
-                        className="cp2-promo-remove">
-                        {t('Remove')}
+                    {/* Step 1 → 2 navigation */}
+                    <div className="co-step-nav">
+                      <button
+                        type="button"
+                        onClick={goNextStep}
+                        className="btn btn-dark btn-lg co-nav-next"
+                      >
+                        {t('Continue to Payment')} <ChevronRight size={16} />
                       </button>
                     </div>
-                  ) : (
-                    <div className="cp2-promo-input-row">
-                      <input className="field cp2-promo-input" value={promoInput}
-                        // R2 Bug #3: previously force-uppercased the input,
-                        // which silently rewrote case-sensitive promo codes
-                        // (e.g. "Summer25" → "SUMMER25" → "code not found").
-                        // Now we preserve the customer's casing and let the
-                        // promo lookup decide whether the code is valid.
-                        onChange={e => setPromoInput(e.target.value)}
-                        placeholder={t('Enter code')}
-                        aria-label={t('Promo code')}
-                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyCode(promoInput, subtotal, currentUser!.uid); } }}
-                      />
-                      <button type="button" onClick={() => applyCode(promoInput, subtotal, currentUser!.uid)}
-                        disabled={promoApplying || !promoInput.trim()}
-                        className="btn btn-outline cp2-promo-apply">
-                        {promoApplying ? '…' : t('Apply')}
-                      </button>
-                    </div>
-                  )}
-                  {promoError && <p className="cp2-promo-err">{promoError}</p>}
-                </div>
-
-                {/* Credit selector */}
-                <CreditSelector
-                  maxApplicable={afterPromo}
-                  creditApplied={creditCapped}
-                  onApply={(v, p) => { setCreditApplied(v); setCreditPoints(p); }}
-                  onRemove={() => { setCreditApplied(0); setCreditPoints(0); }}
-                />
-
-                {/* Card — Clover hosted fields. Skipped when credit / promo
-                    covers the whole order. */}
-                <div className="card card-body">
-                  <h3 className="cp2-h3">{t('Payment')}</h3>
-                  {needsCard ? (
-                    <CardPaymentForm ref={cardFormRef} amount={orderTotal} />
-                  ) : (
-                    <p className="cp2-howit-desc">{t('Your credit covers this order — no card needed.')}</p>
-                  )}
-                </div>
-
-                {/* Step 2 → 3 navigation */}
-                <div className="co-step-nav">
-                  <button type="button" onClick={goPrevStep} className="btn btn-outline co-nav-back">
-                    {t('← Back')}
-                  </button>
-                  <button type="button" onClick={goNextStep} disabled={tokenizing} className="btn btn-dark btn-lg co-nav-next">
-                    {tokenizing ? t('Checking card…') : <>{t('Continue to Review')} <ChevronRight size={16} /></>}
-                  </button>
-                </div>
-                </>)}
-
-                {/* Step 3 — Review (how it works + Place Order) */}
-                {step === 'review' && (<>
-                {/* Payment method */}
-                {needsCard && card && (
-                  <div className="card card-body">
-                    <h3 className="cp2-h3">{t('Paying with')}</h3>
-                    <p className="cp2-howit-desc">
-                      {card.brand ?? t('Card')}{card.last4 ? ` ending ${card.last4}` : ''} —{' '}
-                      <button type="button" className="cp2-promo-remove" onClick={() => setStep('payment')}>{t('Change')}</button>
-                    </p>
-                  </div>
+                  </>
                 )}
 
-                {/* How it works */}
-                <div className="card card-body co-howitworks">
-                  <h3 className="cp2-h3 cp2-h3-howit">
-                    {t('How ordering works')}
-                  </h3>
-                  <div className="cp2-howit-list">
-                    {[
-                      { n: '1', title: 'Place your order',        desc: t('We place a temporary hold of {amount} on your card. You are not charged yet.', { amount: formatMoney(orderTotal) }) },
-                      { n: '2', title: 'We confirm stock',        desc: 'Our team checks every tea is in stock — usually within a few hours.' },
-                      { n: '3', title: 'Charged on confirmation', desc: "Only then is your card charged. If we can't fill the order, the hold is released." },
-                      { n: '4', title: fulfillmentMethod === 'pickup' ? 'Ready for pickup' : 'We ship',
-                        desc: fulfillmentMethod === 'pickup' ? "We'll let you know when it's at the counter." : "You'll get tracking as soon as it ships." },
-                    ].map(({ n, title, desc }) => (
-                      <div key={`step-${n}`} className="cp2-howit-row">
-                        <div className="cp2-howit-num">{n}</div>
-                        <div>
-                          <p className="cp2-howit-title">{t(title)}</p>
-                          <p className="cp2-howit-desc">{t(desc)}</p>
+                {/* Step 2 — Payment (promo + credit) */}
+                {step === 'payment' && (
+                  <>
+                    {/* Promo code */}
+                    <div className="card card-body">
+                      <h3 className="cp2-h3">{t('Promo Code')}</h3>
+                      {appliedPromo ? (
+                        <div className="cp2-promo-applied">
+                          <div>
+                            <span className="cp2-promo-code">{appliedPromo.code}</span>
+                            <span className="cp2-promo-saving">
+                              {t('−{amount} off', {
+                                amount: formatMoney(appliedPromo.discountAmount),
+                              })}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              clearPromo();
+                              setPromoInput('');
+                            }}
+                            className="cp2-promo-remove"
+                          >
+                            {t('Remove')}
+                          </button>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                      ) : (
+                        <div className="cp2-promo-input-row">
+                          <input
+                            className="field cp2-promo-input"
+                            value={promoInput}
+                            // R2 Bug #3: previously force-uppercased the input,
+                            // which silently rewrote case-sensitive promo codes
+                            // (e.g. "Summer25" → "SUMMER25" → "code not found").
+                            // Now we preserve the customer's casing and let the
+                            // promo lookup decide whether the code is valid.
+                            onChange={(e) => setPromoInput(e.target.value)}
+                            placeholder={t('Enter code')}
+                            aria-label={t('Promo code')}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                applyCode(
+                                  promoInput,
+                                  subtotal,
+                                  (currentUser ?? guestUser)?.uid ?? '',
+                                );
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              applyCode(promoInput, subtotal, (currentUser ?? guestUser)?.uid ?? '')
+                            }
+                            disabled={promoApplying || !promoInput.trim()}
+                            className="btn btn-outline cp2-promo-apply"
+                          >
+                            {promoApplying ? '…' : t('Apply')}
+                          </button>
+                        </div>
+                      )}
+                      {promoError && <p className="cp2-promo-err">{promoError}</p>}
+                    </div>
 
-                {/* Step 3 → submit navigation */}
-                <div className="co-step-nav">
-                  <button type="button" onClick={goPrevStep} className="btn btn-outline co-nav-back">
-                    {t('← Back')}
-                  </button>
-                  {/* The Place Order button on the right column does
+                    {/* Credit selector — signed-in customers only */}
+                    {!isGuest && (
+                      <CreditSelector
+                        maxApplicable={afterPromo}
+                        creditApplied={creditCapped}
+                        onApply={(v, p) => {
+                          setCreditApplied(v);
+                          setCreditPoints(p);
+                        }}
+                        onRemove={() => {
+                          setCreditApplied(0);
+                          setCreditPoints(0);
+                        }}
+                      />
+                    )}
+
+                    {/* Card — Clover hosted fields. Skipped when credit / promo
+                    covers the whole order. */}
+                    <div className="card card-body">
+                      <h3 className="cp2-h3">{t('Payment')}</h3>
+                      {needsCard ? (
+                        <CardPaymentForm ref={cardFormRef} amount={orderTotal} />
+                      ) : (
+                        <p className="cp2-howit-desc">
+                          {t('Your credit covers this order — no card needed.')}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Step 2 → 3 navigation */}
+                    <div className="co-step-nav">
+                      <button
+                        type="button"
+                        onClick={goPrevStep}
+                        className="btn btn-outline co-nav-back"
+                      >
+                        {t('← Back')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={goNextStep}
+                        disabled={tokenizing}
+                        className="btn btn-dark btn-lg co-nav-next"
+                      >
+                        {tokenizing ? (
+                          t('Checking card…')
+                        ) : (
+                          <>
+                            {t('Continue to Review')} <ChevronRight size={16} />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* Step 3 — Review (how it works + Place Order) */}
+                {step === 'review' && (
+                  <>
+                    {/* Payment method */}
+                    {needsCard && card && (
+                      <div className="card card-body">
+                        <h3 className="cp2-h3">{t('Paying with')}</h3>
+                        <p className="cp2-howit-desc">
+                          {card.brand ?? t('Card')}
+                          {card.last4 ? ` ending ${card.last4}` : ''} —{' '}
+                          <button
+                            type="button"
+                            className="cp2-promo-remove"
+                            onClick={() => setStep('payment')}
+                          >
+                            {t('Change')}
+                          </button>
+                        </p>
+                      </div>
+                    )}
+
+                    {/* How it works */}
+                    <div className="card card-body co-howitworks">
+                      <h3 className="cp2-h3 cp2-h3-howit">{t('How ordering works')}</h3>
+                      <div className="cp2-howit-list">
+                        {[
+                          {
+                            n: '1',
+                            title: 'Place your order',
+                            desc: t(
+                              'We place a temporary hold of {amount} on your card. You are not charged yet.',
+                              { amount: formatMoney(orderTotal) },
+                            ),
+                          },
+                          {
+                            n: '2',
+                            title: 'We confirm stock',
+                            desc: 'Our team checks every tea is in stock — usually within a few hours.',
+                          },
+                          {
+                            n: '3',
+                            title: 'Charged on confirmation',
+                            desc: "Only then is your card charged. If we can't fill the order, the hold is released.",
+                          },
+                          {
+                            n: '4',
+                            title: fulfillmentMethod === 'pickup' ? 'Ready for pickup' : 'We ship',
+                            desc:
+                              fulfillmentMethod === 'pickup'
+                                ? "We'll let you know when it's at the counter."
+                                : "You'll get tracking as soon as it ships.",
+                          },
+                        ].map(({ n, title, desc }) => (
+                          <div key={`step-${n}`} className="cp2-howit-row">
+                            <div className="cp2-howit-num">{n}</div>
+                            <div>
+                              <p className="cp2-howit-title">{t(title)}</p>
+                              <p className="cp2-howit-desc">{t(desc)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Step 3 → submit navigation */}
+                    <div className="co-step-nav">
+                      <button
+                        type="button"
+                        onClick={goPrevStep}
+                        className="btn btn-outline co-nav-back"
+                      >
+                        {t('← Back')}
+                      </button>
+                      {/* The Place Order button on the right column does
                       the actual submit. Showing a hint here so review-
                       step users know where the action lives — visible
                       on mobile where the right column has wrapped
                       below the left column. */}
-                  <span className="co-review-hint">
-                    {tx('Review the summary on the right and click {action} when ready.', { action: <strong>{t('Place Order')}</strong> })}
-                  </span>
-                </div>
-                </>)}
+                      <span className="co-review-hint">
+                        {tx('Review the summary on the right and click {action} when ready.', {
+                          action: <strong>{t('Place Order')}</strong>,
+                        })}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* ── Right: summary + CTA ────────────────────────────── */}
@@ -1366,13 +1668,16 @@ export function CheckoutPage() {
                       disabled={submitting}
                       className="btn btn-dark btn-full btn-lg co-place-order"
                     >
-                      {submitting ? t('Placing order…') : needsCard ? t('Place Order — hold {amount}', { amount: formatMoney(orderTotal) }) : t('Place Order')}
+                      {submitting
+                        ? t('Placing order…')
+                        : needsCard
+                          ? t('Place Order — hold {amount}', { amount: formatMoney(orderTotal) })
+                          : t('Place Order')}
                       {!submitting && <ChevronRight size={16} />}
                     </button>
                   )}
                 </div>
               </div>
-
             </div>
           </form>
         </div>

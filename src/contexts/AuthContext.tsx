@@ -1,8 +1,14 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { User, Auth } from 'firebase/auth';
-import {
-  doc, getDoc, setDoc, onSnapshot, serverTimestamp,
-} from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { db, getAuthLazy } from '@/lib/firebase';
 import { isSafeReturnUrl } from '@/lib/safeReturnUrl';
@@ -18,14 +24,20 @@ import { isInventoryEmail } from '@/lib/inventoryAccount';
 type AuthMod = typeof import('../lib/firebaseAuthLazy');
 
 interface AuthContextType {
-  currentUser:    User | null;
-  loading:        boolean;
-  isAdmin:        boolean;
-  login:          (email: string, password: string) => Promise<User>;
-  loginWithGoogle:() => Promise<User | null>;
-  signup:         (email: string, password: string, displayName?: string) => Promise<void>;
-  logout:         () => Promise<void>;
-  resetPassword:  (email: string) => Promise<void>;
+  /** Signed-in customer. Guest-checkout sessions are NOT a currentUser —
+   *  the site treats guests as signed out everywhere. */
+  currentUser: User | null;
+  /** Anonymous session used only for guest checkout (see startGuestSession). */
+  guestUser: User | null;
+  /** Start (or reuse) an anonymous session so a guest can place an order. */
+  startGuestSession: () => Promise<User>;
+  loading: boolean;
+  isAdmin: boolean;
+  login: (email: string, password: string) => Promise<User>;
+  loginWithGoogle: () => Promise<User | null>;
+  signup: (email: string, password: string, displayName?: string) => Promise<void>;
+  logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -57,13 +69,16 @@ export async function ensureAuth(): Promise<{ auth: Auth; mod: AuthMod }> {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading,     setLoading]     = useState(true);
-  const [isAdmin,     setIsAdmin]     = useState(false);
+  const [guestUser, setGuestUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   function isFirstAuthSession(user: User): boolean {
-    return !!user.metadata.creationTime
-      && !!user.metadata.lastSignInTime
-      && user.metadata.creationTime === user.metadata.lastSignInTime;
+    return (
+      !!user.metadata.creationTime &&
+      !!user.metadata.lastSignInTime &&
+      user.metadata.creationTime === user.metadata.lastSignInTime
+    );
   }
 
   // Ref to the resolved auth — set once during mount so callbacks
@@ -143,48 +158,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // on its own domain, then bounces the user back to the site URL we
     // know works. `handleCodeInApp: false` keeps the default Firebase-
     // hosted action page (no need to host our own).
-    const continueUrl = (typeof window !== 'undefined' && window.location?.origin)
-      ? `${window.location.origin}/account?verified=1`
-      : undefined;
-    mod.sendEmailVerification(
-      cred.user,
-      continueUrl ? { url: continueUrl, handleCodeInApp: false } : undefined,
-    ).catch(err => {
-      // Log to console so it appears in DevTools AND in any error
-      // collector wired up on `console.error`. Common failure modes:
-      //   - auth/too-many-requests: project hit Firebase's hourly cap
-      //   - auth/internal-error:    transient — usually retried by user
-      //   - auth/invalid-continue-uri: continueUrl not in the
-      //     Authorized domains list (Firebase Console → Authentication
-      //     → Settings → Authorized domains).
-      console.error('[signup] sendEmailVerification failed:', err);
-    });
+    const continueUrl =
+      typeof window !== 'undefined' && window.location?.origin
+        ? `${window.location.origin}/account?verified=1`
+        : undefined;
+    mod
+      .sendEmailVerification(
+        cred.user,
+        continueUrl ? { url: continueUrl, handleCodeInApp: false } : undefined,
+      )
+      .catch((err) => {
+        // Log to console so it appears in DevTools AND in any error
+        // collector wired up on `console.error`. Common failure modes:
+        //   - auth/too-many-requests: project hit Firebase's hourly cap
+        //   - auth/internal-error:    transient — usually retried by user
+        //   - auth/invalid-continue-uri: continueUrl not in the
+        //     Authorized domains list (Firebase Console → Authentication
+        //     → Settings → Authorized domains).
+        console.error('[signup] sendEmailVerification failed:', err);
+      });
     await syncUserDocFromKnownState(cred.user, displayName, true);
   }, []);
 
-  async function syncUserDocFromKnownState(
-    user: User,
-    displayName = '',
-    isFirstLogin = false,
-  ) {
+  async function syncUserDocFromKnownState(user: User, displayName = '', isFirstLogin = false) {
     const userRef = doc(db, 'users', user.uid);
 
     if (isFirstLogin) {
       await setDoc(userRef, {
-        uid:         user.uid,
-        email:       user.email ?? '',
+        uid: user.uid,
+        email: user.email ?? '',
         displayName: displayName || user.displayName || '',
-        photoURL:    user.photoURL ?? '',
-        role:        'user',
-        createdAt:   serverTimestamp(),
-        updatedAt:   serverTimestamp(),
+        photoURL: user.photoURL ?? '',
+        role: 'user',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
       return;
     }
 
     const updates: Record<string, unknown> = {
-      email:     user.email ?? '',
-      photoURL:  user.photoURL ?? '',
+      email: user.email ?? '',
+      photoURL: user.photoURL ?? '',
       updatedAt: serverTimestamp(),
     };
     const newName = displayName || user.displayName;
@@ -254,8 +268,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // empty value — so a Google login with displayName=null doesn't
       // wipe a user who set their name manually in Account.
       const updates: Record<string, unknown> = {
-        email:     user.email ?? existing.data().email ?? '',
-        photoURL:  user.photoURL ?? existing.data().photoURL ?? '',
+        email: user.email ?? existing.data().email ?? '',
+        photoURL: user.photoURL ?? existing.data().photoURL ?? '',
         updatedAt: serverTimestamp(),
       };
       const newName = displayName || user.displayName;
@@ -264,13 +278,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       // First sign-in: create with role default + createdAt.
       await setDoc(userRef, {
-        uid:         user.uid,
-        email:       user.email ?? '',
+        uid: user.uid,
+        email: user.email ?? '',
         displayName: displayName || user.displayName || '',
-        photoURL:    user.photoURL ?? '',
-        role:        'user',
-        createdAt:   serverTimestamp(),
-        updatedAt:   serverTimestamp(),
+        photoURL: user.photoURL ?? '',
+        role: 'user',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
     }
   }
@@ -323,8 +337,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // arrives here on page load. Without this call, new users
       // completing sign-in via redirect never get their /users docs
       // created, because ensureUserDoc only runs in the popup branch.
-      mod.getRedirectResult(auth)
-        .then(async cred => {
+      mod
+        .getRedirectResult(auth)
+        .then(async (cred) => {
           if (!cred) return;
           await syncUserDocFromKnownState(
             cred.user,
@@ -348,13 +363,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // flash. The returnUrl is sanitized below.
             const safe = isInventoryEmail(cred.user.email)
               ? '/inventory'
-              : (isSafeReturnUrl(returnUrl) ? returnUrl : '/');
+              : isSafeReturnUrl(returnUrl)
+                ? returnUrl
+                : '/';
             window.location.replace(safe);
           } catch (navErr) {
             console.error('Redirect post-auth navigation failed:', navErr);
           }
         })
-        .catch(err => { console.error('Redirect sign-in error:', err); });
+        .catch((err) => {
+          console.error('Redirect sign-in error:', err);
+        });
 
       unsubscribe = mod.onAuthStateChanged(auth, async (user) => {
         if (cancelled) return;
@@ -362,10 +381,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!user) {
           // Logged out — both updates can be synchronous.
           setCurrentUser(null);
+          setGuestUser(null);
           setIsAdmin(false);
           setLoading(false);
           return;
         }
+        // Guest-checkout session: not a signed-in customer.
+        if (user.isAnonymous) {
+          setCurrentUser(null);
+          setGuestUser(user);
+          setIsAdmin(false);
+          setLoading(false);
+          return;
+        }
+        setGuestUser(null);
 
         // Logged in — resolve isAdmin BEFORE committing currentUser
         // so React batches both state updates into one render. Without
@@ -424,10 +453,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // bubbles up here is either a real Firestore problem
         // (permission-denied, malformed doc) or a final retry-
         // exhausted offline state — both worth logging at warn level.
-        ensureUserDoc(user, user.displayName || '').catch(err => {
+        ensureUserDoc(user, user.displayName || '').catch((err) => {
           const isOffline =
-            (err as { code?: string })?.code === 'unavailable'
-            || (err as { message?: string })?.message?.includes?.('client is offline');
+            (err as { code?: string })?.code === 'unavailable' ||
+            (err as { message?: string })?.message?.includes?.('client is offline');
           if (isOffline) {
             // Transient — quieter log, no "failed" wording. The
             // /users doc will sync naturally on next sign-in or when
@@ -438,7 +467,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         });
       });
-    })().catch(err => {
+    })().catch((err) => {
       console.error('[AuthProvider] Failed to initialize auth:', err);
       // Even on auth-init failure, let the app render rather than
       // hanging on an indefinite loading state — public pages should
@@ -475,7 +504,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // the latest value through a ref instead so the same subscription
   // survives across role flips.
   const isAdminRef = useRef(isAdmin);
-  useEffect(() => { isAdminRef.current = isAdmin; }, [isAdmin]);
+  useEffect(() => {
+    isAdminRef.current = isAdmin;
+  }, [isAdmin]);
   useEffect(() => {
     if (!currentUser) return;
     let cancelled = false;
@@ -483,56 +514,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const targetUid = currentUser.uid;
     const ref = doc(db, 'roleSignals', targetUid);
 
-    const unsub = onSnapshot(ref, async snap => {
-      if (cancelled) return;
-      // Skip initial snapshot — onSnapshot delivers existing state on
-      // subscribe, not a change. Without this skip, every login would
-      // force-refresh once unnecessarily.
-      if (firstSnapshot) {
-        firstSnapshot = false;
-        return;
-      }
-      if (!snap.exists()) return;
-
-      // The signal doc changed — admin altered our role. Force-refresh
-      // the token to pick up the new custom claim.
-      try {
-        const resolved = authRef.current;
-        if (!resolved) return;
-        const liveUser = resolved.auth.currentUser;
-        // Defensive: only refresh if we're still the same user.
-        if (!liveUser || liveUser.uid !== targetUid) return;
-
-        await liveUser.getIdToken(true); // force refresh
+    const unsub = onSnapshot(
+      ref,
+      async (snap) => {
         if (cancelled) return;
-        const token = await liveUser.getIdTokenResult();
-        if (cancelled) return;
-        const nowAdmin = token.claims.role === 'admin';
-
-        // Compare against the signal doc to know which message to show.
-        const newRole = (snap.data() as { role?: string })?.role;
-        if (nowAdmin !== isAdminRef.current) {
-          setIsAdmin(nowAdmin);
-          if (newRole === 'admin') {
-            toast.success('You have been granted admin access.', { duration: 5000 });
-          } else {
-            toast.info('Your admin access has been removed.', { duration: 5000 });
-          }
+        // Skip initial snapshot — onSnapshot delivers existing state on
+        // subscribe, not a change. Without this skip, every login would
+        // force-refresh once unnecessarily.
+        if (firstSnapshot) {
+          firstSnapshot = false;
+          return;
         }
-      } catch (err) {
-        // Best-effort: if refresh fails (network, token-expired), the
-        // user keeps their old claim until the next natural refresh
-        // (within an hour) or until they sign out + back in. Same
-        // failure mode as before this listener existed — no regression.
-        console.warn('[AuthProvider] role refresh failed', err);
-      }
-    }, err => {
-      // Permission-denied is expected if the user briefly logs out
-      // mid-listener — don't spam the console for that case.
-      if ((err as { code?: string })?.code !== 'permission-denied') {
-        console.warn('[AuthProvider] roleSignals listener error', err);
-      }
-    });
+        if (!snap.exists()) return;
+
+        // The signal doc changed — admin altered our role. Force-refresh
+        // the token to pick up the new custom claim.
+        try {
+          const resolved = authRef.current;
+          if (!resolved) return;
+          const liveUser = resolved.auth.currentUser;
+          // Defensive: only refresh if we're still the same user.
+          if (!liveUser || liveUser.uid !== targetUid) return;
+
+          await liveUser.getIdToken(true); // force refresh
+          if (cancelled) return;
+          const token = await liveUser.getIdTokenResult();
+          if (cancelled) return;
+          const nowAdmin = token.claims.role === 'admin';
+
+          // Compare against the signal doc to know which message to show.
+          const newRole = (snap.data() as { role?: string })?.role;
+          if (nowAdmin !== isAdminRef.current) {
+            setIsAdmin(nowAdmin);
+            if (newRole === 'admin') {
+              toast.success('You have been granted admin access.', { duration: 5000 });
+            } else {
+              toast.info('Your admin access has been removed.', { duration: 5000 });
+            }
+          }
+        } catch (err) {
+          // Best-effort: if refresh fails (network, token-expired), the
+          // user keeps their old claim until the next natural refresh
+          // (within an hour) or until they sign out + back in. Same
+          // failure mode as before this listener existed — no regression.
+          console.warn('[AuthProvider] role refresh failed', err);
+        }
+      },
+      (err) => {
+        // Permission-denied is expected if the user briefly logs out
+        // mid-listener — don't spam the console for that case.
+        if ((err as { code?: string })?.code !== 'permission-denied') {
+          console.warn('[AuthProvider] roleSignals listener error', err);
+        }
+      },
+    );
 
     return () => {
       cancelled = true;
@@ -547,14 +582,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // even if their slice of the context didn't change. Combined with
   // the useCallback wrappers above, the value is now stable as long
   // as currentUser / loading / isAdmin haven't changed.
-  const value = useMemo<AuthContextType>(() => ({
-    currentUser, loading, isAdmin,
-    login, loginWithGoogle, signup, logout, resetPassword,
-  }), [currentUser, loading, isAdmin, login, loginWithGoogle, signup, logout, resetPassword]);
+  const startGuestSession = useCallback(async (): Promise<User> => {
+    const { auth, mod } = await ensureAuth();
+    if (auth.currentUser?.isAnonymous) return auth.currentUser;
+    const cred = await mod.signInAnonymously(auth);
+    return cred.user;
+  }, []);
 
-  return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
+  const value = useMemo<AuthContextType>(
+    () => ({
+      currentUser,
+      guestUser,
+      startGuestSession,
+      loading,
+      isAdmin,
+      login,
+      loginWithGoogle,
+      signup,
+      logout,
+      resetPassword,
+    }),
+    [
+      currentUser,
+      guestUser,
+      startGuestSession,
+      loading,
+      isAdmin,
+      login,
+      loginWithGoogle,
+      signup,
+      logout,
+      resetPassword,
+    ],
   );
+
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 }

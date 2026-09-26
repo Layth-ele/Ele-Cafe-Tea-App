@@ -1,11 +1,10 @@
 import { Link, useNavigate } from 'react-router';
 import { useEffect } from 'react';
-import { ROUTES, loginWithReturn } from '@/lib/routes';
+import { ROUTES } from '@/lib/routes';
 import { prefetchRoutesForPage } from '@/lib/prefetchRoute';
 import { Minus, Plus, ArrowRight, Gift } from 'lucide-react';
 import { useOptimisticCart } from '@/hooks/useOptimisticCart';
 import { useSettings } from '@/hooks/useSettings';
-import { useAuth } from '@/contexts/AuthContext';
 import { SeoHead } from '@/app/components/SeoHead';
 import { CartSummary } from '@/app/components/CartSummary';
 import { CartUpsell } from '@/app/components/CartUpsell';
@@ -20,7 +19,6 @@ export function CartPage() {
   const tx = useTx();
   const { items, updateQuantity, removeFromCart, totalPrice } = useOptimisticCart();
   const settings = useSettings();
-  const { currentUser } = useAuth();
   const navigate = useNavigate();
 
   // Phase 8 improvement — idle-time prefetch of checkout + login chunks.
@@ -39,13 +37,8 @@ export function CartPage() {
   const remaining = alwaysFree ? 0 : Math.max(0, FREE_THRESHOLD - totalPrice);
   const progress = alwaysFree ? 100 : Math.min(100, (totalPrice / FREE_THRESHOLD) * 100);
 
-  const handleCheckout = () => {
-    if (!currentUser) {
-      navigate(loginWithReturn(ROUTES.CHECKOUT));
-      return;
-    }
-    navigate(ROUTES.CHECKOUT);
-  };
+  // Signed in or not: checkout itself offers "guest or sign in".
+  const handleCheckout = () => navigate(ROUTES.CHECKOUT);
 
   // ── Empty state ────────────────────────────────────────────────────────────
   if (items.length === 0)
