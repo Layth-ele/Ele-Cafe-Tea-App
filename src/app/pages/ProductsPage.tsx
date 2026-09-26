@@ -26,13 +26,13 @@ import { useProductsFilters } from '@/hooks/useProductsFilters';
 // Day 16: filter sidebar/search bar/CSS extracted to shared modules so
 // the gift-builder Step 2 can reuse them. Constants come from teaFilters.
 import { TeaFilterSidebar } from '@/app/components/products/TeaFilterSidebar';
-import { TeaSearchBar }     from '@/app/components/products/TeaSearchBar';
+import { TeaSearchBar } from '@/app/components/products/TeaSearchBar';
 import { ProductsActiveChips } from '@/app/components/products/ProductsActiveChips';
 import { CafeMenuFor } from '@/app/components/cafe/CafeMenuBoard';
 import { ProductsEmptyState } from '@/app/components/products/ProductsEmptyState';
 import { ProductsPageHeader } from '@/app/components/products/ProductsPageHeader';
 import { ProductsCardSkeleton, ProductsTeaCard } from '@/app/components/products/ProductsTeaCard';
-import { Pagination }       from '@/app/components/ui/Pagination';
+import { Pagination } from '@/app/components/ui/Pagination';
 // Phase 23 — react-flip-toolkit removed. The library (v7.2.4) was
 // causing a hard crash ("Something went wrong" error boundary) on every
 // filter check/uncheck/select/reset because its internal registry gets
@@ -68,7 +68,6 @@ import '../components/products/TeaFilters.css';
 const DEFAULT_PAGE_SIZE = 6;
 const PAGE_SIZE_OPTIONS = [6, 12, 24, 48];
 
-
 // ── Main page ──────────────────────────────────────────────────────────────────
 export function ProductsPage() {
   const t = useT();
@@ -78,7 +77,9 @@ export function ProductsPage() {
   // chunks. Most-likely next clicks from /products are a tea card
   // (→ /tea-profile) or the cart icon. Prefetching during browser
   // idle removes the JS-load wait on those clicks.
-  useEffect(() => { prefetchRoutesForPage('products'); }, []);
+  useEffect(() => {
+    prefetchRoutesForPage('products');
+  }, []);
 
   // Live subscription — admin edits appear here within ~1s of the
   // Firestore write, no 5-min staleTime to wait through. Falls back
@@ -100,17 +101,17 @@ export function ProductsPage() {
   // from scrolling forever when many sections expand at once.
   const [openSections, setOpenSections] = useState<FilterOpenSections>(DEFAULT_OPEN_SECTIONS);
   const toggleSection = useCallback((key: keyof FilterOpenSections) => {
-    setOpenSections(prev => {
+    setOpenSections((prev) => {
       const isOpening = !prev[key];
       // Start from all-closed, then flip the clicked key to its new
       // state. When opening: only this one is open. When closing:
       // everything is closed. Object literal is safer than reduce
       // because it documents the exact key set inline.
       return {
-        cats:  false,
+        cats: false,
         avail: false,
-        more:  false,
-        ing:   false,
+        more: false,
+        ing: false,
         funct: false,
         [key]: isOpening,
       };
@@ -122,7 +123,7 @@ export function ProductsPage() {
     [liveCategories],
   );
   const validCatIds = useMemo<Set<string>>(
-    () => new Set(categoryCatalog.map(c => c.id)),
+    () => new Set(categoryCatalog.map((c) => c.id)),
     [categoryCatalog],
   );
   const {
@@ -169,18 +170,33 @@ export function ProductsPage() {
   // ── Filter all products ─────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     const filters: TeaFilterState = {
-      selectedCats, inStock, outOfStock, organicOnly,
-      caffFilter, ingredientFilter, functFilter,
+      selectedCats,
+      inStock,
+      outOfStock,
+      organicOnly,
+      caffFilter,
+      ingredientFilter,
+      functFilter,
     };
-    let r = products.filter((p: Product) =>
-      matchesTeaFilters(p, filters, deferredSearch));
+    let r = products.filter((p: Product) => matchesTeaFilters(p, filters, deferredSearch));
     // Sort behaviour stays here because it's ProductsPage-specific
     // (gift-builder Step 2 has no sort dropdown).
-    if (sortBy === 'price-asc')  r = [...r].sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+    if (sortBy === 'price-asc') r = [...r].sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
     if (sortBy === 'price-desc') r = [...r].sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
-    if (sortBy === 'name')       r = [...r].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+    if (sortBy === 'name') r = [...r].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
     return r;
-  }, [products, selectedCats, deferredSearch, inStock, outOfStock, organicOnly, caffFilter, ingredientFilter, functFilter, sortBy]);
+  }, [
+    products,
+    selectedCats,
+    deferredSearch,
+    inStock,
+    outOfStock,
+    organicOnly,
+    caffFilter,
+    ingredientFilter,
+    functFilter,
+    sortBy,
+  ]);
 
   // Reset page when filtered results change
   const filterKey = filtered.length + '_' + totalActive;
@@ -211,8 +227,8 @@ export function ProductsPage() {
   }, [filtered.length, pageSize]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const pageStart  = (page - 1) * pageSize;
-  const paginated  = filtered.slice(pageStart, pageStart + pageSize);
+  const pageStart = (page - 1) * pageSize;
+  const paginated = filtered.slice(pageStart, pageStart + pageSize);
 
   const goPage = (p: number) => {
     setPage(p);
@@ -234,11 +250,12 @@ export function ProductsPage() {
   // Show category name as title ONLY when the single selected category
   // is the sole active filter — any other filter (organic, caffeine, etc.)
   // would make the title misleading (e.g. "White Tea" when filtered by Organic)
-  const onlyCatFilter = selectedCats.size === 1 && availCount === 0 && moreCount === 0 && !deferredSearch;
+  const onlyCatFilter =
+    selectedCats.size === 1 && availCount === 0 && moreCount === 0 && !deferredSearch;
   const activeCatMeta = onlyCatFilter
-    ? categoryCatalog.find(c => selectedCats.has(c.id))
-    : (urlCategory && totalActive === 0)
-      ? categoryCatalog.find(c => c.id === urlCategory)
+    ? categoryCatalog.find((c) => selectedCats.has(c.id))
+    : urlCategory && totalActive === 0
+      ? categoryCatalog.find((c) => c.id === urlCategory)
       : null;
 
   // Canonical URL strategy — when filters / pagination / sort / search are
@@ -261,40 +278,77 @@ export function ProductsPage() {
   // sidebar without a code change. The helper merges with the curated
   // baseline lists, so the sidebar is never empty even on a fresh
   // deploy with no teas seeded.
-  const filterVocab = useMemo(
-    () => deriveFilterVocabulary(products),
-    [products]
-  );
+  const filterVocab = useMemo(() => deriveFilterVocabulary(products), [products]);
   // Live "how many teas" next to every filter option.
   const filterCounts = useMemo(
-    () => facetCounts(products, {
-      selectedCats, inStock, outOfStock, organicOnly,
-      caffFilter, ingredientFilter, functFilter,
-    }, deferredSearch),
-    [products, selectedCats, inStock, outOfStock, organicOnly, caffFilter, ingredientFilter, functFilter, deferredSearch],
+    () =>
+      facetCounts(
+        products,
+        {
+          selectedCats,
+          inStock,
+          outOfStock,
+          organicOnly,
+          caffFilter,
+          ingredientFilter,
+          functFilter,
+        },
+        deferredSearch,
+      ),
+    [
+      products,
+      selectedCats,
+      inStock,
+      outOfStock,
+      organicOnly,
+      caffFilter,
+      ingredientFilter,
+      functFilter,
+      deferredSearch,
+    ],
   );
 
   const filterProps = {
-    openSections, toggleSection,
-    selectedCats, inStock, outOfStock,
-    organicOnly, caffFilter, ingredientFilter, functFilter,
-    toggleCat, setSelectedCats,
-    setInStock, setOutOfStock, setOrganicOnly,
-    setCaffFilter, setIngredientFilter, setFunctFilter,
-    toggleCaff, toggleIngredient, toggleFunct,
+    openSections,
+    toggleSection,
+    selectedCats,
+    inStock,
+    outOfStock,
+    organicOnly,
+    caffFilter,
+    ingredientFilter,
+    functFilter,
+    toggleCat,
+    setSelectedCats,
+    setInStock,
+    setOutOfStock,
+    setOrganicOnly,
+    setCaffFilter,
+    setIngredientFilter,
+    setFunctFilter,
+    toggleCaff,
+    toggleIngredient,
+    toggleFunct,
     ingredients: filterVocab.ingredients,
-    functions:   filterVocab.functions,
-    counts:      filterCounts,
-    categories:  liveCategories,
+    functions: filterVocab.functions,
+    counts: filterCounts,
+    categories: liveCategories,
   };
 
   return (
     <div className="pp-page">
       <SeoHead
-        title={activeCatMeta ? `${activeCatMeta.label} | Ele Café Vancouver` : 'Our Teas | Ele Café Vancouver'}
-        description={activeCatMeta
-          ? (catSeo?.intro ?? `Shop premium loose leaf ${activeCatMeta.label.toLowerCase()} at Ele Café, Vancouver's tea shop.`)
-          : 'Shop loose leaf tea online in Canada — black, green, oolong, rooibos, herbal and fruit tea from Ele Café, Vancouver\'s tea café.'}
+        title={
+          activeCatMeta
+            ? `${activeCatMeta.label} | Ele Café Vancouver`
+            : 'Shop Loose Leaf Tea Online in Canada — All Teas | Ele Café Vancouver'
+        }
+        description={
+          activeCatMeta
+            ? (catSeo?.intro ??
+              `Shop premium loose leaf ${activeCatMeta.label.toLowerCase()} at Ele Café, Vancouver's tea shop.`)
+            : "Shop loose leaf tea online in Canada — black, green, oolong, rooibos, herbal and fruit tea from Ele Café, Vancouver's tea café."
+        }
         url={canonicalUrl}
         breadcrumbs={(() => {
           // Phase 27 — When the user arrived from a pairing page,
@@ -302,20 +356,24 @@ export function ProductsPage() {
           // through filter URL syncs. Read it here to render a
           // breadcrumb chain that continues the journey rather than
           // resetting to "Home > Our Teas".
-          const fromPairing      = pairingCtx.slug;
+          const fromPairing = pairingCtx.slug;
           const fromPairingTitle = pairingCtx.title;
           if (fromPairing && fromPairingTitle) {
             return [
-              { name: 'Home',            url: SITE_BASE },
-              { name: 'Pairings',        url: `${SITE_BASE}/pairings` },
-              { name: fromPairingTitle,  url: `${SITE_BASE}/pairings/${fromPairing}` },
-              ...(activeCatMeta ? [{ name: activeCatMeta.label, url: `${SITE_BASE}/products/${activeCatMeta.id}` }] : [{ name: 'Our Teas', url: `${SITE_BASE}/products` }]),
+              { name: 'Home', url: SITE_BASE },
+              { name: 'Pairings', url: `${SITE_BASE}/pairings` },
+              { name: fromPairingTitle, url: `${SITE_BASE}/pairings/${fromPairing}` },
+              ...(activeCatMeta
+                ? [{ name: activeCatMeta.label, url: `${SITE_BASE}/products/${activeCatMeta.id}` }]
+                : [{ name: 'Our Teas', url: `${SITE_BASE}/products` }]),
             ];
           }
           return [
-            { name: 'Home',          url: SITE_BASE },
-            { name: t('Our Teas'),   url: `${SITE_BASE}/products` },
-            ...(activeCatMeta ? [{ name: activeCatMeta.label, url: `${SITE_BASE}/products/${activeCatMeta.id}` }] : []),
+            { name: 'Home', url: SITE_BASE },
+            { name: t('Our Teas'), url: `${SITE_BASE}/products` },
+            ...(activeCatMeta
+              ? [{ name: activeCatMeta.label, url: `${SITE_BASE}/products/${activeCatMeta.id}` }]
+              : []),
           ];
         })()}
       />
@@ -332,23 +390,30 @@ export function ProductsPage() {
           <Breadcrumbs
             withoutSchema
             items={(() => {
-              const fromPairing      = pairingCtx.slug;
+              const fromPairing = pairingCtx.slug;
               const fromPairingTitle = pairingCtx.title;
               if (fromPairing && fromPairingTitle) {
                 return [
-                  { name: 'Home',           url: ROUTES.HOME },
-                  { name: 'Pairings',       url: ROUTES.PAIRINGS },
+                  { name: 'Home', url: ROUTES.HOME },
+                  { name: 'Pairings', url: ROUTES.PAIRINGS },
                   { name: fromPairingTitle, url: ROUTES.PAIRING(fromPairing) },
                   ...(activeCatMeta
-                    ? [{ name: categoryName(activeCatMeta, lang), url: ROUTES.PRODUCTS_CAT(activeCatMeta.id) }]
-                    : [{ name: 'Our Teas', url: ROUTES.PRODUCTS }]
-                  ),
+                    ? [
+                        {
+                          name: categoryName(activeCatMeta, lang),
+                          url: ROUTES.PRODUCTS_CAT(activeCatMeta.id),
+                        },
+                      ]
+                    : [{ name: 'Our Teas', url: ROUTES.PRODUCTS }]),
                 ];
               }
               return [
-                { name: 'Home',              url: ROUTES.HOME },
-                { name: 'Teas',              url: ROUTES.PRODUCTS },
-                { name: categoryName(activeCatMeta!, lang), url: ROUTES.PRODUCTS_CAT(activeCatMeta!.id) },
+                { name: 'Home', url: ROUTES.HOME },
+                { name: 'Teas', url: ROUTES.PRODUCTS },
+                {
+                  name: categoryName(activeCatMeta!, lang),
+                  url: ROUTES.PRODUCTS_CAT(activeCatMeta!.id),
+                },
               ];
             })()}
           />
@@ -357,13 +422,15 @@ export function ProductsPage() {
 
       {/* ── Page header ─────────────────────────────────────────────────────── */}
       <ProductsPageHeader
-        title={activeCatMeta
-          ? categoryName(activeCatMeta, lang)
-          : deferredSearch
-            ? `"${deferredSearch}"`
-            : totalActive > 0
-              ? t('Filtered Teas')
-              : t('Our Teas')}
+        title={
+          activeCatMeta
+            ? categoryName(activeCatMeta, lang)
+            : deferredSearch
+              ? `"${deferredSearch}"`
+              : totalActive > 0
+                ? t('Filtered Teas')
+                : t('Our Teas')
+        }
         intro={catIntro}
         resultCount={filtered.length}
         page={page}
@@ -373,7 +440,6 @@ export function ProductsPage() {
 
       {/* ── Layout ──────────────────────────────────────────────────────────── */}
       <div className="pp-layout">
-
         {/* ── Desktop sidebar — sticky + scrollable ──────────────────────── */}
         <aside className="products-sidebar pp-sidebar">
           <TeaFilterSidebar {...filterProps} />
@@ -381,21 +447,29 @@ export function ProductsPage() {
 
         {/* ── Main ────────────────────────────────────────────────────────── */}
         <div className="pp-main">
-
           {/* Toolbar */}
           <div className="pp-toolbar">
             {/* Day 16: floating-pill search extracted to TeaSearchBar so the
                 gift-builder Step 2 can reuse the same input chrome. */}
             <TeaSearchBar
               value={search}
-              onChange={v => { setSearch(v); setPage(1); }}
-              placeholder={products.length ? t('Search {count} teas…', { count: products.length }) : t('Search teas…')}
+              onChange={(v) => {
+                setSearch(v);
+                setPage(1);
+              }}
+              placeholder={
+                products.length
+                  ? t('Search {count} teas…', { count: products.length })
+                  : t('Search teas…')
+              }
             />
 
             {/* Sort */}
             <div className="pp-sort-wrap">
               <span className="pp-sort-label">{t('Sort:')}</span>
-              <select value={sortBy} onChange={e => {
+              <select
+                value={sortBy}
+                onChange={(e) => {
                   // Phase 8 improvement — startTransition for sort change.
                   // The sort change triggers a full grid re-render plus FLIP
                   // measure+animate, which can be 50-150ms on a tea-rich
@@ -409,7 +483,8 @@ export function ProductsPage() {
                   });
                 }}
                 aria-label={t('Sort products by')}
-                className="field pp-sort-select">
+                className="field pp-sort-select"
+              >
                 <option value="best">{t('Best selling')}</option>
                 <option value="price-asc">{t('Price: Low → High')}</option>
                 <option value="price-desc">{t('Price: High → Low')}</option>
@@ -418,11 +493,24 @@ export function ProductsPage() {
             </div>
 
             {/* Mobile filter button */}
-            <button onClick={() => setDrawerOpen(true)} className="products-mobile-filter-btn pp-mobile-filter-btn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/>
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="products-mobile-filter-btn pp-mobile-filter-btn"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <line x1="4" y1="6" x2="20" y2="6" />
+                <line x1="8" y1="12" x2="16" y2="12" />
+                <line x1="10" y1="18" x2="14" y2="18" />
               </svg>
-              {t('Filters')}{totalActive > 0 ? ` (${totalActive})` : ''}
+              {t('Filters')}
+              {totalActive > 0 ? ` (${totalActive})` : ''}
             </button>
           </div>
 
@@ -466,7 +554,9 @@ export function ProductsPage() {
           >
             {loading ? (
               <div className="pp-grid pp-grid-skel">
-                {Array.from({ length: pageSize }).map((_, i) => <ProductsCardSkeleton key={i} />)}
+                {Array.from({ length: pageSize }).map((_, i) => (
+                  <ProductsCardSkeleton key={i} />
+                ))}
               </div>
             ) : filtered.length === 0 ? (
               <ProductsEmptyState
@@ -501,7 +591,9 @@ export function ProductsPage() {
                 <ErrorBoundary
                   fallback={
                     <div className="empty-state" role="alert">
-                      <p>{t('The product grid hit an unexpected error. Please refresh the page.')}</p>
+                      <p>
+                        {t('The product grid hit an unexpected error. Please refresh the page.')}
+                      </p>
                     </div>
                   }
                 >
@@ -554,11 +646,22 @@ export function ProductsPage() {
       <div className={`filter-drawer-panel${drawerOpen ? '' : ' closed'}`}>
         <div className="pp-drawer-head">
           <span className="pp-drawer-title">{t('Filters')}</span>
-          <button onClick={() => setDrawerOpen(false)}
+          <button
+            onClick={() => setDrawerOpen(false)}
             aria-label={t('Close filters')}
-            className="pp-drawer-close">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-              <path d="M18 6L6 18M6 6l12 12"/>
+            className="pp-drawer-close"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
         </div>

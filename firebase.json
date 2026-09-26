@@ -68,6 +68,10 @@
         "function": "renderSeo"
       },
       {
+        "source": "/products",
+        "function": "renderSeo"
+      },
+      {
         "source": "/products/*",
         "function": "renderSeo"
       },

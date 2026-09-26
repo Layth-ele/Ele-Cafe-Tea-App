@@ -230,15 +230,13 @@ async function sendPendingPushes(pushes: PendingPush[]): Promise<void> {
   const CONCURRENCY = 25;
   for (let i = 0; i < pushes.length; i += CONCURRENCY) {
     await Promise.allSettled(
-      pushes
-        .slice(i, i + CONCURRENCY)
-        .map((p) =>
-          sendPushToUser(p.uid, p.title, p.body, {
-            notifId: p.notifId,
-            type: p.type,
-            url: '/account',
-          }),
-        ),
+      pushes.slice(i, i + CONCURRENCY).map((p) =>
+        sendPushToUser(p.uid, p.title, p.body, {
+          notifId: p.notifId,
+          type: p.type,
+          url: '/account',
+        }),
+      ),
     );
   }
 }
@@ -5118,7 +5116,162 @@ function patchHeadForTea(template: string, tea: TeaSeoFields): string {
   return html;
 }
 
-function patchHeadForCategory(template: string, catId: string): string {
+// ── Crawlable tea lists (/products, /products/{cat}, /collections/{slug}) ────
+//
+// Every listing page ships its actual teas in the server-rendered HTML —
+// name, price, a one-line description and a link to the tea page — plus
+// ItemList JSON-LD, so search engines see the catalog without running JS.
+// One cached catalog read (5 min per warm instance) serves all of them.
+
+interface CatalogTea {
+  name: string;
+  slug: string;
+  category: string;
+  price?: number;
+  description?: string;
+  available?: boolean;
+}
+
+let catalogCache: { at: number; teas: CatalogTea[] } | null = null;
+
+async function fetchCatalogForSeo(): Promise<CatalogTea[]> {
+  if (catalogCache && Date.now() - catalogCache.at < 5 * 60_000) return catalogCache.teas;
+  const snap = await db
+    .collection('teas')
+    .select('name', 'slug', 'category', 'price', 'description', 'isActive', 'available')
+    .get();
+  const teas: CatalogTea[] = [];
+  for (const doc of snap.docs) {
+    const d = doc.data() as TeaSeoFields;
+    if (d.isActive === false || !d.slug || !d.category || !d.name) continue;
+    teas.push({
+      name: d.name,
+      slug: d.slug,
+      category: d.category,
+      price: d.price,
+      description: d.description,
+      available: d.available,
+    });
+  }
+  teas.sort((a, b) => a.name.localeCompare(b.name));
+  catalogCache = { at: Date.now(), teas };
+  return teas;
+}
+
+const teaUrlFor = (t: { category: string; slug: string }) =>
+  `${SEO_SITE_BASE}/tea-profile/${encodeURIComponent(t.category)}/${encodeURIComponent(t.slug)}`;
+
+/** First sentence of a description, capped for a list line. */
+function teaBlurb(desc?: string): string {
+  const s = (desc ?? '').replace(/\s+/g, ' ').trim();
+  if (!s) return '';
+  const first = s.match(/^.+?[.!?](\s|$)/)?.[0]?.trim() ?? s;
+  return first.length > 160 ? `${first.slice(0, 157).trimEnd()}…` : first;
+}
+
+function teaListHtml(teas: readonly CatalogTea[]): string {
+  return `<ul>
+          ${teas
+            .map((t) => {
+              const price =
+                typeof t.price === 'number' && t.price > 0
+                  ? ` — ${seoEscHtml(money(t.price))}`
+                  : '';
+              const blurb = teaBlurb(t.description);
+              const sold = t.available === false ? ' (sold out)' : '';
+              return `<li><a href="${seoEscHtml(teaUrlFor(t))}">${seoEscHtml(t.name)}</a>${price}${sold}${blurb ? `. ${seoEscHtml(blurb)}` : ''}</li>`;
+            })
+            .join('\n          ')}
+          </ul>`;
+}
+
+function itemListLd(
+  name: string,
+  url: string,
+  teas: readonly CatalogTea[],
+  description?: string,
+): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    '@id': `${url}#collection`,
+    url,
+    name,
+    ...(description ? { description } : {}),
+    isPartOf: { '@id': `${SEO_SITE_BASE}/#website` },
+    mainEntity: {
+      '@type': 'ItemList',
+      name,
+      numberOfItems: teas.length,
+      itemListElement: teas.map((t, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        url: teaUrlFor(t),
+        name: t.name,
+      })),
+    },
+  };
+}
+
+const PRODUCTS_TITLE = 'Shop Loose Leaf Tea Online in Canada — All Teas | Ele Café Vancouver';
+
+function patchHeadForProducts(template: string, teas: CatalogTea[]): string {
+  const url = `${SEO_SITE_BASE}/products`;
+  const cats = Object.keys(SEO_CATEGORY_LABELS).filter((id) => teas.some((t) => t.category === id));
+  const intro = `Shop ${teas.length} loose leaf teas online in Canada — ${cats.map((c) => SEO_CATEGORY_LABELS[c].toLowerCase()).join(', ')} — blended and packed at our Vancouver tea café. ${shippingText(SEO_STORE)}`;
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SEO_SITE_BASE },
+      { '@type': 'ListItem', position: 2, name: 'Our Teas', item: url },
+    ],
+  };
+  const html = patchTemplateHead(template, {
+    title: PRODUCTS_TITLE,
+    description: seoClamp(intro),
+    canonical: url,
+    ogType: 'website',
+    ogImage: SEO_DEFAULT_OG,
+    extraOgMeta: [],
+    extraJsonLd: [itemListLd('Our Teas', url, teas, seoClamp(intro)), breadcrumbLd],
+  });
+  const sections = cats
+    .map((c) => {
+      const inCat = teas.filter((t) => t.category === c);
+      return `<section>
+          <h2><a href="${SEO_SITE_BASE}/products/${seoEscHtml(c)}">${seoEscHtml(SEO_CATEGORY_LABELS[c])}</a> (${inCat.length})</h2>
+          ${teaListHtml(inCat)}
+        </section>`;
+    })
+    .join('\n        ');
+  const collections = SEO_COLLECTIONS.map(
+    (col) =>
+      `<a href="${SEO_SITE_BASE}/collections/${seoEscHtml(col.slug)}">${seoEscHtml(col.title)}</a>`,
+  ).join(' · ');
+  return replaceNoscript(
+    html,
+    `
+    <noscript>
+      <article class="seo-fallback">
+        <header>
+          <p>Ele Café · Vancouver</p>
+          <h1>Our Teas</h1>
+          <p>${seoEscHtml(intro)}</p>
+        </header>
+        ${sections}
+        <section>
+          <h2>Tea collections</h2>
+          <p>${collections}</p>
+        </section>
+        <p><a href="${SEO_SITE_BASE}/cafe">Café menu</a> · <a href="${SEO_SITE_BASE}/pairings">Tea &amp; pastry pairings</a> · <a href="${SEO_SITE_BASE}/gifts">Gift builder</a></p>
+        ${seoContactHtml(SEO_STORE)}
+      </article>
+    </noscript>`,
+  );
+}
+
+function patchHeadForCategory(template: string, catId: string, catalog: CatalogTea[] = []): string {
   const url = `${SEO_SITE_BASE}/products/${catId}`;
   const label = SEO_CATEGORY_LABELS[catId] || 'Tea';
   const title = `${label} | Ele Café Vancouver`;
@@ -5144,8 +5297,17 @@ function patchHeadForCategory(template: string, catId: string): string {
     ogType: 'website',
     ogImage: SEO_DEFAULT_OG,
     extraOgMeta: [],
-    extraJsonLd: [breadcrumbLd],
+    extraJsonLd: [
+      itemListLd(
+        label,
+        url,
+        catalog.filter((t) => t.category === catId),
+        desc,
+      ),
+      breadcrumbLd,
+    ],
   });
+  const inCat = catalog.filter((t) => t.category === catId);
 
   // Phase 8.3 — Inject a <noscript> body block with category content
   // so /products/:category URLs show real HTML in view-source: for
@@ -5162,9 +5324,14 @@ function patchHeadForCategory(template: string, catId: string): string {
           <p>${seoEscHtml(intro)}</p>
           <p>${seoEscHtml(shippingText(SEO_STORE))}</p>
         </section>
-        <p>
-          <a href="${seoEscHtml(url)}">View all ${seoEscHtml(label)} teas</a>
-        </p>
+        ${
+          inCat.length
+            ? `<section>
+          <h2>${inCat.length} ${seoEscHtml(label)} ${inCat.length === 1 ? 'tea' : 'teas'}</h2>
+          ${teaListHtml(inCat)}
+        </section>`
+            : ''
+        }
         <p>
           Browse the full catalog: <a href="${seoEscHtml(SEO_SITE_BASE)}/products">all teas</a>.
         </p>
@@ -5272,13 +5439,16 @@ function patchHeadForCollection(
   // has ~25). Going beyond 12 here would bloat the first-byte response
   // for negligible SEO gain — Google indexes the head metadata, not
   // the noscript footprint.
-  const teaList = teas
-    .slice(0, 12)
-    .map(
-      (tea) =>
-        `<li><a href="${seoEscHtml(SEO_SITE_BASE)}/tea-profile/${seoEscHtml(tea.category)}/${seoEscHtml(tea.slug)}">${seoEscHtml(tea.name)}</a></li>`,
-    )
-    .join('\n        ');
+  const teaList = teaListHtml(
+    teas.map((t) => ({
+      name: t.name,
+      slug: t.slug,
+      category: t.category,
+      price: t.price,
+      description: t.description,
+      available: t.available,
+    })),
+  );
 
   const noscriptBlock = `
     <noscript>
@@ -5295,10 +5465,7 @@ function patchHeadForCollection(
             ? `
         <section>
           <h2>${seoEscHtml(String(teas.length))} ${teas.length === 1 ? 'tea' : 'teas'} in this collection</h2>
-          <ul>
-        ${teaList}
-          </ul>
-          ${teas.length > 12 ? `<p>And ${seoEscHtml(String(teas.length - 12))} more — <a href="${seoEscHtml(url)}">view all</a>.</p>` : ''}
+          ${teaList}
         </section>`
             : '<p>No teas currently match this collection.</p>'
         }
@@ -6026,12 +6193,38 @@ export const renderSeo = functions.https.onRequest(
       return;
     }
 
+    // /products — the whole catalog, grouped by category.
+    if (reqPath === '/products' || reqPath === '/products/') {
+      try {
+        const html = patchHeadForProducts(template, await fetchCatalogForSeo());
+        res.set('Content-Type', 'text/html; charset=utf-8');
+        res.set(
+          'Cache-Control',
+          'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400',
+        );
+        res.status(200).send(html);
+        return;
+      } catch (err) {
+        console.error('renderSeo: products render failed', err);
+        res.set('Content-Type', 'text/html; charset=utf-8');
+        res.set('Cache-Control', 'public, max-age=60');
+        res.status(200).send(template);
+        return;
+      }
+    }
+
     // Match /products/{category}
     const catMatch = reqPath.match(/^\/products\/([^/]+)\/?$/);
     if (catMatch) {
       const [, catId] = catMatch;
       if (SEO_CATEGORY_LABELS[catId]) {
-        const html = patchHeadForCategory(template, catId);
+        let catalog: CatalogTea[] = [];
+        try {
+          catalog = await fetchCatalogForSeo();
+        } catch (err) {
+          console.warn('renderSeo: catalog fetch failed', err);
+        }
+        const html = patchHeadForCategory(template, catId, catalog);
         res.set('Content-Type', 'text/html; charset=utf-8');
         res.set(
           'Cache-Control',
