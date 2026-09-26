@@ -30,11 +30,14 @@
  */
 
 import * as functions from 'firebase-functions/v2';
-import * as admin     from 'firebase-admin';
-import * as crypto    from 'crypto';
+import * as admin from './lib/admin';
+import * as crypto from 'crypto';
 import { userAcceptsCategory } from './lib/notificationPrefs';
 import {
-  isInventoryEmail, INVENTORY_SESSION_UID_PREFIX, INVENTORY_SESSION_HOURS, type InventorySessionClaims,
+  isInventoryEmail,
+  INVENTORY_SESSION_UID_PREFIX,
+  INVENTORY_SESSION_HOURS,
+  type InventorySessionClaims,
 } from './lib/inventoryAccount';
 import { buildBackInStockEmail } from './lib/backInStockEmail';
 import { emailBrandFrom, emailLang, type EmailBrand, type EmailLang } from './lib/emailLayout';
@@ -45,12 +48,12 @@ import { sendPushToUser } from './lib/push';
 const db = () => admin.firestore();
 
 // ── Tunables ──────────────────────────────────────────────────────────────
-const SCRYPT_KEY_LEN  = 64;
-const SCRYPT_COST     = 2 ** 14;   // N — memory/time factor (~tens of ms)
-const RATE_LIMIT_MAX  = 5;          // failed attempts per IP per window
-const RATE_LIMIT_MS   = 5 * 60_000; // 5-minute lockout window
-const REGION          = 'us-central1';
-const RESEND_FROM     = 'Ele Café <noreply@elecafe.ca>';
+const SCRYPT_KEY_LEN = 64;
+const SCRYPT_COST = 2 ** 14; // N — memory/time factor (~tens of ms)
+const RATE_LIMIT_MAX = 5; // failed attempts per IP per window
+const RATE_LIMIT_MS = 5 * 60_000; // 5-minute lockout window
+const REGION = 'us-central1';
+const RESEND_FROM = 'Ele Café <noreply@elecafe.ca>';
 
 /* -------------------------------------------------------------------------- */
 /*                            HASH HELPERS (scrypt)                           */
@@ -70,8 +73,8 @@ function scryptVerify(plain: string, stored: string): Promise<boolean> {
   return new Promise((resolve, reject) => {
     const [saltHex, keyHex] = stored.split(':');
     if (!saltHex || !keyHex) return resolve(false);
-    const salt     = Buffer.from(saltHex, 'hex');
-    const expected = Buffer.from(keyHex,  'hex');
+    const salt = Buffer.from(saltHex, 'hex');
+    const expected = Buffer.from(keyHex, 'hex');
     // Defense in depth: reject any stored hash whose key segment isn't
     // exactly SCRYPT_KEY_LEN bytes. A corrupted record with a short
     // key could otherwise cause scrypt to produce a short derivation
@@ -104,36 +107,45 @@ export const setEmployeeAccessCode = functions.https.onCall(
   async (request) => {
     if (request.auth?.token?.role !== 'admin') {
       throw new functions.https.HttpsError(
-        'permission-denied', 'Only admins can set employee access codes.'
+        'permission-denied',
+        'Only admins can set employee access codes.',
       );
     }
 
     const { name, accessCode, role } = (request.data ?? {}) as {
-      name?: string; accessCode?: string; role?: string;
+      name?: string;
+      accessCode?: string;
+      role?: string;
     };
     if (typeof name !== 'string' || name.trim().length < 2) {
       throw new functions.https.HttpsError(
-        'invalid-argument', 'Employee name is required (min 2 chars).'
+        'invalid-argument',
+        'Employee name is required (min 2 chars).',
       );
     }
     // Role gate: must be one of the allowed values when provided.
     if (role !== undefined && role !== 'edit' && role !== 'readonly') {
       throw new functions.https.HttpsError(
-        'invalid-argument', "Role must be 'edit' or 'readonly'."
+        'invalid-argument',
+        "Role must be 'edit' or 'readonly'.",
       );
     }
     // accessCode is now OPTIONAL on update (admin may want to change
     // only the role without rotating the 4-digit code). On CREATE it's
     // still required — checked inside the transaction after we know
     // whether the doc exists.
-    if (accessCode !== undefined && (typeof accessCode !== 'string' || !/^\d{4}$/.test(accessCode))) {
+    if (
+      accessCode !== undefined &&
+      (typeof accessCode !== 'string' || !/^\d{4}$/.test(accessCode))
+    ) {
       throw new functions.https.HttpsError(
-        'invalid-argument', 'Access code must be exactly 4 digits.'
+        'invalid-argument',
+        'Access code must be exactly 4 digits.',
       );
     }
 
-    const now      = admin.firestore.FieldValue.serverTimestamp();
-    const newHash  = accessCode ? await scryptHash(accessCode) : null;
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const newHash = accessCode ? await scryptHash(accessCode) : null;
 
     // Atomic upsert by name, inside a Firestore transaction. Without
     // the transaction, two admins calling this simultaneously could
@@ -149,29 +161,30 @@ export const setEmployeeAccessCode = functions.https.onCall(
     const trimmedName = name.trim();
     const result = await db().runTransaction(async (tx) => {
       const existing = await tx.get(
-        db().collection('employees_access').where('name', '==', trimmedName).limit(1)
+        db().collection('employees_access').where('name', '==', trimmedName).limit(1),
       );
       if (!existing.empty) {
         // UPDATE path. Mutate only the fields the caller sent.
         const doc = existing.docs[0];
         const patch: Record<string, unknown> = { active: true, updatedAt: now };
-        if (newHash !== null)   patch.codeHash = newHash;
-        if (role !== undefined) patch.role     = role;
+        if (newHash !== null) patch.codeHash = newHash;
+        if (role !== undefined) patch.role = role;
         tx.update(doc.ref, patch);
         return { id: doc.id };
       }
       // CREATE path. accessCode is required on create.
       if (newHash === null) {
         throw new functions.https.HttpsError(
-          'invalid-argument', 'Access code is required when creating a new employee.'
+          'invalid-argument',
+          'Access code is required when creating a new employee.',
         );
       }
       const newRef = db().collection('employees_access').doc();
       tx.set(newRef, {
-        name:      trimmedName,
-        codeHash:  newHash,
-        active:    true,
-        role:      role ?? 'edit',
+        name: trimmedName,
+        codeHash: newHash,
+        active: true,
+        role: role ?? 'edit',
         createdAt: now,
         updatedAt: now,
       });
@@ -213,41 +226,39 @@ export const validateInventoryAccessCode = functions.https.onCall(
     if (!isInventoryEmail(callerEmail)) {
       throw new functions.https.HttpsError(
         'unauthenticated',
-        'Sign in to the inventory account before entering an access code.'
+        'Sign in to the inventory account before entering an access code.',
       );
     }
 
     const { accessCode } = (request.data ?? {}) as { accessCode?: string };
     if (typeof accessCode !== 'string' || !/^\d{4}$/.test(accessCode)) {
       throw new functions.https.HttpsError(
-        'invalid-argument', 'Access code must be exactly 4 digits.'
+        'invalid-argument',
+        'Access code must be exactly 4 digits.',
       );
     }
 
     // Identify the caller for rate-limit bucketing. Hash the IP so we
     // don't store raw addresses long-term.
-    const rawIp  = request.rawRequest.ip ?? 'unknown';
+    const rawIp = request.rawRequest.ip ?? 'unknown';
     const ipHash = crypto.createHash('sha256').update(rawIp).digest('hex').slice(0, 24);
     const bucket = db().collection('inventory_access_attempts').doc(ipHash);
 
-    const now      = Date.now();
-    const snap     = await bucket.get();
-    const data     = snap.exists ? (snap.data() as { fails?: number; firstFailAt?: number }) : {};
-    const fails    = data.fails       ?? 0;
-    const firstAt  = data.firstFailAt ?? now;
+    const now = Date.now();
+    const snap = await bucket.get();
+    const data = snap.exists ? (snap.data() as { fails?: number; firstFailAt?: number }) : {};
+    const fails = data.fails ?? 0;
+    const firstAt = data.firstFailAt ?? now;
     const inWindow = now - firstAt < RATE_LIMIT_MS;
 
     if (inWindow && fails >= RATE_LIMIT_MAX) {
       throw new functions.https.HttpsError(
         'resource-exhausted',
-        `Too many failed attempts. Try again in ${Math.ceil((RATE_LIMIT_MS - (now - firstAt)) / 60_000)} min.`
+        `Too many failed attempts. Try again in ${Math.ceil((RATE_LIMIT_MS - (now - firstAt)) / 60_000)} min.`,
       );
     }
 
-    const activeSnap = await db()
-      .collection('employees_access')
-      .where('active', '==', true)
-      .get();
+    const activeSnap = await db().collection('employees_access').where('active', '==', true).get();
 
     // Constant-time-ish loop: run scryptVerify against EVERY active
     // employee, even after a match. Without this, the function returns
@@ -261,7 +272,7 @@ export const validateInventoryAccessCode = functions.https.onCall(
     // person café that's <300ms total, well inside the callable budget.
     // Document iteration order is preserved so behaviour is deterministic.
     let matchedName: string | null = null;
-    let matchedId:   string | null = null;
+    let matchedId: string | null = null;
     let matchedRole: 'edit' | 'readonly' = 'edit';
     for (const doc of activeSnap.docs) {
       const e = doc.data() as { name?: string; codeHash?: string; role?: string };
@@ -272,7 +283,7 @@ export const validateInventoryAccessCode = functions.https.onCall(
       // improbable), the first one wins, matching the prior behaviour.
       if (ok && matchedName === null) {
         matchedName = e.name;
-        matchedId   = doc.id;
+        matchedId = doc.id;
         // Legacy docs without `role` default to 'edit' (preserves
         // existing behavior). Any unrecognized value also normalizes
         // to 'edit' rather than locking the employee out.
@@ -288,12 +299,22 @@ export const validateInventoryAccessCode = functions.https.onCall(
       // on every inventory read/write (see lib/inventoryAccount.ts).
       const expiresAt = now + INVENTORY_SESSION_HOURS * 3_600_000;
       const claims: InventorySessionClaims = {
-        inv: true, invEmp: matchedName, invEmpId: matchedId as string, invRole: matchedRole, invExp: expiresAt,
+        inv: true,
+        invEmp: matchedName,
+        invEmpId: matchedId as string,
+        invRole: matchedRole,
+        invExp: expiresAt,
       };
-      const sessionToken = await admin.auth().createCustomToken(
-        `${INVENTORY_SESSION_UID_PREFIX}${matchedId}`, { ...claims },
-      );
-      return { matched: true, employeeName: matchedName, role: matchedRole, sessionToken, expiresAt };
+      const sessionToken = await admin
+        .auth()
+        .createCustomToken(`${INVENTORY_SESSION_UID_PREFIX}${matchedId}`, { ...claims });
+      return {
+        matched: true,
+        employeeName: matchedName,
+        role: matchedRole,
+        sessionToken,
+        expiresAt,
+      };
     }
 
     // Miss — bump the counter. The `expiresAt` field exists so the
@@ -308,14 +329,14 @@ export const validateInventoryAccessCode = functions.https.onCall(
     // the lockout window doesn't extend on each fail inside it.
     if (snap.exists && inWindow) {
       await bucket.update({
-        fails:     admin.firestore.FieldValue.increment(1),
+        fails: admin.firestore.FieldValue.increment(1),
         expiresAt: admin.firestore.Timestamp.fromMillis(firstAt + RATE_LIMIT_MS),
       });
     } else {
       await bucket.set({
-        fails:       1,
+        fails: 1,
         firstFailAt: now,
-        expiresAt:   admin.firestore.Timestamp.fromMillis(now + RATE_LIMIT_MS),
+        expiresAt: admin.firestore.Timestamp.fromMillis(now + RATE_LIMIT_MS),
       });
     }
     return { matched: false };
@@ -358,7 +379,9 @@ async function sendEmail(opts: {
 }): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.warn(`[inventory.sendEmail] RESEND_API_KEY not set — skipped "${opts.subject}" to ${opts.to}`);
+    console.warn(
+      `[inventory.sendEmail] RESEND_API_KEY not set — skipped "${opts.subject}" to ${opts.to}`,
+    );
     return false;
   }
 
@@ -367,7 +390,7 @@ async function sendEmail(opts: {
     res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -412,12 +435,18 @@ async function sendEmail(opts: {
 async function notifyBackInStock(teaId: string, eventId: string): Promise<void> {
   const teaSnap = await db().doc(`teas/${teaId}`).get();
   const tea = (teaSnap.data() ?? {}) as {
-    name?: string; nameFr?: string; slug?: string; category?: string; image?: string; price?: number;
+    name?: string;
+    nameFr?: string;
+    slug?: string;
+    category?: string;
+    image?: string;
+    price?: number;
   };
   const teaName = tea.name?.trim() || tea.slug?.trim() || teaId;
-  const teaPath = tea.category && tea.slug
-    ? `/tea-profile/${encodeURIComponent(tea.category)}/${encodeURIComponent(tea.slug)}`
-    : '/products';
+  const teaPath =
+    tea.category && tea.slug
+      ? `/tea-profile/${encodeURIComponent(tea.category)}/${encodeURIComponent(tea.slug)}`
+      : '/products';
   const teaUrl = `https://elecafe.ca${teaPath}`;
 
   // Wishlist docs are keyed by the tea's slug; inventory docs by the tea
@@ -442,62 +471,74 @@ async function notifyBackInStock(teaId: string, eventId: string): Promise<void> 
   const store = await getEmailBranding();
   let sent = 0;
 
-  await Promise.allSettled(Array.from(byUid.entries()).map(async ([uid, wishDoc]) => {
-    const explicitRequest = wishDoc.get('notify') === true;
-    if (!explicitRequest && !(await userAcceptsCategory(uid, 'lowStock'))) {
-      console.log(`[notifyBackInStock] suppressed — uid=${uid} hearted ${teaId} but lowStock emails are off`);
-      return;
-    }
+  await Promise.allSettled(
+    Array.from(byUid.entries()).map(async ([uid, wishDoc]) => {
+      const explicitRequest = wishDoc.get('notify') === true;
+      if (!explicitRequest && !(await userAcceptsCategory(uid, 'lowStock'))) {
+        console.log(
+          `[notifyBackInStock] suppressed — uid=${uid} hearted ${teaId} but lowStock emails are off`,
+        );
+        return;
+      }
 
-    // In-app bell + phone/desktop push (installed PWA). Deterministic
-    // doc id so a retried trigger doesn't duplicate the bell entry.
-    const notifId = `backinstock_${teaId}_${uid}_${eventId}`;
-    const title = `${teaName} is back in stock`;
-    const body = 'Grab it before it sells out again.';
-    let bellOk = false;
-    try {
-      await db().doc(`notifications/${notifId}`).set({
-        recipientId: uid,
-        type:        'customer_back_in_stock',
-        title,
-        body,
-        data:        { teaSlug: tea.slug ?? teaId, teaName, url: teaPath },
-        isRead:      false,
-        createdAt:   admin.firestore.FieldValue.serverTimestamp(),
+      // In-app bell + phone/desktop push (installed PWA). Deterministic
+      // doc id so a retried trigger doesn't duplicate the bell entry.
+      const notifId = `backinstock_${teaId}_${uid}_${eventId}`;
+      const title = `${teaName} is back in stock`;
+      const body = 'Grab it before it sells out again.';
+      let bellOk = false;
+      try {
+        await db()
+          .doc(`notifications/${notifId}`)
+          .set({
+            recipientId: uid,
+            type: 'customer_back_in_stock',
+            title,
+            body,
+            data: { teaSlug: tea.slug ?? teaId, teaName, url: teaPath },
+            isRead: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        bellOk = true;
+      } catch (err) {
+        console.warn('[notifyBackInStock] bell write failed:', uid, err);
+      }
+      await sendPushToUser(uid, title, body, {
+        type: 'customer_back_in_stock',
+        notifId,
+        url: teaPath,
       });
-      bellOk = true;
-    } catch (err) {
-      console.warn('[notifyBackInStock] bell write failed:', uid, err);
-    }
-    await sendPushToUser(uid, title, body, { type: 'customer_back_in_stock', notifId, url: teaPath });
 
-    let emailOk = false;
-    const email = await getUserEmail(uid);
-    if (email) {
-      const lang = await getUserLang(uid);
-      const msg = buildBackInStockEmail({
-        brand:    store,
-        teaName:  (lang === 'fr' && tea.nameFr?.trim()) || teaName,
-        lang,
-        teaUrl,
-        teaImage: tea.image ?? '',
-        price:    typeof tea.price === 'number' ? tea.price : 0,
-        explicitRequest,
-      });
-      emailOk = await sendEmail({ to: email, ...msg });
-    } else {
-      console.warn(`[notifyBackInStock] no email for uid=${uid} — bell/push only`);
-    }
-    if (!emailOk && !bellOk) return; // nothing delivered — keep notify set so the next restock retries
-    sent++;
+      let emailOk = false;
+      const email = await getUserEmail(uid);
+      if (email) {
+        const lang = await getUserLang(uid);
+        const msg = buildBackInStockEmail({
+          brand: store,
+          teaName: (lang === 'fr' && tea.nameFr?.trim()) || teaName,
+          lang,
+          teaUrl,
+          teaImage: tea.image ?? '',
+          price: typeof tea.price === 'number' ? tea.price : 0,
+          explicitRequest,
+        });
+        emailOk = await sendEmail({ to: email, ...msg });
+      } else {
+        console.warn(`[notifyBackInStock] no email for uid=${uid} — bell/push only`);
+      }
+      if (!emailOk && !bellOk) return; // nothing delivered — keep notify set so the next restock retries
+      sent++;
 
-    if (explicitRequest) {
-      await wishDoc.ref.update({
-        notify:     false,
-        notifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-      }).catch((err) => console.warn('[notifyBackInStock] clearing notify failed:', uid, err));
-    }
-  }));
+      if (explicitRequest) {
+        await wishDoc.ref
+          .update({
+            notify: false,
+            notifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+          })
+          .catch((err) => console.warn('[notifyBackInStock] clearing notify failed:', uid, err));
+      }
+    }),
+  );
 
   console.log(`[notifyBackInStock] ${teaId}: notified ${sent} of ${byUid.size} waiting`);
 }
@@ -550,16 +591,16 @@ async function ensureTeaCategorySeeded(): Promise<void> {
     const snap = await ref.get();
     if (snap.exists) return;
     await ref.set({
-      id:           'tea',
-      name:         'Tea',
-      model:        'level',
-      unit:         null,
+      id: 'tea',
+      name: 'Tea',
+      model: 'level',
+      unit: null,
       lowThreshold: null,
-      sortOrder:    0,
-      color:        'color-tea',
-      isSystem:     true,
-      isActive:     true,
-      createdAt:    admin.firestore.FieldValue.serverTimestamp(),
+      sortOrder: 0,
+      color: 'color-tea',
+      isSystem: true,
+      isActive: true,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     console.log('[inventory] Seeded /inventory_categories/tea');
   } catch (err) {
@@ -578,29 +619,33 @@ export const onInventoryWrite = functions.firestore.onDocumentWritten(
     // it never blocks the main trigger path.
     void ensureTeaCategorySeeded();
 
-    const teaId    = event.params.teaId;
+    const teaId = event.params.teaId;
     // Match project pattern (see onOrderWrite in index.ts): double
     // optional chain handles the case where event.data is itself
     // undefined. `.data()` returns undefined on non-existent snapshots,
     // so we get a clean null without separately checking .exists.
     const before = (event.data?.before?.data() as InventoryDoc | undefined) ?? null;
-    const after  = (event.data?.after?.data()  as InventoryDoc | undefined) ?? null;
+    const after = (event.data?.after?.data() as InventoryDoc | undefined) ?? null;
 
     // Deletion — clear the public fields on /teas/{teaId} and exit.
     if (!after) {
       try {
         await db().doc(`teas/${teaId}`).update({
-          available:         admin.firestore.FieldValue.delete(),
+          available: admin.firestore.FieldValue.delete(),
           availabilityLabel: admin.firestore.FieldValue.delete(),
         });
       } catch (err) {
         // tea may have been deleted in the same transaction — ignore
-        console.warn('[onInventoryWrite] Teas cleanup failed for deleted inventory doc:', teaId, err);
+        console.warn(
+          '[onInventoryWrite] Teas cleanup failed for deleted inventory doc:',
+          teaId,
+          err,
+        );
       }
       return;
     }
 
-    const level     = typeof after.level === 'number' ? after.level : 0;
+    const level = typeof after.level === 'number' ? after.level : 0;
     const newStatus = deriveStatus(level);
     const oldStatus = before
       ? deriveStatus(typeof before.level === 'number' ? before.level : 0)
@@ -655,11 +700,15 @@ export const onInventoryWrite = functions.firestore.onDocumentWritten(
 
     if (!isStatusSyncRefire) {
       try {
-        await db().doc(`teas/${teaId}`).update({
-          available:         newStatus !== 'out_of_stock',
-          availabilityLabel: newStatus,
-        });
-        console.log(`[onInventoryWrite] projected ${teaId}: available=${newStatus !== 'out_of_stock'} (${newStatus})`);
+        await db()
+          .doc(`teas/${teaId}`)
+          .update({
+            available: newStatus !== 'out_of_stock',
+            availabilityLabel: newStatus,
+          });
+        console.log(
+          `[onInventoryWrite] projected ${teaId}: available=${newStatus !== 'out_of_stock'} (${newStatus})`,
+        );
       } catch (err) {
         console.warn(`[onInventoryWrite] tea ${teaId} missing — projection skipped`, err);
       }
@@ -689,26 +738,29 @@ export const onInventoryWrite = functions.firestore.onDocumentWritten(
     // be written.
     if (oldStatus === 'out_of_stock' && newStatus !== 'out_of_stock') {
       await notifyBackInStock(teaId, event.id).catch((err) =>
-        console.error('[onInventoryWrite] back-in-stock notify failed:', teaId, err));
+        console.error('[onInventoryWrite] back-in-stock notify failed:', teaId, err),
+      );
     }
 
-    await db().collection('inventory_logs').add({
-      // v2 fields — written alongside the legacy ones for one release
-      // cycle so older clients still render.
-      kind:           'tea',
-      targetId:       teaId,
-      categoryId:     'tea',
-      previousValue:  beforeLevel ?? 0,
-      newValue:       level,
-      // Legacy fields — kept for clients on older bundles.
-      teaId,
-      previousLevel:  beforeLevel ?? 0,
-      newLevel:       level,
-      employeeName:   after.updatedBy ?? 'unknown',
-      previousStatus: deriveStatus(beforeLevel ?? 0),
-      newStatus,
-      updatedAt:      admin.firestore.FieldValue.serverTimestamp(),
-    });
+    await db()
+      .collection('inventory_logs')
+      .add({
+        // v2 fields — written alongside the legacy ones for one release
+        // cycle so older clients still render.
+        kind: 'tea',
+        targetId: teaId,
+        categoryId: 'tea',
+        previousValue: beforeLevel ?? 0,
+        newValue: level,
+        // Legacy fields — kept for clients on older bundles.
+        teaId,
+        previousLevel: beforeLevel ?? 0,
+        newLevel: level,
+        employeeName: after.updatedBy ?? 'unknown',
+        previousStatus: deriveStatus(beforeLevel ?? 0),
+        newStatus,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
   },
 );
 
@@ -730,7 +782,7 @@ export const onTeaCreate = functions.firestore.onDocumentCreated(
   { region: REGION, document: 'teas/{teaId}' },
   async (event) => {
     const teaId = event.params.teaId;
-    const ref   = db().doc(`inventory/${teaId}`);
+    const ref = db().doc(`inventory/${teaId}`);
 
     // Defensive — if the migration script already pre-created the
     // inventory doc (or a manual seed exists), don't overwrite.
@@ -739,9 +791,9 @@ export const onTeaCreate = functions.firestore.onDocumentCreated(
 
     await ref.set({
       teaId,
-      level:     10,
-      status:    'in_stock',
-      weight:    2000,   // a full container (2000 g = level 10)
+      level: 10,
+      status: 'in_stock',
+      weight: 2000, // a full container (2000 g = level 10)
       updatedBy: 'system:onTeaCreate',
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
@@ -814,7 +866,7 @@ export const repairInventoryProjections = functions.https.onCall(
 
     const inventorySnap = await db().collection('inventory').get();
     let repaired = 0;
-    let skipped  = 0;
+    let skipped = 0;
     const errors: string[] = [];
 
     // Process in batches of 400 (Firestore batch limit is 500; we stay
@@ -832,10 +884,10 @@ export const repairInventoryProjections = functions.https.onCall(
 
     for (const invDoc of inventorySnap.docs) {
       const teaId = invDoc.id;
-      const data  = invDoc.data() as { level?: number };
+      const data = invDoc.data() as { level?: number };
       const level = typeof data.level === 'number' ? data.level : 0;
-      const newStatus  = deriveStatus(level);
-      const available  = newStatus !== 'out_of_stock';
+      const newStatus = deriveStatus(level);
+      const available = newStatus !== 'out_of_stock';
 
       // Verify the tea doc exists before writing.
       const teaRef = db().doc(`teas/${teaId}`);
@@ -846,7 +898,8 @@ export const repairInventoryProjections = functions.https.onCall(
           errors.push(`${teaId}: tea doc missing — orphan inventory`);
           continue;
         }
-        const teaData = teaSnap.data() as { available?: boolean; availabilityLabel?: string } | undefined;
+        const teaData = teaSnap.data() as
+          { available?: boolean; availabilityLabel?: string } | undefined;
         // Skip if already correct — avoids unnecessary writes.
         if (teaData?.available === available && teaData?.availabilityLabel === newStatus) {
           continue;
@@ -862,7 +915,9 @@ export const repairInventoryProjections = functions.https.onCall(
 
     await flush();
 
-    console.log(`[repairInventoryProjections] repaired=${repaired} skipped=${skipped} errors=${errors.length}`);
+    console.log(
+      `[repairInventoryProjections] repaired=${repaired} skipped=${skipped} errors=${errors.length}`,
+    );
     return { repaired, skipped, errors };
   },
 );

@@ -1771,3 +1771,14 @@
   text-underline-offset: 3px;
 }
 
+
+/* ── Main content reserves a full screen ─────────────────────────────────
+   While a page's code is still downloading, the loading placeholder is
+   short, which used to put the footer mid-screen on phones — then the
+   real page pushed it down (Lighthouse CLS 0.22–0.24). Reserving one
+   viewport of height keeps the footer below the fold until the page is
+   in, so nothing visible jumps. */
+#main-content {
+  min-height: 100vh;
+  min-height: 100svh;
+}

@@ -15,15 +15,18 @@
  * catches anything missing (including photos uploaded before this existed).
  */
 import * as functions from 'firebase-functions/v2';
-import * as admin     from 'firebase-admin';
-import * as crypto    from 'node:crypto';
+import * as admin from './lib/admin';
+import * as crypto from 'node:crypto';
 import sharp from 'sharp';
 
 const REGION = 'us-central1';
 const WIDTHS = [320, 640, 1280] as const;
 const OPTS = { region: REGION, memory: '1GiB' as const, timeoutSeconds: 300, maxInstances: 3 };
 
-export interface ImageVariants { src: string; set: Array<{ w: number; url: string }> }
+export interface ImageVariants {
+  src: string;
+  set: Array<{ w: number; url: string }>;
+}
 
 const db = () => admin.firestore();
 
@@ -62,7 +65,10 @@ export async function ensureVariants(src: string): Promise<ImageVariants | null>
       const [m] = await file.getMetadata();
       const token = String(m.metadata?.firebaseStorageDownloadTokens ?? '').split(',')[0];
       const width = Number(m.metadata?.width) || w;
-      if (token) { set.push({ w: width, url: downloadUrl(loc.bucket, file.name, token) }); continue; }
+      if (token) {
+        set.push({ w: width, url: downloadUrl(loc.bucket, file.name, token) });
+        continue;
+      }
     }
     if (!original) {
       [original] = await bucket.file(loc.path).download();
@@ -72,7 +78,8 @@ export async function ensureVariants(src: string): Promise<ImageVariants | null>
     // place of 1280, and nothing larger.
     const target = Math.min(w, meta?.width ?? w);
     if (set.some((x) => x.w >= target)) break;
-    const out = await sharp(original).rotate()
+    const out = await sharp(original)
+      .rotate()
       .resize({ width: target, withoutEnlargement: true })
       .webp({ quality: 78, effort: 5 })
       .toBuffer({ resolveWithObject: true });
@@ -82,7 +89,11 @@ export async function ensureVariants(src: string): Promise<ImageVariants | null>
       contentType: 'image/webp',
       metadata: {
         cacheControl: 'public, max-age=31536000, immutable',
-        metadata: { firebaseStorageDownloadTokens: token, width: String(out.info.width), source: loc.path },
+        metadata: {
+          firebaseStorageDownloadTokens: token,
+          width: String(out.info.width),
+          source: loc.path,
+        },
       },
     });
     set.push({ w: out.info.width, url: downloadUrl(loc.bucket, file.name, token) });
@@ -91,8 +102,9 @@ export async function ensureVariants(src: string): Promise<ImageVariants | null>
 }
 
 const needsVariants = (image: unknown, current: unknown): image is string =>
-  typeof image === 'string' && !!parseStorageUrl(image)
-  && (current as ImageVariants | undefined)?.src !== image;
+  typeof image === 'string' &&
+  !!parseStorageUrl(image) &&
+  (current as ImageVariants | undefined)?.src !== image;
 
 async function processDoc(ref: FirebaseFirestore.DocumentReference, image: string): Promise<void> {
   try {
@@ -135,7 +147,10 @@ export const imageVariantsSweep = functions.scheduler.onSchedule(
   { ...OPTS, schedule: 'every 30 minutes', timeoutSeconds: 540 },
   async () => {
     const started = Date.now();
-    for (const [coll, field] of [['teas', 'image'], ['comboGalleryItems', 'imageUrl']] as const) {
+    for (const [coll, field] of [
+      ['teas', 'image'],
+      ['comboGalleryItems', 'imageUrl'],
+    ] as const) {
       const snap = await db().collection(coll).get();
       for (const doc of snap.docs) {
         if (Date.now() - started > 480_000) return; // leave the rest for the next run

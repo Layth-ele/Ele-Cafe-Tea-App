@@ -22,7 +22,7 @@
  * to be enabled on the project; if it isn't, triggers log and skip.
  */
 import * as functions from 'firebase-functions/v2';
-import * as admin     from 'firebase-admin';
+import * as admin from './lib/admin';
 
 const ENDPOINT = 'https://translation.googleapis.com/language/translate/v2';
 const OPTS = { region: 'us-central1', memory: '256MiB' as const, maxInstances: 5 };
@@ -42,8 +42,11 @@ export async function translateBatchToFrench(texts: string[]): Promise<string[]>
       headers: { Authorization: `Bearer ${access_token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ q: chunk, source: 'en', target: 'fr', format: 'text' }),
     });
-    if (!res.ok) throw new Error(`Translation API ${res.status}: ${(await res.text()).slice(0, 300)}`);
-    const json = await res.json() as { data?: { translations?: Array<{ translatedText?: string }> } };
+    if (!res.ok)
+      throw new Error(`Translation API ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    const json = (await res.json()) as {
+      data?: { translations?: Array<{ translatedText?: string }> };
+    };
     const t = json.data?.translations ?? [];
     if (t.length !== chunk.length) throw new Error('Translation API returned a partial result');
     out.push(...t.map((x) => x.translatedText ?? ''));
@@ -58,7 +61,10 @@ const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
 
 /** Decide which French fields need (re)translation. */
 function planFields(
-  data: Record<string, unknown>, pairs: ReadonlyArray<Pair>, meta: AutoMeta, prefix = '',
+  data: Record<string, unknown>,
+  pairs: ReadonlyArray<Pair>,
+  meta: AutoMeta,
+  prefix = '',
 ) {
   const todo: Array<{ key: string; frField: string; src: string; max: number }> = [];
   for (const [en, fr, max] of pairs) {
@@ -79,15 +85,21 @@ async function loadMeta(id: string): Promise<AutoMeta> {
 }
 
 function saveMeta(id: string, meta: AutoMeta) {
-  return db().doc(`translationMeta/${id}`).set(
-    { fields: meta, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true },
-  );
+  return db()
+    .doc(`translationMeta/${id}`)
+    .set(
+      { fields: meta, updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+      { merge: true },
+    );
 }
 
 /** Shared handler for flat docs (teas, pairings, categories). */
 async function fillDoc(
-  collection: string, id: string, ref: FirebaseFirestore.DocumentReference,
-  data: Record<string, unknown>, pairs: ReadonlyArray<Pair>,
+  collection: string,
+  id: string,
+  ref: FirebaseFirestore.DocumentReference,
+  data: Record<string, unknown>,
+  pairs: ReadonlyArray<Pair>,
 ) {
   const metaId = `${collection}__${id}`;
   const meta = await loadMeta(metaId);
@@ -97,7 +109,10 @@ async function fillDoc(
   try {
     out = await translateBatchToFrench(todo.map((t) => t.src));
   } catch (err) {
-    console.warn(`[translate] ${collection}/${id} skipped:`, err instanceof Error ? err.message : err);
+    console.warn(
+      `[translate] ${collection}/${id} skipped:`,
+      err instanceof Error ? err.message : err,
+    );
     return;
   }
   const patch: Record<string, string> = {};
@@ -114,10 +129,17 @@ async function fillDoc(
 }
 
 const TEA_FIELDS: Pair[] = [
-  ['name', 'nameFr', 200], ['description', 'descriptionFr', 2000], ['benefits', 'benefitsFr', 1000],
-  ['ingredients', 'ingredientsFr', 500], ['origin', 'originFr', 100], ['regions', 'regionsFr', 200],
+  ['name', 'nameFr', 200],
+  ['description', 'descriptionFr', 2000],
+  ['benefits', 'benefitsFr', 1000],
+  ['ingredients', 'ingredientsFr', 500],
+  ['origin', 'originFr', 100],
+  ['regions', 'regionsFr', 200],
 ];
-const PAIRING_FIELDS: Pair[] = [['title', 'titleFr', 100], ['description', 'descriptionFr', 500]];
+const PAIRING_FIELDS: Pair[] = [
+  ['title', 'titleFr', 100],
+  ['description', 'descriptionFr', 500],
+];
 
 export const autoTranslateTea = functions.firestore.onDocumentWritten(
   { ...OPTS, document: 'teas/{id}' },
@@ -133,7 +155,13 @@ export const autoTranslatePairing = functions.firestore.onDocumentWritten(
   async (event) => {
     const snap = event.data?.after;
     if (!snap?.exists) return;
-    await fillDoc('comboGalleryItems', event.params.id, snap.ref, snap.data() ?? {}, PAIRING_FIELDS);
+    await fillDoc(
+      'comboGalleryItems',
+      event.params.id,
+      snap.ref,
+      snap.data() ?? {},
+      PAIRING_FIELDS,
+    );
   },
 );
 
@@ -144,7 +172,8 @@ export const autoTranslateCategory = functions.firestore.onDocumentWritten(
     if (!snap?.exists) return;
     const d = snap.data() ?? {};
     // Older docs use label/labelFr; newer use name/nameFr.
-    const pairs: Pair[] = typeof d.name === 'string' ? [['name', 'nameFr', 100]] : [['label', 'labelFr', 100]];
+    const pairs: Pair[] =
+      typeof d.name === 'string' ? [['name', 'nameFr', 100]] : [['label', 'labelFr', 100]];
     await fillDoc('categories', event.params.id, snap.ref, d, pairs);
   },
 );
@@ -154,7 +183,9 @@ export const autoTranslatePromotion = functions.firestore.onDocumentWritten(
   async (event) => {
     const snap = event.data?.after;
     if (!snap?.exists) return;
-    await fillDoc('promotions', event.params.id, snap.ref, snap.data() ?? {}, [['description', 'descriptionFr', 500]]);
+    await fillDoc('promotions', event.params.id, snap.ref, snap.data() ?? {}, [
+      ['description', 'descriptionFr', 500],
+    ]);
   },
 );
 
@@ -168,10 +199,16 @@ export const autoTranslateSettings = functions.firestore.onDocumentWritten(
     const metaId = 'settings__global';
     const meta = await loadMeta(metaId);
 
-    const anns = Array.isArray(d.announcements) ? (d.announcements as Array<Record<string, unknown>>) : [];
+    const anns = Array.isArray(d.announcements)
+      ? (d.announcements as Array<Record<string, unknown>>)
+      : [];
     // Highlights are codes/prices ("SAVE15", "$2.99") — left as typed.
     const annTodo = anns.flatMap((a, i) =>
-      planFields(a, [['message', 'messageFr', 140]], meta, `ann:${str(a.id) || i}:`).map((t) => ({ ...t, i })));
+      planFields(a, [['message', 'messageFr', 140]], meta, `ann:${str(a.id) || i}:`).map((t) => ({
+        ...t,
+        i,
+      })),
+    );
     const footTodo = planFields(d, [['footerText', 'footerTextFr', 500]], meta);
     const todo = [...annTodo, ...footTodo.map((t) => ({ ...t, i: -1 }))];
     if (!todo.length) return;
@@ -180,7 +217,10 @@ export const autoTranslateSettings = functions.firestore.onDocumentWritten(
     try {
       out = await translateBatchToFrench(todo.map((t) => t.src));
     } catch (err) {
-      console.warn('[translate] settings/global skipped:', err instanceof Error ? err.message : err);
+      console.warn(
+        '[translate] settings/global skipped:',
+        err instanceof Error ? err.message : err,
+      );
       return;
     }
     const nextAnns = anns.map((a) => ({ ...a }));
@@ -207,15 +247,25 @@ export const translateToFrench = functions.https.onCall(
       throw new functions.https.HttpsError('permission-denied', 'Admins only.');
     }
     const texts = (request.data as { texts?: unknown })?.texts;
-    if (!Array.isArray(texts) || texts.length === 0 || texts.length > 50
-      || texts.some((t) => typeof t !== 'string' || t.length > 5000)) {
-      throw new functions.https.HttpsError('invalid-argument', 'texts must be 1–50 strings of ≤5000 chars.');
+    if (
+      !Array.isArray(texts) ||
+      texts.length === 0 ||
+      texts.length > 50 ||
+      texts.some((t) => typeof t !== 'string' || t.length > 5000)
+    ) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'texts must be 1–50 strings of ≤5000 chars.',
+      );
     }
     try {
       return { translations: await translateBatchToFrench(texts as string[]) };
     } catch (err) {
       console.error('[translateToFrench]', err);
-      throw new functions.https.HttpsError('unavailable', 'Translation service is unavailable right now.');
+      throw new functions.https.HttpsError(
+        'unavailable',
+        'Translation service is unavailable right now.',
+      );
     }
   },
 );

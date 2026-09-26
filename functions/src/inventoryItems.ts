@@ -17,10 +17,15 @@
  */
 
 import * as functions from 'firebase-functions/v2';
-import * as admin     from 'firebase-admin';
+import * as admin from './lib/admin';
 
 import { RESERVED_INVENTORY_CATEGORY_IDS } from './lib/inventoryAccount';
-import { DEFAULT_LOW_THRESHOLD, deriveItemStatus, effectiveLowThreshold, type ItemStatus as InventoryStatus } from './lib/inventoryStatus';
+import {
+  DEFAULT_LOW_THRESHOLD,
+  deriveItemStatus,
+  effectiveLowThreshold,
+  type ItemStatus as InventoryStatus,
+} from './lib/inventoryStatus';
 
 const db = () => admin.firestore();
 
@@ -29,8 +34,6 @@ const REGION = 'us-central1';
 /* -------------------------------------------------------------------------- */
 /*                              SHARED HELPERS                                */
 /* -------------------------------------------------------------------------- */
-
-
 
 function deriveSlug(name: string): string {
   return name
@@ -42,8 +45,17 @@ function deriveSlug(name: string): string {
     .slice(0, 40);
 }
 
-const COLOR_SLOTS = ['color-1','color-2','color-3','color-4','color-5','color-6','color-7','color-8'] as const;
-type CategoryColor = typeof COLOR_SLOTS[number] | 'color-tea';
+const COLOR_SLOTS = [
+  'color-1',
+  'color-2',
+  'color-3',
+  'color-4',
+  'color-5',
+  'color-6',
+  'color-7',
+  'color-8',
+] as const;
+type CategoryColor = (typeof COLOR_SLOTS)[number] | 'color-tea';
 
 /** Pick the next color slot by cycling through the eight available
  *  ones. We count current usage and pick the least-used slot. */
@@ -55,7 +67,9 @@ async function pickNextColor(): Promise<CategoryColor> {
     if (c && c in counts) counts[c]++;
   });
   // Sort by lowest usage, then by stable order.
-  return COLOR_SLOTS.slice().sort((a, b) => counts[a] - counts[b] || COLOR_SLOTS.indexOf(a) - COLOR_SLOTS.indexOf(b))[0];
+  return COLOR_SLOTS.slice().sort(
+    (a, b) => counts[a] - counts[b] || COLOR_SLOTS.indexOf(a) - COLOR_SLOTS.indexOf(b),
+  )[0];
 }
 
 /* -------------------------------------------------------------------------- */
@@ -77,12 +91,20 @@ export const setInventoryCategory = functions.https.onCall(
     }
 
     const data = (request.data ?? {}) as {
-      id?: string; name?: string; model?: string;
-      unit?: string | null; lowThreshold?: number | null;
-      sortOrder?: number; color?: string;
+      id?: string;
+      name?: string;
+      model?: string;
+      unit?: string | null;
+      lowThreshold?: number | null;
+      sortOrder?: number;
+      color?: string;
     };
 
-    if (typeof data.name !== 'string' || data.name.trim().length < 2 || data.name.trim().length > 40) {
+    if (
+      typeof data.name !== 'string' ||
+      data.name.trim().length < 2 ||
+      data.name.trim().length > 40
+    ) {
       throw new functions.https.HttpsError('invalid-argument', 'Name must be 2-40 chars.');
     }
     const trimmedName = data.name.trim();
@@ -92,7 +114,10 @@ export const setInventoryCategory = functions.https.onCall(
       throw new functions.https.HttpsError('invalid-argument', 'Invalid slug.');
     }
     if ((RESERVED_INVENTORY_CATEGORY_IDS as readonly string[]).includes(id)) {
-      throw new functions.https.HttpsError('invalid-argument', `'${id}' is reserved — choose another name.`);
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        `'${id}' is reserved — choose another name.`,
+      );
     }
 
     const ref = db().doc(`inventory_categories/${id}`);
@@ -104,45 +129,50 @@ export const setInventoryCategory = functions.https.onCall(
       if (existing.exists) {
         const prev = existing.data() as { isSystem?: boolean; model?: string };
         if (prev.isSystem) {
-          throw new functions.https.HttpsError('failed-precondition', 'System category cannot be modified.');
+          throw new functions.https.HttpsError(
+            'failed-precondition',
+            'System category cannot be modified.',
+          );
         }
         // Model is immutable once set — changing it would orphan items
         // in the now-wrong shape.
         const patch: Record<string, unknown> = {
-          name:      trimmedName,
+          name: trimmedName,
           updatedAt: now,
         };
-        if (data.unit !== undefined)         patch.unit         = data.unit;
+        if (data.unit !== undefined) patch.unit = data.unit;
         if (data.lowThreshold !== undefined) patch.lowThreshold = data.lowThreshold;
-        if (data.sortOrder !== undefined)    patch.sortOrder    = data.sortOrder;
-        if (data.color !== undefined)        patch.color        = data.color;
+        if (data.sortOrder !== undefined) patch.sortOrder = data.sortOrder;
+        if (data.color !== undefined) patch.color = data.color;
         tx.update(ref, patch);
         return { id };
       }
 
       // CREATE path
       const model = data.model === 'quantity' || data.model === 'level' ? data.model : 'quantity';
-      const unit  = typeof data.unit === 'string' && data.unit.length > 0 ? data.unit : null;
-      const lowT  = typeof data.lowThreshold === 'number' && data.lowThreshold >= 0
-                      ? data.lowThreshold
-                      : DEFAULT_LOW_THRESHOLD;
-      const sort  = typeof data.sortOrder === 'number' ? data.sortOrder : 100;
-      const color = (data.color && data.color !== 'color-tea' ? data.color : null) ?? await pickNextColor();
+      const unit = typeof data.unit === 'string' && data.unit.length > 0 ? data.unit : null;
+      const lowT =
+        typeof data.lowThreshold === 'number' && data.lowThreshold >= 0
+          ? data.lowThreshold
+          : DEFAULT_LOW_THRESHOLD;
+      const sort = typeof data.sortOrder === 'number' ? data.sortOrder : 100;
+      const color =
+        (data.color && data.color !== 'color-tea' ? data.color : null) ?? (await pickNextColor());
 
       // Quantity model needs a unit; we default to 'unit' so the row
       // is well-formed even when the admin forgets to set one.
       tx.set(ref, {
         id,
-        name:         trimmedName,
+        name: trimmedName,
         model,
-        unit:         model === 'quantity' ? (unit ?? 'unit') : null,
+        unit: model === 'quantity' ? (unit ?? 'unit') : null,
         lowThreshold: model === 'quantity' ? lowT : null,
-        sortOrder:    sort,
+        sortOrder: sort,
         color,
-        isSystem:     false,
-        isActive:     true,
-        createdAt:    now,
-        updatedAt:    now,
+        isSystem: false,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
       });
       return { id };
     });
@@ -173,7 +203,10 @@ export const archiveInventoryCategory = functions.https.onCall(
       throw new functions.https.HttpsError('invalid-argument', 'Valid category id required.');
     }
     if (id === 'tea') {
-      throw new functions.https.HttpsError('failed-precondition', 'System category cannot be archived.');
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'System category cannot be archived.',
+      );
     }
     const ref = db().doc(`inventory_categories/${id}`);
     const snap = await ref.get();
@@ -181,7 +214,7 @@ export const archiveInventoryCategory = functions.https.onCall(
       throw new functions.https.HttpsError('not-found', `Category not found: ${id}`);
     }
     await ref.update({
-      isActive:  false,
+      isActive: false,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     return { id };
@@ -207,23 +240,37 @@ export const setInventoryItem = functions.https.onCall(
     }
 
     const data = (request.data ?? {}) as {
-      id?: string; categoryId?: string; name?: string;
-      image?: string | null; unit?: string | null;
-      quantity?: number; lowThreshold?: number | null;
+      id?: string;
+      categoryId?: string;
+      name?: string;
+      image?: string | null;
+      unit?: string | null;
+      quantity?: number;
+      lowThreshold?: number | null;
     };
 
     if (typeof data.categoryId !== 'string' || data.categoryId.length === 0) {
       throw new functions.https.HttpsError('invalid-argument', 'categoryId is required.');
     }
     if (data.categoryId === 'tea') {
-      throw new functions.https.HttpsError('invalid-argument', 'Tea items are managed via /admin/products.');
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Tea items are managed via /admin/products.',
+      );
     }
-    if (typeof data.name !== 'string' || data.name.trim().length < 2 || data.name.trim().length > 60) {
+    if (
+      typeof data.name !== 'string' ||
+      data.name.trim().length < 2 ||
+      data.name.trim().length > 60
+    ) {
       throw new functions.https.HttpsError('invalid-argument', 'Name must be 2-60 chars.');
     }
     const trimmedName = data.name.trim();
     if (typeof data.quantity !== 'number' || data.quantity < 0 || !Number.isFinite(data.quantity)) {
-      throw new functions.https.HttpsError('invalid-argument', 'Quantity must be a non-negative number.');
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Quantity must be a non-negative number.',
+      );
     }
 
     // Confirm the category exists and is active.
@@ -231,14 +278,21 @@ export const setInventoryItem = functions.https.onCall(
     if (!catSnap.exists) {
       throw new functions.https.HttpsError('not-found', `Category not found: ${data.categoryId}`);
     }
-    const cat = catSnap.data() as { isActive?: boolean; lowThreshold?: number | null; unit?: string | null };
+    const cat = catSnap.data() as {
+      isActive?: boolean;
+      lowThreshold?: number | null;
+      unit?: string | null;
+    };
     if (cat.isActive === false) {
-      throw new functions.https.HttpsError('failed-precondition', 'Cannot add items to an archived category.');
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'Cannot add items to an archived category.',
+      );
     }
 
     const effThreshold = effectiveLowThreshold(data.lowThreshold, cat.lowThreshold);
     const status = deriveItemStatus(data.quantity, effThreshold);
-    const now    = admin.firestore.FieldValue.serverTimestamp();
+    const now = admin.firestore.FieldValue.serverTimestamp();
 
     // CREATE or UPDATE.
     if (data.id) {
@@ -248,32 +302,32 @@ export const setInventoryItem = functions.https.onCall(
         throw new functions.https.HttpsError('not-found', `Item not found: ${data.id}`);
       }
       await ref.update({
-        categoryId:   data.categoryId,
-        name:         trimmedName,
-        image:        data.image ?? null,
-        unit:         data.unit ?? null,
-        quantity:     data.quantity,
+        categoryId: data.categoryId,
+        name: trimmedName,
+        image: data.image ?? null,
+        unit: data.unit ?? null,
+        quantity: data.quantity,
         lowThreshold: data.lowThreshold ?? null,
         status,
-        updatedBy:    request.auth?.token?.email ?? 'admin',
-        updatedAt:    now,
+        updatedBy: request.auth?.token?.email ?? 'admin',
+        updatedAt: now,
       });
       return { id: data.id };
     }
 
     const ref = db().collection('inventory_items').doc();
     await ref.set({
-      id:           ref.id,
-      categoryId:   data.categoryId,
-      name:         trimmedName,
-      image:        data.image ?? null,
-      unit:         data.unit ?? null,
-      quantity:     data.quantity,
+      id: ref.id,
+      categoryId: data.categoryId,
+      name: trimmedName,
+      image: data.image ?? null,
+      unit: data.unit ?? null,
+      quantity: data.quantity,
       lowThreshold: data.lowThreshold ?? null,
       status,
-      updatedBy:    request.auth?.token?.email ?? 'admin',
-      updatedAt:    now,
-      isActive:     true,
+      updatedBy: request.auth?.token?.email ?? 'admin',
+      updatedAt: now,
+      isActive: true,
     });
     return { id: ref.id };
   },
@@ -299,7 +353,7 @@ export const archiveInventoryItem = functions.https.onCall(
       throw new functions.https.HttpsError('not-found', `Item not found: ${id}`);
     }
     await ref.update({
-      isActive:  false,
+      isActive: false,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     return { id };
@@ -327,17 +381,20 @@ const categoryCache = new Map<string, Promise<{ lowThreshold: number | null } | 
 
 async function readCategoryThreshold(categoryId: string): Promise<number | null> {
   if (!categoryCache.has(categoryId)) {
-    categoryCache.set(categoryId, (async () => {
-      try {
-        const snap = await db().doc(`inventory_categories/${categoryId}`).get();
-        if (!snap.exists) return null;
-        const d = snap.data() as { lowThreshold?: number | null };
-        return { lowThreshold: typeof d.lowThreshold === 'number' ? d.lowThreshold : null };
-      } catch (err) {
-        console.warn('[onInventoryItemWrite] category read failed:', categoryId, err);
-        return null;
-      }
-    })());
+    categoryCache.set(
+      categoryId,
+      (async () => {
+        try {
+          const snap = await db().doc(`inventory_categories/${categoryId}`).get();
+          if (!snap.exists) return null;
+          const d = snap.data() as { lowThreshold?: number | null };
+          return { lowThreshold: typeof d.lowThreshold === 'number' ? d.lowThreshold : null };
+        } catch (err) {
+          console.warn('[onInventoryItemWrite] category read failed:', categoryId, err);
+          return null;
+        }
+      })(),
+    );
   }
   const cached = await categoryCache.get(categoryId)!;
   return cached?.lowThreshold ?? null;
@@ -348,7 +405,7 @@ export const onInventoryItemWrite = functions.firestore.onDocumentWritten(
   async (event) => {
     const itemId = event.params.itemId;
     const before = (event.data?.before?.data() as ItemDoc | undefined) ?? null;
-    const after  = (event.data?.after?.data()  as ItemDoc | undefined) ?? null;
+    const after = (event.data?.after?.data() as ItemDoc | undefined) ?? null;
 
     // Deletion. No projection to clean up (items aren't customer-facing).
     // We don't write a "deleted" audit row — soft-delete via isActive
@@ -384,21 +441,23 @@ export const onInventoryItemWrite = functions.firestore.onDocumentWritten(
 
     const beforeStatus = deriveItemStatus(beforeQty, effectiveThreshold);
 
-    await db().collection('inventory_logs').add({
-      kind:           'item',
-      targetId:       itemId,
-      categoryId,
-      // Legacy `teaId` field — mirrors targetId on item rows so the
-      // existing audit viewer's by-target query still works during
-      // the transition window.
-      teaId:          itemId,
-      previousValue:  beforeQty,
-      newValue:       quantity,
-      employeeName:   after.updatedBy ?? 'unknown',
-      previousStatus: beforeStatus,
-      newStatus,
-      updatedAt:      admin.firestore.FieldValue.serverTimestamp(),
-    });
+    await db()
+      .collection('inventory_logs')
+      .add({
+        kind: 'item',
+        targetId: itemId,
+        categoryId,
+        // Legacy `teaId` field — mirrors targetId on item rows so the
+        // existing audit viewer's by-target query still works during
+        // the transition window.
+        teaId: itemId,
+        previousValue: beforeQty,
+        newValue: quantity,
+        employeeName: after.updatedBy ?? 'unknown',
+        previousStatus: beforeStatus,
+        newStatus,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
   },
 );
 
@@ -453,10 +512,7 @@ export const deleteInventoryCategory = functions.https.onCall(
     // count so the admin sees the full impact; cascade then deletes
     // them too (the audit log entries survive — those live in
     // /inventory_logs and we don't touch that collection).
-    const itemsSnap = await db()
-      .collection('inventory_items')
-      .where('categoryId', '==', id)
-      .get();
+    const itemsSnap = await db().collection('inventory_items').where('categoryId', '==', id).get();
     const itemCount = itemsSnap.size;
 
     if (itemCount > 0 && cascade !== true) {
@@ -470,16 +526,18 @@ export const deleteInventoryCategory = functions.https.onCall(
     // batched delete fails partway. Captures admin identity, item
     // count, and category name for context.
     const categoryName = String((snap.data() as { name?: string }).name ?? id);
-    await db().collection('inventory_logs').add({
-      action:        itemCount > 0 ? 'category_delete_cascade' : 'category_delete',
-      category:      id,
-      targetId:      id,
-      categoryName,
-      itemsDeleted:  itemCount,
-      employeeName:  request.auth.token.email ?? request.auth.uid ?? 'admin',
-      employeeUid:   request.auth.uid,
-      updatedAt:     admin.firestore.FieldValue.serverTimestamp(),
-    });
+    await db()
+      .collection('inventory_logs')
+      .add({
+        action: itemCount > 0 ? 'category_delete_cascade' : 'category_delete',
+        category: id,
+        targetId: id,
+        categoryName,
+        itemsDeleted: itemCount,
+        employeeName: request.auth.token.email ?? request.auth.uid ?? 'admin',
+        employeeUid: request.auth.uid,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
 
     // Cascade delete child items in chunks of 400 (well under the
     // 500-op batch cap). Then delete the category in a final batch.
@@ -532,16 +590,18 @@ export const deleteInventoryItem = functions.https.onCall(
     }
     const data = snap.data() as { name?: string; categoryId?: string };
 
-    await db().collection('inventory_logs').add({
-      action:       'item_delete',
-      category:     data.categoryId ?? '',
-      targetId:     id,
-      teaId:        id,           // legacy mirror (see archive log shape)
-      itemName:     data.name ?? id,
-      employeeName: request.auth.token.email ?? request.auth.uid ?? 'admin',
-      employeeUid:  request.auth.uid,
-      updatedAt:    admin.firestore.FieldValue.serverTimestamp(),
-    });
+    await db()
+      .collection('inventory_logs')
+      .add({
+        action: 'item_delete',
+        category: data.categoryId ?? '',
+        targetId: id,
+        teaId: id, // legacy mirror (see archive log shape)
+        itemName: data.name ?? id,
+        employeeName: request.auth.token.email ?? request.auth.uid ?? 'admin',
+        employeeUid: request.auth.uid,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
 
     await ref.delete();
     return { id };

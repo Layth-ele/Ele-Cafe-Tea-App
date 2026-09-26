@@ -29,7 +29,7 @@
  */
 
 import * as functions from 'firebase-functions/v2';
-import { auth as adminAuth, firestore as adminFirestore } from 'firebase-admin';
+import { auth as adminAuth, firestore as adminFirestore } from './lib/admin';
 import { emailBrandFrom, type EmailBrand } from './lib/emailLayout';
 import { buildAuthEmail, type AuthEmailKind } from './lib/authEmailContent';
 import { emailLang } from './lib/emailLayout';
@@ -75,7 +75,7 @@ async function enforceEmailRateLimit(opts: {
       docRef,
       {
         timestamps: next,
-        updatedAt:  adminFirestore.FieldValue.serverTimestamp(),
+        updatedAt: adminFirestore.FieldValue.serverTimestamp(),
       },
       { merge: true },
     );
@@ -107,14 +107,19 @@ async function padResponseTo(startMs: number, minTotalMs: number): Promise<void>
 // shared Ele Café email layout. Brand details and the welcome-points
 // amount are read from Admin → Settings on every send.
 
-async function loadAuthEmailContext(): Promise<{ brand: EmailBrand; welcomePoints: number; creditValuePer1000: number }> {
+async function loadAuthEmailContext(): Promise<{
+  brand: EmailBrand;
+  welcomePoints: number;
+  creditValuePer1000: number;
+}> {
   let d: Record<string, unknown> = {};
   try {
     d = (await adminFirestore().doc('settings/global').get()).data() ?? {};
   } catch (err) {
     console.warn('[authEmail] settings read failed, using defaults:', err);
   }
-  const num = (v: unknown, dflt: number) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : dflt);
+  const num = (v: unknown, dflt: number) =>
+    typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : dflt;
   return {
     brand: emailBrandFrom(d),
     welcomePoints: num(d.welcomeBonusPoints, 500),
@@ -156,14 +161,14 @@ function getSendEmail(): SendEmailFn {
       res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type':  'application/json',
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from:    opts.from ?? 'Ele Café <noreply@elecafe.ca>',
-          to:      [opts.to],
+          from: opts.from ?? 'Ele Café <noreply@elecafe.ca>',
+          to: [opts.to],
           subject: opts.subject,
-          html:    opts.html,
+          html: opts.html,
           ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
         }),
       });
@@ -192,9 +197,9 @@ function getSendEmail(): SendEmailFn {
 const POST_ACTION_URL = 'https://elecafe.ca/account';
 const ACTION_SETTINGS = {
   url: POST_ACTION_URL,
-  handleCodeInApp: false,    // false = Firebase's hosted action handler
-                              //         processes the code, then redirects
-                              //         to POST_ACTION_URL on success.
+  handleCodeInApp: false, // false = Firebase's hosted action handler
+  //         processes the code, then redirects
+  //         to POST_ACTION_URL on success.
 };
 
 // ── Audit log helper ───────────────────────────────────────────────────────
@@ -210,19 +215,18 @@ async function logAuthEmail(opts: {
   uid?: string;
   triggeredBy?: string;
 }) {
-  // Lazy-import firestore to avoid pulling firebase-admin into modules
-  // that don't need it. The first call pays the import cost; subsequent
-  // calls hit the require cache.
-  const { firestore } = await import('firebase-admin');
+  const firestore = adminFirestore;
   try {
-    await firestore().collection('emailLog').add({
-      kind:        opts.kind,
-      to:          opts.to,
-      uid:         opts.uid ?? null,
-      triggeredBy: opts.triggeredBy ?? null,
-      sentAt:      firestore.FieldValue.serverTimestamp(),
-      transport:   'resend',
-    });
+    await firestore()
+      .collection('emailLog')
+      .add({
+        kind: opts.kind,
+        to: opts.to,
+        uid: opts.uid ?? null,
+        triggeredBy: opts.triggeredBy ?? null,
+        sentAt: firestore.FieldValue.serverTimestamp(),
+        transport: 'resend',
+      });
   } catch (err) {
     // Don't fail the email send just because audit logging failed —
     // the customer-facing event is more important than the log row.
@@ -233,7 +237,7 @@ async function logAuthEmail(opts: {
 // ── Shared callable boilerplate ────────────────────────────────────────────
 
 const CALLABLE_OPTS = {
-  region:  'us-central1',
+  region: 'us-central1',
   secrets: ['RESEND_API_KEY'] as string[],
   // 30s is generous — link generation + Resend POST typically takes
   // 800-1500ms total. Cold starts can push it to 3-4s.
@@ -258,75 +262,76 @@ const CALLABLE_OPTS = {
 // Requires the user to be authenticated (otherwise anyone could spam
 // arbitrary addresses with verify-emails — even branded ones).
 
-export const sendBrandedVerifyEmail = functions.https.onCall(
-  CALLABLE_OPTS,
-  async (request) => {
-    if (!request.auth) {
-      throw new functions.https.HttpsError(
-        'unauthenticated', 'Must be signed in to request a verification email.',
-      );
-    }
+export const sendBrandedVerifyEmail = functions.https.onCall(CALLABLE_OPTS, async (request) => {
+  if (!request.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'Must be signed in to request a verification email.',
+    );
+  }
 
-    const uid = request.auth.uid;
+  const uid = request.auth.uid;
 
-    // Rate limit: 5 verify-email sends per hour per uid. Closes the
-    // abuse path called out in the pre-audit TODO — an authenticated
-    // user could otherwise hammer the resend button (or script the
-    // callable) to inflate our Resend cost / pollute their own inbox.
-    // The /emailQuota/{uid} doc tracks the recent send timestamps.
-    //
-    // Why per-uid and not per-IP: the callable already requires auth,
-    // so uid is the strongest abuser identity we have. App Check
-    // enforcement (CALLABLE_OPTS.enforceAppCheck) blocks the
-    // unauthenticated-from-script case at the edge.
-    //
-    // 5/hour matches Firebase Auth's own throttling for password-reset
-    // emails sent via the client SDK — same UX expectation, same cap.
-    const rl = await enforceEmailRateLimit({
-      key:         uid,
-      windowMs:    60 * 60 * 1000,
-      maxInWindow: 5,
-    });
-    if (!rl.allowed) {
-      // 'resource-exhausted' is the standard callable-functions code for
-      // throttling. Clients can render the retryAfterMs as a friendly
-      // "try again in N minutes" message instead of a generic toast.
-      throw new functions.https.HttpsError(
-        'resource-exhausted',
-        `Too many verification emails requested. Please try again in ${Math.ceil(rl.retryAfterMs / 60000)} minute(s).`,
-        { retryAfterMs: rl.retryAfterMs },
-      );
-    }
+  // Rate limit: 5 verify-email sends per hour per uid. Closes the
+  // abuse path called out in the pre-audit TODO — an authenticated
+  // user could otherwise hammer the resend button (or script the
+  // callable) to inflate our Resend cost / pollute their own inbox.
+  // The /emailQuota/{uid} doc tracks the recent send timestamps.
+  //
+  // Why per-uid and not per-IP: the callable already requires auth,
+  // so uid is the strongest abuser identity we have. App Check
+  // enforcement (CALLABLE_OPTS.enforceAppCheck) blocks the
+  // unauthenticated-from-script case at the edge.
+  //
+  // 5/hour matches Firebase Auth's own throttling for password-reset
+  // emails sent via the client SDK — same UX expectation, same cap.
+  const rl = await enforceEmailRateLimit({
+    key: uid,
+    windowMs: 60 * 60 * 1000,
+    maxInWindow: 5,
+  });
+  if (!rl.allowed) {
+    // 'resource-exhausted' is the standard callable-functions code for
+    // throttling. Clients can render the retryAfterMs as a friendly
+    // "try again in N minutes" message instead of a generic toast.
+    throw new functions.https.HttpsError(
+      'resource-exhausted',
+      `Too many verification emails requested. Please try again in ${Math.ceil(rl.retryAfterMs / 60000)} minute(s).`,
+      { retryAfterMs: rl.retryAfterMs },
+    );
+  }
 
-    const user = await adminAuth().getUser(uid);
-    const email = user.email;
-    if (!email) {
-      throw new functions.https.HttpsError(
-        'failed-precondition', 'Account has no email address.',
-      );
-    }
-    if (user.emailVerified) {
-      // Soft-success — return ok without sending. The client UI shows
-      // a "your email is already verified" toast either way.
-      return { ok: true, alreadyVerified: true };
-    }
+  const user = await adminAuth().getUser(uid);
+  const email = user.email;
+  if (!email) {
+    throw new functions.https.HttpsError('failed-precondition', 'Account has no email address.');
+  }
+  if (user.emailVerified) {
+    // Soft-success — return ok without sending. The client UI shows
+    // a "your email is already verified" toast either way.
+    return { ok: true, alreadyVerified: true };
+  }
 
-    const link = await adminAuth().generateEmailVerificationLink(email, ACTION_SETTINGS);
-    const ctx = await loadAuthEmailContext();
-    const { subject, html } = buildAuthEmail('verify-email', { ...ctx, link, email, lang: emailLang((request.data as { lang?: unknown } | null)?.lang) });
+  const link = await adminAuth().generateEmailVerificationLink(email, ACTION_SETTINGS);
+  const ctx = await loadAuthEmailContext();
+  const { subject, html } = buildAuthEmail('verify-email', {
+    ...ctx,
+    link,
+    email,
+    lang: emailLang((request.data as { lang?: unknown } | null)?.lang),
+  });
 
-    await getSendEmail()({
-      to:      email,
-      subject,
-      html,
-      from:    'Ele Café <noreply@elecafe.ca>',
-      replyTo: ctx.brand.email,
-    });
-    await logAuthEmail({ kind: 'verify-email', to: email, uid, triggeredBy: uid });
+  await getSendEmail()({
+    to: email,
+    subject,
+    html,
+    from: 'Ele Café <noreply@elecafe.ca>',
+    replyTo: ctx.brand.email,
+  });
+  await logAuthEmail({ kind: 'verify-email', to: email, uid, triggeredBy: uid });
 
-    return { ok: true };
-  },
-);
+  return { ok: true };
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. sendBrandedPasswordReset
@@ -370,105 +375,107 @@ export const sendBrandedVerifyEmail = functions.https.onCall(
 //   ("If an account exists for that email, we just sent a reset
 //   link"). That's the standard CASL/CWE-204-compliant pattern.
 
-export const sendBrandedPasswordReset = functions.https.onCall(
-  CALLABLE_OPTS,
-  async (request) => {
-    const startMs = Date.now();
-    const data = request.data as { email?: string; lang?: string };
-    const email = String(data?.email ?? '').trim().toLowerCase();
+export const sendBrandedPasswordReset = functions.https.onCall(CALLABLE_OPTS, async (request) => {
+  const startMs = Date.now();
+  const data = request.data as { email?: string; lang?: string };
+  const email = String(data?.email ?? '')
+    .trim()
+    .toLowerCase();
 
-    // Format check is OK to surface as an error — "not a valid email
-    // format" is not an enumeration signal (any address you type checks
-    // the same regex regardless of whether it's registered).
-    if (!email || !email.includes('@')) {
-      throw new functions.https.HttpsError(
-        'invalid-argument', 'A valid email address is required.',
-      );
-    }
+  // Format check is OK to surface as an error — "not a valid email
+  // format" is not an enumeration signal (any address you type checks
+  // the same regex regardless of whether it's registered).
+  if (!email || !email.includes('@')) {
+    throw new functions.https.HttpsError('invalid-argument', 'A valid email address is required.');
+  }
 
-    // Per-email rate limit. 3 sends per hour. Throwing
-    // resource-exhausted is safe here — it only fires on emails that
-    // have already been requested, so the signal an attacker gets is
-    // "someone has asked to reset this address recently" not "this
-    // address is registered or not".
-    const rl = await enforceEmailRateLimit({
-      key:         `pwreset:${email}`,
-      windowMs:    60 * 60 * 1000,
-      maxInWindow: 3,
-    });
-    if (!rl.allowed) {
-      // Equalise timing on rate-limit errors too so the response time
-      // doesn't reveal whether the limiter knew the email or not.
+  // Per-email rate limit. 3 sends per hour. Throwing
+  // resource-exhausted is safe here — it only fires on emails that
+  // have already been requested, so the signal an attacker gets is
+  // "someone has asked to reset this address recently" not "this
+  // address is registered or not".
+  const rl = await enforceEmailRateLimit({
+    key: `pwreset:${email}`,
+    windowMs: 60 * 60 * 1000,
+    maxInWindow: 3,
+  });
+  if (!rl.allowed) {
+    // Equalise timing on rate-limit errors too so the response time
+    // doesn't reveal whether the limiter knew the email or not.
+    await padResponseTo(startMs, PWRESET_MIN_RESPONSE_MS);
+    throw new functions.https.HttpsError(
+      'resource-exhausted',
+      `Too many reset requests for this email. Please try again in ${Math.ceil(rl.retryAfterMs / 60000)} minute(s).`,
+      { retryAfterMs: rl.retryAfterMs },
+    );
+  }
+
+  // Step 1 — Look up the user. getUserByEmail throws auth/user-not-found
+  // for missing accounts. Pre-hardening this branch returned a "false"
+  // flag to the client; post-hardening we still log it for admin
+  // forensics but the wire response is identical to the success path.
+  let userExists = true;
+  try {
+    await adminAuth().getUserByEmail(email);
+  } catch (err: unknown) {
+    const code = (err as { code?: string })?.code;
+    if (code === 'auth/user-not-found') {
+      userExists = false;
+      console.log(`[authEmail] Reset requested for unknown email: ${email}`);
+    } else {
+      // Any other lookup error (network, permission, etc.) — fail
+      // closed. Better to surface a generic error than to send a
+      // reset we're not sure about.
+      console.error('[authEmail] getUserByEmail failed:', err);
       await padResponseTo(startMs, PWRESET_MIN_RESPONSE_MS);
-      throw new functions.https.HttpsError(
-        'resource-exhausted',
-        `Too many reset requests for this email. Please try again in ${Math.ceil(rl.retryAfterMs / 60000)} minute(s).`,
-        { retryAfterMs: rl.retryAfterMs },
-      );
+      throw new functions.https.HttpsError('internal', 'Could not check account.');
     }
+  }
 
-    // Step 1 — Look up the user. getUserByEmail throws auth/user-not-found
-    // for missing accounts. Pre-hardening this branch returned a "false"
-    // flag to the client; post-hardening we still log it for admin
-    // forensics but the wire response is identical to the success path.
-    let userExists = true;
-    try {
-      await adminAuth().getUserByEmail(email);
-    } catch (err: unknown) {
-      const code = (err as { code?: string })?.code;
-      if (code === 'auth/user-not-found') {
-        userExists = false;
-        console.log(`[authEmail] Reset requested for unknown email: ${email}`);
-      } else {
-        // Any other lookup error (network, permission, etc.) — fail
-        // closed. Better to surface a generic error than to send a
-        // reset we're not sure about.
-        console.error('[authEmail] getUserByEmail failed:', err);
-        await padResponseTo(startMs, PWRESET_MIN_RESPONSE_MS);
-        throw new functions.https.HttpsError('internal', 'Could not check account.');
-      }
-    }
-
-    // Not registered → log, equalise timing, return success-shaped
-    // response. The client can't tell this branch apart from the
-    // happy path.
-    if (!userExists) {
-      await padResponseTo(startMs, PWRESET_MIN_RESPONSE_MS);
-      return { ok: true };
-    }
-
-    // Step 2 — Generate the action link AND send the email. Both
-    // failures below are real errors (not enumeration leaks — they
-    // happen post-existence-confirmation), so we throw normally with
-    // timing equalisation so the response time still doesn't leak.
-    let link: string;
-    try {
-      link = await adminAuth().generatePasswordResetLink(email, ACTION_SETTINGS);
-    } catch (err: unknown) {
-      console.error('[authEmail] generatePasswordResetLink failed:', err);
-      await padResponseTo(startMs, PWRESET_MIN_RESPONSE_MS);
-      throw new functions.https.HttpsError('internal', 'Could not generate reset link.');
-    }
-
-    const ctx = await loadAuthEmailContext();
-    const { subject, html } = buildAuthEmail('password-reset', { ...ctx, link, email, lang: emailLang(data.lang) });
-
-    await getSendEmail()({
-      to:      email,
-      subject,
-      html,
-      from:    'Ele Café <noreply@elecafe.ca>',
-      replyTo: ctx.brand.email,
-    });
-    await logAuthEmail({ kind: 'password-reset', to: email, triggeredBy: request.auth?.uid });
-
-    // Happy path: the email send + Admin SDK link gen already took
-    // ~600ms, so padResponseTo is usually a no-op here. Belt-and-
-    // suspenders for unusually fast Resend responses.
+  // Not registered → log, equalise timing, return success-shaped
+  // response. The client can't tell this branch apart from the
+  // happy path.
+  if (!userExists) {
     await padResponseTo(startMs, PWRESET_MIN_RESPONSE_MS);
     return { ok: true };
-  },
-);
+  }
+
+  // Step 2 — Generate the action link AND send the email. Both
+  // failures below are real errors (not enumeration leaks — they
+  // happen post-existence-confirmation), so we throw normally with
+  // timing equalisation so the response time still doesn't leak.
+  let link: string;
+  try {
+    link = await adminAuth().generatePasswordResetLink(email, ACTION_SETTINGS);
+  } catch (err: unknown) {
+    console.error('[authEmail] generatePasswordResetLink failed:', err);
+    await padResponseTo(startMs, PWRESET_MIN_RESPONSE_MS);
+    throw new functions.https.HttpsError('internal', 'Could not generate reset link.');
+  }
+
+  const ctx = await loadAuthEmailContext();
+  const { subject, html } = buildAuthEmail('password-reset', {
+    ...ctx,
+    link,
+    email,
+    lang: emailLang(data.lang),
+  });
+
+  await getSendEmail()({
+    to: email,
+    subject,
+    html,
+    from: 'Ele Café <noreply@elecafe.ca>',
+    replyTo: ctx.brand.email,
+  });
+  await logAuthEmail({ kind: 'password-reset', to: email, triggeredBy: request.auth?.uid });
+
+  // Happy path: the email send + Admin SDK link gen already took
+  // ~600ms, so padResponseTo is usually a no-op here. Belt-and-
+  // suspenders for unusually fast Resend responses.
+  await padResponseTo(startMs, PWRESET_MIN_RESPONSE_MS);
+  return { ok: true };
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 3. sendBrandedEmailChange
@@ -483,70 +490,77 @@ export const sendBrandedPasswordReset = functions.https.onCall(
 // takeover), that's a separate notification — see the TODO at the
 // bottom of this file.
 
-export const sendBrandedEmailChange = functions.https.onCall(
-  CALLABLE_OPTS,
-  async (request) => {
-    if (!request.auth) {
+export const sendBrandedEmailChange = functions.https.onCall(CALLABLE_OPTS, async (request) => {
+  if (!request.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'Must be signed in to change your email.',
+    );
+  }
+  const data = request.data as { newEmail?: string; lang?: string };
+  const newEmail = String(data?.newEmail ?? '')
+    .trim()
+    .toLowerCase();
+  if (!newEmail || !newEmail.includes('@')) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'A valid new email address is required.',
+    );
+  }
+
+  const uid = request.auth.uid;
+  const user = await adminAuth().getUser(uid);
+  const oldEmail = user.email;
+  if (!oldEmail) {
+    throw new functions.https.HttpsError('failed-precondition', 'Account has no current email.');
+  }
+  if (oldEmail === newEmail) {
+    throw new functions.https.HttpsError(
+      'failed-precondition',
+      'New email is the same as the current one.',
+    );
+  }
+
+  // generateVerifyAndChangeEmailLink (Firebase Admin SDK ≥11.10) creates
+  // a link that, when clicked, performs the actual email change atomically
+  // — no separate "now switch the email" step needed. Older SDKs use
+  // generateEmailVerificationLink with a custom continueUrl, but the
+  // dedicated method is cleaner and handles the security model correctly.
+  let link: string;
+  try {
+    link = await adminAuth().generateVerifyAndChangeEmailLink(oldEmail, newEmail, ACTION_SETTINGS);
+  } catch (err: unknown) {
+    const code = (err as { code?: string })?.code;
+    if (code === 'auth/email-already-exists') {
       throw new functions.https.HttpsError(
-        'unauthenticated', 'Must be signed in to change your email.',
+        'already-exists',
+        'That email address is already in use.',
       );
     }
-    const data = request.data as { newEmail?: string; lang?: string };
-    const newEmail = String(data?.newEmail ?? '').trim().toLowerCase();
-    if (!newEmail || !newEmail.includes('@')) {
-      throw new functions.https.HttpsError(
-        'invalid-argument', 'A valid new email address is required.',
-      );
-    }
+    console.error('[authEmail] generateVerifyAndChangeEmailLink failed:', err);
+    throw new functions.https.HttpsError('internal', 'Could not generate change link.');
+  }
 
-    const uid = request.auth.uid;
-    const user = await adminAuth().getUser(uid);
-    const oldEmail = user.email;
-    if (!oldEmail) {
-      throw new functions.https.HttpsError('failed-precondition', 'Account has no current email.');
-    }
-    if (oldEmail === newEmail) {
-      throw new functions.https.HttpsError(
-        'failed-precondition', 'New email is the same as the current one.',
-      );
-    }
+  const ctx = await loadAuthEmailContext();
+  const { subject, html } = buildAuthEmail('email-change', {
+    ...ctx,
+    link,
+    email: oldEmail,
+    newEmail,
+    lang: emailLang(data.lang),
+  });
 
-    // generateVerifyAndChangeEmailLink (Firebase Admin SDK ≥11.10) creates
-    // a link that, when clicked, performs the actual email change atomically
-    // — no separate "now switch the email" step needed. Older SDKs use
-    // generateEmailVerificationLink with a custom continueUrl, but the
-    // dedicated method is cleaner and handles the security model correctly.
-    let link: string;
-    try {
-      link = await adminAuth().generateVerifyAndChangeEmailLink(
-        oldEmail, newEmail, ACTION_SETTINGS,
-      );
-    } catch (err: unknown) {
-      const code = (err as { code?: string })?.code;
-      if (code === 'auth/email-already-exists') {
-        throw new functions.https.HttpsError(
-          'already-exists', 'That email address is already in use.',
-        );
-      }
-      console.error('[authEmail] generateVerifyAndChangeEmailLink failed:', err);
-      throw new functions.https.HttpsError('internal', 'Could not generate change link.');
-    }
+  await getSendEmail()({
+    to: newEmail,
+    subject,
+    html,
+    from: 'Ele Café <noreply@elecafe.ca>',
+    replyTo: ctx.brand.email,
+  });
+  await logAuthEmail({ kind: 'email-change', to: newEmail, uid, triggeredBy: uid });
 
-    const ctx = await loadAuthEmailContext();
-    const { subject, html } = buildAuthEmail('email-change', { ...ctx, link, email: oldEmail, newEmail, lang: emailLang(data.lang) });
-
-    await getSendEmail()({
-      to:      newEmail,
-      subject,
-      html,
-      from:    'Ele Café <noreply@elecafe.ca>',
-      replyTo: ctx.brand.email,
-    });
-    await logAuthEmail({ kind: 'email-change', to: newEmail, uid, triggeredBy: uid });
-
-    return { ok: true };
-  },
-);
+  return { ok: true };
+});
 
 // ── TODO (future hardening) ────────────────────────────────────────────────
 //
