@@ -20,18 +20,24 @@
  */
 
 import {
-  getAuth,
+  initializeAuth,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  browserPopupRedirectResolver,
   connectAuthEmulator,
   onAuthStateChanged,
   signInAnonymously,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup as fbSignInWithPopup,
+  signInWithRedirect as fbSignInWithRedirect,
+  getRedirectResult as fbGetRedirectResult,
   GoogleAuthProvider,
   reload,
+  type Auth,
+  type AuthProvider,
   type User,
 } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -42,7 +48,13 @@ import type { Lang } from '@/i18n/translations';
 /** Account emails go out in the language the site is showing. */
 const siteLang = (): Lang => useLanguageStore.getState().language;
 
-export const auth = getAuth(app);
+// initializeAuth (not getAuth) so the Google sign-in helper — a ~90 KB
+// /__/auth/iframe.js plus Google's gapi script — isn't loaded on every
+// page view. Only the popup/redirect calls below bring it in, by passing
+// the resolver explicitly. Same persistence order getAuth uses.
+export const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
+});
 if (USE_EMULATORS) connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
 
 // Functions instance — region must match the deployed Cloud Functions
@@ -118,15 +130,40 @@ export async function verifyBeforeUpdateEmail(_user: User, newEmail: string): Pr
   await _sendBrandedChange({ newEmail, lang: siteLang() });
 }
 
+// ── Google sign-in (popup, with redirect fallback) ─────────────────────────
+// A redirect sign-in sets this flag, so only the page load that returns
+// from Google checks for a result (and loads the iframe to do it).
+const REDIRECT_FLAG = 'ele:authRedirect';
+
+export function signInWithPopup(a: Auth, provider: AuthProvider) {
+  return fbSignInWithPopup(a, provider, browserPopupRedirectResolver);
+}
+
+export function signInWithRedirect(a: Auth, provider: AuthProvider) {
+  try {
+    sessionStorage.setItem(REDIRECT_FLAG, '1');
+  } catch {
+    /* storage blocked: the result check below is skipped */
+  }
+  return fbSignInWithRedirect(a, provider, browserPopupRedirectResolver);
+}
+
+export async function getRedirectResult(a: Auth) {
+  try {
+    if (sessionStorage.getItem(REDIRECT_FLAG) !== '1') return null;
+    sessionStorage.removeItem(REDIRECT_FLAG);
+  } catch {
+    return null;
+  }
+  return fbGetRedirectResult(a, browserPopupRedirectResolver);
+}
+
 export {
   onAuthStateChanged,
   signInAnonymously,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   GoogleAuthProvider,
   reload,
 };

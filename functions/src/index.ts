@@ -25,6 +25,7 @@
  *   cd functions && npm run build && cd .. && firebase deploy --only functions
  */
 
+import * as zlib from 'node:zlib';
 import * as functions from 'firebase-functions/v2';
 import * as functionsV1 from 'firebase-functions/v1';
 import * as admin from './lib/admin';
@@ -6482,6 +6483,32 @@ function patchTemplateHead(template: string, h: SeoHeadPatch): string {
 /** Express response as handed to onRequest handlers. */
 type SeoResponse = import('express').Response;
 
+/**
+ * Firebase Hosting doesn't compress what a function returns, so pages from
+ * renderSeo went out as ~28 KB of plain HTML. Brotli/gzip them here (~6 KB);
+ * the CDN caches one copy per encoding (it already varies on
+ * Accept-Encoding).
+ */
+function compressHtmlResponses(req: functions.https.Request, res: SeoResponse): void {
+  const accept = String(req.headers['accept-encoding'] ?? '');
+  const enc = /\bbr\b/.test(accept) ? 'br' : /\bgzip\b/.test(accept) ? 'gzip' : null;
+  res.vary('Accept-Encoding');
+  if (!enc) return;
+  const send = res.send.bind(res);
+  res.send = ((body?: unknown) => {
+    if (typeof body !== 'string' || body.length < 1024 || res.headersSent) return send(body);
+    const buf =
+      enc === 'br'
+        ? zlib.brotliCompressSync(body, {
+            params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5 },
+          })
+        : zlib.gzipSync(body, { level: 6 });
+    res.set('Content-Encoding', enc);
+    if (!res.get('Content-Type')) res.set('Content-Type', 'text/html; charset=utf-8');
+    return send(buf);
+  }) as typeof res.send;
+}
+
 export const renderSeo = functions.https.onRequest(
   {
     region: 'us-central1',
@@ -6503,6 +6530,7 @@ export const renderSeo = functions.https.onRequest(
     concurrency: 80,
   },
   async (req, res) => {
+    compressHtmlResponses(req, res);
     // Safety net: never leave a visitor or crawler waiting. If a page
     // can't be built within 9 s (e.g. a slow cold start), serve the
     // plain app shell right away — the SPA still renders the page — and
