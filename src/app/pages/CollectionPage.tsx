@@ -25,21 +25,22 @@ import { ROUTES, SITE_BASE } from '@/lib/routes';
 import { useT, useLang } from '@/i18n/useT';
 import { NotFoundPage } from '@/app/pages/NotFoundPage';
 import { SEO_COLLECTIONS, SEO_COLLECTION_BY_SLUG } from '../../../functions/src/lib/seoCatalog';
+import { COLLECTION_GUIDES } from '../../../functions/src/lib/collectionGuides';
+import { faqJsonLd } from '../../../functions/src/lib/storeContent';
+import { HomeFaq } from '@/app/components/home/HomeGuideSections';
 
 function CollectionPage() {
   const t = useT();
   const lang = useLang();
   const { slug = '' } = useParams<{ slug: string }>();
   const def = SEO_COLLECTION_BY_SLUG[slug];
+  const guide = COLLECTION_GUIDES[slug];
   const { data: products = [], isLoading } = useTeasRealtime();
 
-  const teas = useMemo(
-    () => (def ? products.filter(p => def.match(p)) : []),
-    [def, products],
-  );
+  const teas = useMemo(() => (def ? products.filter((p) => def.match(p)) : []), [def, products]);
   // Sibling collections that currently have teas — internal links.
   const related = useMemo(
-    () => SEO_COLLECTIONS.filter(c => c.slug !== slug && products.some(p => c.match(p))),
+    () => SEO_COLLECTIONS.filter((c) => c.slug !== slug && products.some((p) => c.match(p))),
     [slug, products],
   );
 
@@ -47,7 +48,7 @@ function CollectionPage() {
 
   const title = lang === 'fr' ? def.titleFr : def.title;
   const intro = lang === 'fr' ? def.descriptionFr : def.description;
-  const url   = `${SITE_BASE}${ROUTES.COLLECTION(def.slug)}`;
+  const url = `${SITE_BASE}${ROUTES.COLLECTION(def.slug)}`;
 
   return (
     <div className="pp-page">
@@ -57,18 +58,19 @@ function CollectionPage() {
         url={url}
         noIndex={!isLoading && teas.length === 0}
         breadcrumbs={[
-          { name: 'Home',     url: SITE_BASE },
+          { name: 'Home', url: SITE_BASE },
           { name: 'Our Teas', url: `${SITE_BASE}${ROUTES.PRODUCTS}` },
-          { name: def.title,  url },
+          { name: def.title, url },
         ]}
+        extraJsonLd={guide ? [faqJsonLd(guide.faq)] : undefined}
       />
       <div className="bc-page-wrap">
         <Breadcrumbs
           withoutSchema
           items={[
-            { name: 'Home',       url: ROUTES.HOME },
+            { name: 'Home', url: ROUTES.HOME },
             { name: t('Our Teas'), url: ROUTES.PRODUCTS },
-            { name: title,        url: ROUTES.COLLECTION(def.slug) },
+            { name: title, url: ROUTES.COLLECTION(def.slug) },
           ]}
         />
       </div>
@@ -85,7 +87,9 @@ function CollectionPage() {
       <div className="cl-body">
         {isLoading ? (
           <div className="pp-grid pp-grid-skel">
-            {Array.from({ length: 6 }, (_, i) => <ProductsCardSkeleton key={i} />)}
+            {Array.from({ length: 6 }, (_, i) => (
+              <ProductsCardSkeleton key={i} />
+            ))}
           </div>
         ) : teas.length > 0 ? (
           <div className="pp-grid pp-grid-results">
@@ -107,6 +111,17 @@ function CollectionPage() {
           </Link>
         </p>
 
+        {guide && (
+          <section className="cg-guide" aria-label={t('Guide')}>
+            {(lang === 'fr' ? guide.sectionsFr : guide.sections).map((sec) => (
+              <div key={sec.h} className="cg-guide-block">
+                <h2 className="cg-guide-h2">{sec.h}</h2>
+                <p className="cg-guide-p">{sec.p}</p>
+              </div>
+            ))}
+          </section>
+        )}
+
         {def.slug === 'matcha-powder' && (
           <>
             <CafeMenuFor id="matcha" />
@@ -114,11 +129,18 @@ function CollectionPage() {
           </>
         )}
 
+        {guide && (
+          <HomeFaq
+            items={lang === 'fr' ? guide.faqFr : guide.faq}
+            title={t('{name}: questions', { name: lang === 'fr' ? def.titleFr : def.title })}
+          />
+        )}
+
         {related.length > 0 && (
           <nav className="cl-related" aria-label={t('More tea collections')}>
             <h2 className="cl-related-title">{t('More tea collections')}</h2>
             <ul>
-              {related.map(c => (
+              {related.map((c) => (
                 <li key={c.slug}>
                   <Link to={ROUTES.COLLECTION(c.slug)}>{lang === 'fr' ? c.titleFr : c.title}</Link>
                 </li>

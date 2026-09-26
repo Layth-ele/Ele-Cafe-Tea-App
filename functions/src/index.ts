@@ -81,6 +81,7 @@ import {
   FOUNDING_YEAR,
   type StoreContent,
 } from './lib/storeContent';
+import { COLLECTION_GUIDES } from './lib/collectionGuides';
 import {
   REWARDS_TITLE,
   REWARDS_DESCRIPTION,
@@ -5426,8 +5427,30 @@ function patchHeadForCollection(
     ogType: 'website',
     ogImage: SEO_DEFAULT_OG,
     extraOgMeta: [],
-    extraJsonLd: [collectionLd, breadcrumbLd],
+    extraJsonLd: [
+      collectionLd,
+      breadcrumbLd,
+      ...(COLLECTION_GUIDES[def.slug] ? [faqJsonLd(COLLECTION_GUIDES[def.slug].faq)] : []),
+    ],
   });
+  const guide = COLLECTION_GUIDES[def.slug];
+  const guideHtml = guide
+    ? `
+        ${guide.sections
+          .map(
+            (sec) => `<section>
+          <h2>${seoEscHtml(sec.h)}</h2>
+          <p>${seoEscHtml(sec.p)}</p>
+        </section>`,
+          )
+          .join('\n        ')}
+        <section>
+          <h2>${seoEscHtml(def.title)}: questions</h2>
+          <dl>
+          ${guide.faq.map((f) => `<dt>${seoEscHtml(f.q)}</dt><dd>${seoEscHtml(f.a)}</dd>`).join('\n          ')}
+          </dl>
+        </section>`
+    : '';
 
   // Phase 8.3 — Inject a <noscript> body block listing the collection's
   // teas as semantic HTML. Crawlers + no-JS clients see real content
@@ -5471,6 +5494,7 @@ function patchHeadForCollection(
         </section>`
             : '<p>No teas currently match this collection.</p>'
         }
+        ${guideHtml}
         <p>Browse <a href="${seoEscHtml(SEO_SITE_BASE)}/products">all teas</a>.</p>
         ${seoContactHtml(SEO_STORE)}
       </article>

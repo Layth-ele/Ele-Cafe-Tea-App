@@ -1843,4 +1843,6 @@ export const STRINGS: Record<string, { fr: string }> = {
   'Tell us where you’d like to open, and we’ll take it from there.': {
     fr: 'Dites-nous où vous aimeriez ouvrir, et nous nous occupons du reste.',
   },
+  Guide: { fr: 'Guide' },
+  '{name}: questions': { fr: '{name} : questions fréquentes' },
 };
