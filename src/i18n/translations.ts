@@ -1854,4 +1854,9 @@ export const STRINGS: Record<string, { fr: string }> = {
   'A free tea sample is included with your order': {
     fr: 'Un échantillon de thé gratuit est inclus dans votre commande',
   },
+  'Taste it in Vancouver before you buy it online': {
+    fr: 'Goûtez-le à Vancouver avant de l’acheter en ligne',
+  },
+  'Taste it first at our café': { fr: 'Goûtez-le d’abord à notre café' },
+  'Free pickup': { fr: 'Cueillette gratuite' },
 };

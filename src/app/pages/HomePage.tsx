@@ -22,7 +22,14 @@ import { formatPricePerWeight } from '@/lib/priceFormat';
 import { useT, useTx, localizeTea, useLang } from '@/i18n/useT';
 import { ShopByMood, TeaGuide, WhyEleCafe, HomeFaq } from '@/app/components/home/HomeGuideSections';
 import { useStoreContent } from '@/hooks/useStoreContent';
-import { HOME_TITLE, buildHomeFaq, faqJsonLd, homeDescription, localBusinessLd } from '../../../functions/src/lib/storeContent';
+import { CafeTrustLine } from '@/app/components/CafeTrustLine';
+import {
+  HOME_TITLE,
+  buildHomeFaq,
+  faqJsonLd,
+  homeDescription,
+  localBusinessLd,
+} from '../../../functions/src/lib/storeContent';
 
 import { formatMoneyShort } from '@/lib/money';
 import { useVisibleCategoryIds } from '@/hooks/useVisibleCategoryIds';
@@ -35,8 +42,13 @@ function useDrawLine() {
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setDrawn(true); obs.disconnect(); } },
-      { threshold: 0.6 }
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setDrawn(true);
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.6 },
     );
     obs.observe(el);
     return () => obs.disconnect();
@@ -46,7 +58,13 @@ function useDrawLine() {
 }
 
 // ── Animated rule component ────────────────────────────────────────────────────
-function AnimatedRule({ direction = 'ltr', width = '48px' }: { direction?: 'ltr' | 'rtl'; width?: string }) {
+function AnimatedRule({
+  direction = 'ltr',
+  width = '48px',
+}: {
+  direction?: 'ltr' | 'rtl';
+  width?: string;
+}) {
   const { ref, drawn } = useDrawLine();
   return (
     <div
@@ -66,8 +84,16 @@ function AnimatedRule({ direction = 'ltr', width = '48px' }: { direction?: 'ltr'
 
 // ── Overline with animated underline ──────────────────────────────────────────
 function SectionHeader({
-  overline, title, direction = 'ltr', ruleWidth = '48px',
-}: { overline: string; title: string; direction?: 'ltr' | 'rtl'; ruleWidth?: string }) {
+  overline,
+  title,
+  direction = 'ltr',
+  ruleWidth = '48px',
+}: {
+  overline: string;
+  title: string;
+  direction?: 'ltr' | 'rtl';
+  ruleWidth?: string;
+}) {
   const { ref: overRef, drawn: overDrawn } = useDrawLine();
 
   return (
@@ -83,75 +109,124 @@ function SectionHeader({
           />
         </div>
       </div>
-      <h2 className="hp-section-h2">
-        {title}
-      </h2>
+      <h2 className="hp-section-h2">{title}</h2>
       <AnimatedRule direction={direction} width={ruleWidth} />
     </div>
   );
 }
 
 // ── Tea card with stepper ──────────────────────────────────────────────────────
-const TeaCard = memo(function TeaCard({ product, priority = false }: { product: Product; priority?: boolean }) {
+const TeaCard = memo(function TeaCard({
+  product,
+  priority = false,
+}: {
+  product: Product;
+  priority?: boolean;
+}) {
   const t = useT();
-  const addToCart      = useCart(s => s.addToCart);
-  const updateQuantity = useCart(s => s.updateQuantity);
-  const removeFromCart = useCart(s => s.removeFromCart);
+  const addToCart = useCart((s) => s.addToCart);
+  const updateQuantity = useCart((s) => s.updateQuantity);
+  const removeFromCart = useCart((s) => s.removeFromCart);
   const { fly } = useCartFly();
-  const id       = product.id ?? '';
-  const name     = product.name ?? '';
-  const nameFr   = product.nameFr ?? undefined;
+  const id = product.id ?? '';
+  const name = product.name ?? '';
+  const nameFr = product.nameFr ?? undefined;
   const displayName = localizeTea(product, useLang()).name;
-  const price    = product.price ?? 0;
-  const image    = product.image ?? '';
+  const price = product.price ?? 0;
+  const image = product.image ?? '';
   const category = product.category ?? '';
-  const slug     = product.slug ?? id;
+  const slug = product.slug ?? id;
   // Turn 6: dropped `stock` constant — inventory projection drives
   // availability now; cart line items no longer carry a stock cap.
   const available = isProductAvailable(product);
-  const cat      = categories.find(c => c.id === category)?.name ?? category;
+  const cat = categories.find((c) => c.id === category)?.name ?? category;
   // Only re-render this card when its own cart quantity changes.
-  const cartQty  = useCart(s => s.items.find(i => i.id === id)?.quantity ?? 0);
+  const cartQty = useCart((s) => s.items.find((i) => i.id === id)?.quantity ?? 0);
 
   const handleAdd = (e: React.MouseEvent<HTMLButtonElement>) => {
     // Defense-in-depth: disabled attribute is just visual.
     if (!available) return;
     // No drawer — shoppers keep browsing; the cart's own toast offers
     // "View cart" (and "Undo").
-    const result = addToCart({ id, name, nameFr, price, image, category, gstApplicable: product.gstApplicable ?? false });
+    const result = addToCart({
+      id,
+      name,
+      nameFr,
+      price,
+      image,
+      category,
+      gstApplicable: product.gstApplicable ?? false,
+    });
     if (result.added) fly(e.currentTarget, '+1');
   };
   const handleInc = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!available) return;
-    addToCart({ id, name, nameFr, price, image, category, gstApplicable: product.gstApplicable ?? false });
+    addToCart({
+      id,
+      name,
+      nameFr,
+      price,
+      image,
+      category,
+      gstApplicable: product.gstApplicable ?? false,
+    });
   };
-  const handleDec = (e: React.MouseEvent) => { e.preventDefault(); cartQty <= 1 ? removeFromCart(id) : updateQuantity(id, cartQty - 1); };
+  const handleDec = (e: React.MouseEvent) => {
+    e.preventDefault();
+    cartQty <= 1 ? removeFromCart(id) : updateQuantity(id, cartQty - 1);
+  };
 
   return (
     <div className="tea-card">
       <Link to={ROUTES.TEA_PROFILE(category, toSlug(slug))}>
         <div className="tea-card-img">
-          <LazyImage src={image} alt={displayName} aspectRatio="1/1" objectFit="cover" borderRadius="var(--radius-lg)" priority={priority} />
+          <LazyImage
+            src={image}
+            alt={displayName}
+            aspectRatio="1/1"
+            objectFit="cover"
+            borderRadius="var(--radius-lg)"
+            priority={priority}
+          />
           {product.isOrganic && <span className="tea-tag tea-tag-green">{t('Organic')}</span>}
-          {product.caffeine === 'None' && !product.isOrganic && <span className="tea-tag">{t('Caffeine-free')}</span>}
-          {cartQty > 0 && (
-            <span className="hp-tc-cart-badge">{cartQty}</span>
+          {product.caffeine === 'None' && !product.isOrganic && (
+            <span className="tea-tag">{t('Caffeine-free')}</span>
           )}
+          {cartQty > 0 && <span className="hp-tc-cart-badge">{cartQty}</span>}
         </div>
       </Link>
       <span className="tea-cat">{t(cat)}</span>
-      <Link to={ROUTES.TEA_PROFILE(category, toSlug(slug))}><span className="tea-name">{displayName}</span></Link>
+      <Link to={ROUTES.TEA_PROFILE(category, toSlug(slug))}>
+        <span className="tea-name">{displayName}</span>
+      </Link>
       <span className="tea-price">{formatPricePerWeight(price, product)}</span>
       {!available ? (
-        <button className="btn-add hp-tc-soldout" disabled>{t('Sold Out')}</button>
+        <button className="btn-add hp-tc-soldout" disabled>
+          {t('Sold Out')}
+        </button>
       ) : cartQty === 0 ? (
-        <button className="btn-add tc-add-btn" onClick={handleAdd}>{t('Add to Cart')}</button>
+        <button className="btn-add tc-add-btn" onClick={handleAdd}>
+          {t('Add to Cart')}
+        </button>
       ) : (
         <div className="tc-stepper">
-          <button className="tc-stepper-btn" onClick={handleDec} aria-label={t('Decrease')}><svg width="10" height="2" viewBox="0 0 10 2" fill="none"><path d="M1 1h8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg></button>
+          <button className="tc-stepper-btn" onClick={handleDec} aria-label={t('Decrease')}>
+            <svg width="10" height="2" viewBox="0 0 10 2" fill="none">
+              <path d="M1 1h8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          </button>
           <span className="tc-stepper-qty">{cartQty}</span>
-          <button className="tc-stepper-btn" onClick={handleInc} aria-label={t('Increase')}><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg></button>
+          <button className="tc-stepper-btn" onClick={handleInc} aria-label={t('Increase')}>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path
+                d="M5 1v8M1 5h8"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
         </div>
       )}
     </div>
@@ -173,9 +248,15 @@ export function HomePage() {
   // Phase 5 polish: wire StaleIndicator. When the cache is stale AND
   // a background refetch is in-flight, the indicator shows so users
   // know fresh data is on the way without dimming the visible list.
-  const { data: featured = [], isLoading: loading, isStale: featuredStale, isFetching: featuredFetching, isError: featuredIsError } = useQuery({
+  const {
+    data: featured = [],
+    isLoading: loading,
+    isStale: featuredStale,
+    isFetching: featuredFetching,
+    isError: featuredIsError,
+  } = useQuery({
     queryKey: queryKeys.featured(),
-    queryFn:  fetchFeaturedTeas,
+    queryFn: fetchFeaturedTeas,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -189,37 +270,91 @@ export function HomePage() {
   // prefetchRoutesForPage existed in src/lib/prefetchRoute.ts but was
   // never wired in. Sidecar pattern: fires once on mount, no cleanup
   // needed because the underlying dynamic-import call is idempotent.
-  useEffect(() => { prefetchRoutesForPage('home'); }, []);
+  useEffect(() => {
+    prefetchRoutesForPage('home');
+  }, []);
 
   // Live active-tea count (aggregation query). Copy omits the number
   // while loading or on error rather than showing a hard-coded one.
-  const { data: teaCount = 0 } = useQuery({ queryKey: queryKeys.teaCount(), queryFn: fetchActiveTeaCount, staleTime: 10 * 60 * 1000 });
+  const { data: teaCount = 0 } = useQuery({
+    queryKey: queryKeys.teaCount(),
+    queryFn: fetchActiveTeaCount,
+    staleTime: 10 * 60 * 1000,
+  });
   const store = useStoreContent();
   const lang = useLang();
 
-  const visibleCats = useVisibleCategoryIds();  // Google gets the English FAQ; visitors see their language.
+  const visibleCats = useVisibleCategoryIds(); // Google gets the English FAQ; visitors see their language.
   const faq = buildHomeFaq(store);
   const faqShown = lang === 'fr' ? buildHomeFaq(store, 'fr') : faq;
 
   const PILLARS = [
     {
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M1 8h22M12 8V3M9 3h6"/></svg>,
+      icon: (
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="3" y="8" width="18" height="13" rx="2" />
+          <path d="M1 8h22M12 8V3M9 3h6" />
+        </svg>
+      ),
       lucideIcon: <Package size={18} />,
-      title: t('Free Sample'), sub: t('On every order'),
-      color: '#e8f5ed', iconColor: '#2d6e4f',
+      title: t('Free Sample'),
+      sub: t('On every order'),
+      color: '#e8f5ed',
+      iconColor: '#2d6e4f',
     },
     {
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
+      icon: (
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="1" y="3" width="15" height="13" />
+          <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+          <circle cx="5.5" cy="18.5" r="2.5" />
+          <circle cx="18.5" cy="18.5" r="2.5" />
+        </svg>
+      ),
       lucideIcon: <Truck size={18} />,
       title: t('Free Shipping'),
       sub: formatFreeShippingSubline(settings?.freeShippingThreshold, t, formatMoneyShort),
-      color: '#e8f2f8', iconColor: '#4a7a9b',
+      color: '#e8f2f8',
+      iconColor: '#4a7a9b',
     },
     {
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+      icon: (
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      ),
       lucideIcon: <ShieldCheck size={18} />,
-      title: t('Certified Organic'), sub: t('Selected teas certified'),
-      color: '#fef3c7', iconColor: '#c47d0a',
+      title: t('Certified Organic'),
+      sub: t('Selected teas certified'),
+      color: '#fef3c7',
+      iconColor: '#c47d0a',
     },
   ];
 
@@ -232,23 +367,31 @@ export function HomePage() {
         breadcrumbs={[{ name: 'Home', url: SITE_BASE }]}
         extraJsonLd={[faqJsonLd(faq), localBusinessLd(store, SITE_BASE)]}
       />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-        "@context": "https://schema.org", "@type": "ItemList",
-        name: "Featured Teas at Ele Café", url: `${SITE_BASE}/products`,
-        numberOfItems: Math.min(featured.length, 6),
-        itemListElement: featured.slice(0, 6).map((p, idx) => ({
-          "@type": "ListItem", position: idx + 1, name: p.name,
-          url: `${SITE_BASE}/tea-profile/${encodeURIComponent(p.category ?? '')}/${encodeURIComponent(toSlug(p.slug ?? ''))}`,
-        }))
-      })
-        // XSS guard: tea names come from Firestore. Escape `</script`
-        // and `<!--` so a malicious tea name can't break out of the
-        // <script> tag. JSON parsers tolerate `\/` so SEO is intact.
-        .replace(/<\/(script|style)/gi, '<\\/$1')
-        .replace(/<!--/g, '<\\!--') }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'ItemList',
+            name: 'Featured Teas at Ele Café',
+            url: `${SITE_BASE}/products`,
+            numberOfItems: Math.min(featured.length, 6),
+            itemListElement: featured.slice(0, 6).map((p, idx) => ({
+              '@type': 'ListItem',
+              position: idx + 1,
+              name: p.name,
+              url: `${SITE_BASE}/tea-profile/${encodeURIComponent(p.category ?? '')}/${encodeURIComponent(toSlug(p.slug ?? ''))}`,
+            })),
+          })
+            // XSS guard: tea names come from Firestore. Escape `</script`
+            // and `<!--` so a malicious tea name can't break out of the
+            // <script> tag. JSON parsers tolerate `\/` so SEO is intact.
+            .replace(/<\/(script|style)/gi, '<\\/$1')
+            .replace(/<!--/g, '<\\!--'),
+        }}
+      />
 
       <div className="hp-page">
-
         {/* ══ HERO ══════════════════════════════════════════════════════════ */}
         <section className="hero">
           {/*
@@ -293,21 +436,35 @@ export function HomePage() {
               immediately at full opacity.
             */}
             <h1 className="hero-title hero-title-flourish">
-              <span className="hp-hero-kicker">{t('Premium loose leaf tea · Vancouver, Canada')}</span>
+              <span className="hp-hero-kicker">
+                {t('Premium loose leaf tea · Vancouver, Canada')}
+              </span>
               {tx('The Art of {fineTea}', { fineTea: <em>{t('Fine Tea')}</em> })}
             </h1>
             {/* Hero rule — always visible, no scroll needed */}
             <div className="hp-hero-rule" />
             <p className="hero-sub fade-up fade-up-d2">
               {teaCount > 0
-                ? t('{count} loose leaf teas — black, green, white, oolong, rooibos, herbal, flower & fruit — shipped across Canada or ready for pickup in Vancouver', { count: teaCount })
-                : t('Loose leaf teas — black, green, white, oolong, rooibos, herbal, flower & fruit — shipped across Canada or ready for pickup in Vancouver')}
+                ? t(
+                    '{count} loose leaf teas — black, green, white, oolong, rooibos, herbal, flower & fruit — shipped across Canada or ready for pickup in Vancouver',
+                    { count: teaCount },
+                  )
+                : t(
+                    'Loose leaf teas — black, green, white, oolong, rooibos, herbal, flower & fruit — shipped across Canada or ready for pickup in Vancouver',
+                  )}
             </p>
             <div className="hero-btns fade-up fade-up-d3">
-              <Link to={ROUTES.PRODUCTS} className="btn btn-dark btn-lg">{t('Shop Collection')}</Link>
-              <Link to={ROUTES.GIFTS}    className="btn btn-outline btn-lg">{t('Gift Builder')}</Link>
-              <Link to={ROUTES.PAIRINGS} className="btn btn-gold btn-lg">{t('Tea pairings')}</Link>
+              <Link to={ROUTES.PRODUCTS} className="btn btn-dark btn-lg">
+                {t('Shop Collection')}
+              </Link>
+              <Link to={ROUTES.GIFTS} className="btn btn-outline btn-lg">
+                {t('Gift Builder')}
+              </Link>
+              <Link to={ROUTES.PAIRINGS} className="btn btn-gold btn-lg">
+                {t('Tea pairings')}
+              </Link>
             </div>
+            <CafeTrustLine variant="hero" />
           </div>
         </section>
 
@@ -329,7 +486,9 @@ export function HomePage() {
                     className="hp-pillar-icon-inner"
                     // eslint-disable-next-line react/forbid-dom-props -- per-pillar icon colour from the PILLARS data array
                     style={{ color: iconColor }}
-                  >{icon}</span>
+                  >
+                    {icon}
+                  </span>
                 </div>
                 <div>
                   <p className="pillar-title">{title}</p>
@@ -344,7 +503,12 @@ export function HomePage() {
         <section className="section">
           <div className="container">
             <div className="hp-best-header">
-              <SectionHeader overline={t('Best Sellers')} title={t('Our Most-Loved Loose Leaf Teas')} direction="ltr" ruleWidth="48px" />
+              <SectionHeader
+                overline={t('Best Sellers')}
+                title={t('Our Most-Loved Loose Leaf Teas')}
+                direction="ltr"
+                ruleWidth="48px"
+              />
               <StaleIndicator visible={featuredStale && featuredFetching} />
             </div>
             {featuredIsError ? (
@@ -359,13 +523,13 @@ export function HomePage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-5 gap-y-10">
                 {loading
                   ? Array.from({ length: 10 }).map((_, i) => <CardSkeleton key={i} />)
-                  : featured.map((p, i) => <TeaCard key={p.id} product={p} priority={i < 5} />)
-                }
+                  : featured.map((p, i) => <TeaCard key={p.id} product={p} priority={i < 5} />)}
               </div>
             )}
             <div className="hp-see-all-wrap">
               <Link to={ROUTES.PRODUCTS} className="btn btn-outline btn-lg hp-see-all-btn">
-                {teaCount > 0 ? t('See All {count} Teas', { count: teaCount }) : t('See All Teas')} <ArrowRight size={15} />
+                {teaCount > 0 ? t('See All {count} Teas', { count: teaCount }) : t('See All Teas')}{' '}
+                <ArrowRight size={15} />
               </Link>
             </div>
           </div>
@@ -392,22 +556,27 @@ export function HomePage() {
         {/* ══ EIGHT COLLECTIONS ═════════════════════════════════════════════ */}
         <section className="section-sm hp-collections-section">
           <div className="container">
-            <SectionHeader overline={t('Browse by Type')} title={t('Shop Loose Leaf Tea by Type')} direction="rtl" ruleWidth="56px" />
+            <SectionHeader
+              overline={t('Browse by Type')}
+              title={t('Shop Loose Leaf Tea by Type')}
+              direction="rtl"
+              ruleWidth="56px"
+            />
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {categories.filter(cat => visibleCats.has(cat.id)).map(cat => (
-                <Link key={cat.id} to={ROUTES.PRODUCTS_CAT(cat.id)} className="hp-cat-link">
-                  <div
-                    className="home-cat-card hp-cat-card"
-                    // eslint-disable-next-line react/forbid-dom-props -- per-category accent colour from the categories data array
-                    style={{ background: cat.color }}
-                  >
-                    <div className="hp-cat-overlay" />
-                    <span className="hp-cat-label">
-                      {t(cat.name)}
-                    </span>
-                  </div>
-                </Link>
-              ))}
+              {categories
+                .filter((cat) => visibleCats.has(cat.id))
+                .map((cat) => (
+                  <Link key={cat.id} to={ROUTES.PRODUCTS_CAT(cat.id)} className="hp-cat-link">
+                    <div
+                      className="home-cat-card hp-cat-card"
+                      // eslint-disable-next-line react/forbid-dom-props -- per-category accent colour from the categories data array
+                      style={{ background: cat.color }}
+                    >
+                      <div className="hp-cat-overlay" />
+                      <span className="hp-cat-label">{t(cat.name)}</span>
+                    </div>
+                  </Link>
+                ))}
             </div>
           </div>
         </section>
@@ -417,12 +586,8 @@ export function HomePage() {
 
         {/* ══ GIFT CTA ══════════════════════════════════════════════════════ */}
         <section className="hp-gift-cta">
-          <span className="overline hp-gift-eyebrow">
-            {t('For someone special')}
-          </span>
-          <h2 className="hp-gift-h2">
-            {t('Build a Bespoke Tea Gift Box')}
-          </h2>
+          <span className="overline hp-gift-eyebrow">{t('For someone special')}</span>
+          <h2 className="hp-gift-h2">{t('Build a Bespoke Tea Gift Box')}</h2>
           <Link to={ROUTES.GIFTS} className="btn btn-lg hp-gift-btn">
             {t('Start Building')} <ArrowRight size={15} />
           </Link>
@@ -437,11 +602,15 @@ export function HomePage() {
             in the Footer. One source of truth for hours/address/contact. */}
         <section className="section-sm hp-visit-section">
           <div className="container hp-visit-container">
-            <SectionHeader overline={t('Come say hello')} title={t('Visit Our Café')} direction="ltr" ruleWidth="48px" />
+            <SectionHeader
+              overline={t('Come say hello')}
+              title={t('Visit Our Café')}
+              direction="ltr"
+              ruleWidth="48px"
+            />
             <ContactCard variant="full" title="" />
           </div>
         </section>
-
       </div>
     </>
   );

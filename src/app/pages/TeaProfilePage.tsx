@@ -68,6 +68,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { categories } from '@/data/categories';
 import { formatPricePerWeight } from '@/lib/priceFormat';
+import { CafeTrustLine } from '@/app/components/CafeTrustLine';
 
 // ── Colour palette ─────────────────────────────────────────────────────────────
 // Day 5 rewrite: was hex literals like '#0f1c26' which never flipped in dark
@@ -921,6 +922,7 @@ export function TeaProfilePage() {
                   {t('Free tea sample with every order')}
                 </p>
               )}
+              <CafeTrustLine variant="product" />
 
               {/* Out-of-stock: back-in-stock email request. */}
               {!isProductAvailable(product) &&
@@ -1286,13 +1288,11 @@ export function TeaProfilePage() {
                       </div>
                       {r.createdAt && (
                         <span className="tpf-review-card-date">
-                          {r.createdAt
-                            .toDate()
-                            .toLocaleDateString(localeFor(language as Lang), {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })}
+                          {r.createdAt.toDate().toLocaleDateString(localeFor(language as Lang), {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
                         </span>
                       )}
                     </div>

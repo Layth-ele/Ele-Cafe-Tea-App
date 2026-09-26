@@ -4773,6 +4773,17 @@ function replaceNoscript(html: string, block: string): string {
 }
 
 /** "Visit us at … or call …. Open …" — from Admin → Settings. */
+/** "Taste it in Vancouver before you buy it online" — the café as a trust signal. */
+function seoTasteLine(
+  store: StoreContent,
+  lead = 'Taste it in Vancouver before you buy it online',
+): string {
+  const [street] = addressLines(store.address);
+  return street
+    ? `<p><strong>${seoEscHtml(lead)}</strong>: visit our tea café at ${seoEscHtml(street)}, with free pickup for online orders.</p>`
+    : '';
+}
+
 function seoContactHtml(store: StoreContent): string {
   const parts: string[] = [];
   if (store.address) parts.push(`Visit us at <strong>${seoEscHtml(store.address)}</strong>`);
@@ -5107,6 +5118,7 @@ function patchHeadForTea(template: string, tea: TeaSeoFields): string {
           <p>Water temperature: ${seoEscHtml(brewTemp)}<br />Steep time: ${seoEscHtml(brewTime)}<br />${seoEscHtml(caffeineNote)}</p>
         </section>
         ${tea.isOrganic ? '<p><em>Certified organic.</em></p>' : ''}
+        ${seoTasteLine(store, 'Taste it first at our café')}
         <p>
           <a href="${seoEscHtml(url)}">View ${seoEscHtml(tea.name)} on Ele Café</a>
         </p>
@@ -6062,6 +6074,7 @@ function patchHeadForHome(template: string, teas: TeaSummary[]): string {
         <header>
           <h1>${seoEscHtml(store.name)} — Premium Loose Leaf Tea, Vancouver</h1>
           <p>${teas.length ? `${teas.length} loose leaf teas` : 'Loose leaf teas'} — black, green, white, oolong, rooibos, herbal, flower and fruit tea${teas.some((t) => t.category === 'powder') ? ', plus matcha and hojicha powder' : ''} — shipped across Canada or ready for free pickup in Vancouver. ${seoEscHtml(shippingText(store))}</p>
+          ${seoTasteLine(store)}
         </header>
         <section>
           <h2>Shop loose leaf tea by type</h2>

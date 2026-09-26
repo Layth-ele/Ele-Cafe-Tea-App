@@ -1782,3 +1782,27 @@
   min-height: 100vh;
   min-height: 100svh;
 }
+
+/* ── CafeTrustLine — "Taste it in Vancouver before you buy it online" ─── */
+.ctl {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text);
+  text-align: center;
+}
+.ctl-icon { flex-shrink: 0; margin-top: 2px; color: var(--gold-deep); }
+.ctl-lead { font-weight: 700; color: var(--midnight); }
+.ctl-where {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--gold-deep);
+  text-underline-offset: 3px;
+}
+.ctl-where:hover { color: var(--midnight); }
+.ctl-hero { margin-top: var(--sp-5); }
+.ctl-product { margin-top: 10px; text-align: left; justify-content: flex-start; }
