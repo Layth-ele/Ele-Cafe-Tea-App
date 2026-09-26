@@ -1,9 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { teaMetaDescription, teaSeoTitle } from '../../../functions/src/lib/seoCatalog';
 import { CafeMenuFor, cafeSectionForTea } from '@/app/components/cafe/CafeMenuBoard';
 import { TeaImage } from '@/app/components/TeaImage';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { fetchTea, queryKeys } from '@/lib/firebaseQueries';
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router';
 import { ROUTES, SITE_BASE } from '@/lib/routes';
 import { useT, useTx, tNow, localizeTea, type Lang, localeFor } from '@/i18n/useT';
@@ -434,6 +436,19 @@ export function TeaProfilePage() {
 
   const submitting = submitReviewMutation.isPending;
   const cartQty = product?.id ? (items.find((i) => i.id === product.id)?.quantity ?? 0) : 0;
+  // Sticky "Add to Cart" bar (phones): shows once the main buy button has
+  // scrolled out of view, so the purchase is always one tap away.
+  const ctaRef = useRef<HTMLDivElement | null>(null);
+  const [ctaVisible, setCtaVisible] = useState(true);
+  useEffect(() => {
+    const el = ctaRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([entry]) =>
+      setCtaVisible(entry.isIntersecting || entry.boundingClientRect.top > 0),
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [product?.id]);
 
   useEffect(() => {
     if (!slug) return;
@@ -598,9 +613,16 @@ export function TeaProfilePage() {
   // even when the DB has drifted slugs. Without this, Google indexes
   // both /monk's-blend and /monks-blend as separate pages.
   const canonicalUrl = `${SITE_BASE}/tea-profile/${encodeURIComponent(product.category ?? 'other')}/${encodeURIComponent(toSlug(product.slug ?? ''))}`;
-  const metaDesc =
-    product.description?.slice(0, 155) ||
-    `${product.name ?? 'Tea'} — premium ${catLabel} from Ele Cafe Vancouver.`;
+  const metaDesc = teaMetaDescription({
+    name: product.name ?? 'Tea',
+    description: product.description,
+    price: product.price,
+    weight:
+      (product as { weight?: string | number }).weight != null
+        ? String((product as { weight?: string | number }).weight)
+        : undefined,
+    category: product.category ?? category ?? '',
+  });
   const userReview = user ? reviews.find((r) => r.userId === user.uid) : undefined;
   const avgRating =
     reviews.length > 0 ? reviews.reduce((s, r) => s + (r.rating ?? 0), 0) / reviews.length : 0;
@@ -639,7 +661,7 @@ export function TeaProfilePage() {
       />
 
       <SeoHead
-        title={`${product.name} | ${catLabel} | Ele Café Vancouver`}
+        title={teaSeoTitle(product.name ?? 'Tea', product.category ?? category ?? '')}
         description={metaDesc}
         image={product.image ?? ''}
         url={canonicalUrl}
@@ -912,7 +934,7 @@ export function TeaProfilePage() {
               {/* CTA — Turn 5 cutover: disables Add-to-Cart when the
                   product is unavailable per the inventory projection.
                   isProductAvailable handles the legacy stock fallback. */}
-              <div className="tpf-cta-wrap">
+              <div className="tpf-cta-wrap" ref={ctaRef}>
                 {!isProductAvailable(product) ? (
                   <button disabled className="tpf-cta tpf-cta-soldout">
                     <ShoppingCart size={17} /> {t('Sold Out')}
@@ -1382,6 +1404,37 @@ export function TeaProfilePage() {
             user navigation. The component renders nothing if there aren't
             at least 4 sibling teas. */}
         <RelatedTeas currentSlug={slug ?? ''} currentCategory={category ?? ''} />
+
+        {/* Portal to <body>: the page wrapper's enter animation uses a
+            transform, which would pin position:fixed to the page, not the screen. */}
+        {!ctaVisible &&
+          isProductAvailable(product) &&
+          createPortal(
+            <div
+              className="tpf-sticky-buy"
+              role="region"
+              aria-label={t('Buy {name}', { name: teaText.name })}
+            >
+              <div className="tpf-sticky-info">
+                <span className="tpf-sticky-name">{teaText.name}</span>
+                {typeof product.price === 'number' && (
+                  <span className="tpf-sticky-price">
+                    {formatPricePerWeight(product.price, product)}
+                  </span>
+                )}
+              </div>
+              {cartQty === 0 ? (
+                <button type="button" onClick={handleAddToCart} className="tpf-sticky-btn">
+                  <ShoppingCart size={16} aria-hidden="true" /> {t('Add to Cart')}
+                </button>
+              ) : (
+                <Link to={ROUTES.CART} className="tpf-sticky-btn tpf-sticky-btn-alt">
+                  {t('In cart ({count}) · View cart', { count: cartQty })}
+                </Link>
+              )}
+            </div>,
+            document.body,
+          )}
       </div>
     </>
   );

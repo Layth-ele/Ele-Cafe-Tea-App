@@ -53,6 +53,8 @@ import { computeOrderTotals, evaluatePromotion } from './lib/orderPricing';
 import {
   CATEGORY_SEO,
   SEO_COLLECTIONS,
+  teaSeoTitle,
+  teaMetaDescription,
   SEO_COLLECTION_BY_SLUG,
   type CollectionDef,
   type CollectionTea,
@@ -4914,7 +4916,7 @@ interface TeaSeoFields {
 function patchHeadForTea(template: string, tea: TeaSeoFields, catalog: CatalogTea[] = []): string {
   const url = `${SEO_SITE_BASE}/tea-profile/${tea.category}/${tea.slug}`;
   const catLabel = SEO_CATEGORY_LABELS[tea.category] || 'Tea';
-  const title = `${tea.name} | ${catLabel} | Ele Café Vancouver`;
+  const title = teaSeoTitle(tea.name, tea.category);
   const price = (typeof tea.price === 'number' ? tea.price : 18).toFixed(2);
   const image = (tea.image && tea.image.trim()) || SEO_DEFAULT_OG;
   const hasReal = !!(tea.image && tea.image.trim()); // for LCP preload decision
@@ -4929,7 +4931,15 @@ function patchHeadForTea(template: string, tea: TeaSeoFields, catalog: CatalogTe
     if (tea.isOrganic) bits.push('Certified organic');
     descParts.push(bits.join('. ') + '.');
   }
-  const desc = seoClamp(descParts.join(' '));
+  // Full text for the product data and page body; `desc` is the search snippet.
+  const fullDesc = descParts.join(' ');
+  const desc = teaMetaDescription({
+    name: tea.name,
+    description: descParts.join(' '),
+    price: tea.price,
+    weight: tea.weight,
+    category: tea.category,
+  });
 
   // Brewing: per-category default, but allow per-tea overrides.
   const catBrew = SEO_BREWING_PARAMS[tea.category] ?? SEO_BREWING_PARAMS.black;
@@ -4980,7 +4990,7 @@ function patchHeadForTea(template: string, tea: TeaSeoFields, catalog: CatalogTe
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: tea.name,
-    description: desc,
+    description: fullDesc,
     image: image,
     sku: tea.slug,
     brand: { '@type': 'Brand', name: 'Ele Café', '@id': SEO_BUSINESS_ID },
@@ -5208,7 +5218,7 @@ function patchHeadForTea(template: string, tea: TeaSeoFields, catalog: CatalogTe
         ${tea.image ? `<img src="${seoEscHtml(image)}" alt="${seoEscHtml(tea.name)}" loading="lazy" width="600" height="600" />` : ''}
         <section>
           <h2>Description</h2>
-          <p>${seoEscHtml(desc)}</p>
+          <p>${seoEscHtml(fullDesc)}</p>
         </section>
         <section>
           <h2>Brewing</h2>
@@ -5828,7 +5838,15 @@ function patchHeadForPairing(template: string, combo: ComboSeoFields): string {
 // (LocalBusiness), and the same FAQ the React homepage shows (both built
 // by lib/storeContent.ts from Admin → Settings).
 
-type TeaSummary = CollectionTea & { name: string; slug: string; category: string };
+type TeaSummary = CollectionTea & {
+  name: string;
+  slug: string;
+  category: string;
+  featured?: boolean;
+  price?: number;
+  description?: string;
+  available?: boolean;
+};
 
 async function fetchActiveTeaSummaries(): Promise<TeaSummary[]> {
   const snap = await db
@@ -5843,6 +5861,10 @@ async function fetchActiveTeaSummaries(): Promise<TeaSummary[]> {
       'ratingCount',
       'origin',
       'servingSuggestions',
+      'featured',
+      'price',
+      'description',
+      'available',
     )
     .get();
   const out: TeaSummary[] = [];
@@ -5858,6 +5880,10 @@ async function fetchActiveTeaSummaries(): Promise<TeaSummary[]> {
       ratingCount: d.ratingCount,
       origin: d.origin,
       servingSuggestions: d.servingSuggestions,
+      featured: (d as { featured?: boolean }).featured === true,
+      price: d.price,
+      description: d.description,
+      available: d.available,
     });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
@@ -6300,6 +6326,24 @@ function patchHeadForHome(template: string, teas: TeaSummary[]): string {
           </ul>
           <p><a href="${SEO_SITE_BASE}/products">All teas</a> · <a href="${SEO_SITE_BASE}/cafe">Café menu: matcha lattes, tea &amp; croissants</a></p>
         </section>
+        ${(() => {
+          // Featured teas (Admin → Products → Featured), else the most
+          // reviewed — the homepage links straight to product pages.
+          const picks = [
+            ...teas.filter((t) => t.featured),
+            ...teas
+              .filter((t) => !t.featured)
+              .sort((a, b) => (b.ratingCount ?? 0) - (a.ratingCount ?? 0)),
+          ]
+            .filter((t) => t.available !== false)
+            .slice(0, 8);
+          return picks.length
+            ? `<section>
+          <h2>Featured teas</h2>
+          ${teaListHtml(picks.map((t) => ({ name: t.name, slug: t.slug, category: t.category, price: t.price, description: t.description, available: t.available })))}
+        </section>`
+            : '';
+        })()}
         ${
           collLinks
             ? `<section>

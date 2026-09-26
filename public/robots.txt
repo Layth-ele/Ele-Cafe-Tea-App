@@ -4,7 +4,6 @@
 User-agent: *
 Allow: /
 Allow: /products
-Allow: /products?category=
 Allow: /tea-profile/
 Allow: /gifts
 
@@ -17,10 +16,8 @@ Disallow: /cart
 Disallow: /login
 Disallow: /signup
 Disallow: /_health
+Disallow: /api/
 Disallow: /*?*returnUrl=
-
-# Crawl-delay for bots that respect it
-Crawl-delay: 1
 
 # Sitemaps
 Sitemap: https://elecafe.ca/sitemap.xml

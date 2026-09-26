@@ -1896,4 +1896,6 @@ export const STRINGS: Record<string, { fr: string }> = {
   'A free sample with every online order': {
     fr: 'Un échantillon gratuit avec chaque commande en ligne',
   },
+  'Buy {name}': { fr: 'Acheter {name}' },
+  'In cart ({count}) · View cart': { fr: 'Dans le panier ({count}) · Voir le panier' },
 };
