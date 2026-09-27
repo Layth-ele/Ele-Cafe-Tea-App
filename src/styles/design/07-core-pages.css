@@ -2454,6 +2454,28 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* Title link to /pairings/{slug}; ::after stretches it over the panel. */
+.cg-frosted-link {
+  color: inherit;
+  text-decoration: none;
+}
+.cg-frosted-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.cg-frosted-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cg-frosted-link:focus-visible {
+  outline: none;
+}
+.cg-frosted-link:focus-visible::after {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
 .cg-price-chip {
   font-family: var(--font-serif);
   font-size: clamp(1rem, 1.6vw, 1.3rem);
@@ -2622,6 +2644,13 @@
   }
   .cg-frosted-desc {
     color: var(--text-2);
+    /* Phones have room below the image — show the full description. */
+    -webkit-line-clamp: unset;
+    display: block;
+  }
+  /* Containing block for the stretched pairing link. */
+  .cg-frosted {
+    position: relative;
   }
   /* Bottom-gradient veil over the image is unnecessary when
      the text panel is its own block — kill it on mobile so

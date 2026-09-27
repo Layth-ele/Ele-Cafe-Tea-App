@@ -43,6 +43,7 @@ import { registerImageVariants } from '@/lib/imageRegistry';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { Link2, Pause, Play } from 'lucide-react';
+import { Link } from 'react-router';
 import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
 import { useSettings } from '@/hooks/useSettings';
@@ -372,7 +373,18 @@ export function ComboGallery({
           <div className="cg-frosted" aria-live="polite" aria-atomic="true">
             <div className="cg-frosted-text">
               <DietBadges item={current} variant="onDark" />
-              <h3 className="cg-frosted-title">{localizeCombo(current, lang).title}</h3>
+              <h3 className="cg-frosted-title">
+                {/* Stretched link: its ::after covers the whole panel, so a
+                    tap anywhere on the name/description/price opens the
+                    pairing page. */}
+                {current.slug ? (
+                  <Link to={`/pairings/${current.slug}`} className="cg-frosted-link">
+                    {localizeCombo(current, lang).title}
+                  </Link>
+                ) : (
+                  localizeCombo(current, lang).title
+                )}
+              </h3>
               <p className="cg-frosted-desc">{localizeCombo(current, lang).description}</p>
             </div>
             <div className="price-stack">
