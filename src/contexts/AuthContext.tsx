@@ -90,6 +90,14 @@ function writeSignedInHint(on: boolean) {
   }
 }
 
+function isStandaloneApp(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    window.matchMedia?.('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [guestUser, setGuestUser] = useState<User | null>(null);
@@ -140,6 +148,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const provider = new mod.GoogleAuthProvider();
     // Add prompt to ensure account picker always shows
     provider.setCustomParameters({ prompt: 'select_account' });
+    // Home-screen app (iPhone especially): the popup opens in a separate
+    // sheet that can't report back to the app, so signInWithPopup never
+    // settles and the button spins forever. Use the full-page redirect
+    // there — authDomain is elecafe.ca, so it stays first-party, and the
+    // getRedirectResult handler below finishes the sign-in on return.
+    if (isStandaloneApp()) {
+      await mod.signInWithRedirect(auth, provider);
+      return null;
+    }
     let cred;
     try {
       cred = await mod.signInWithPopup(auth, provider);
