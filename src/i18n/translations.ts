@@ -1908,4 +1908,5 @@ export const STRINGS: Record<string, { fr: string }> = {
   All: { fr: 'Tous' },
   'Caffeine calculator': { fr: 'Calculateur de caféine' },
   Press: { fr: 'Presse' },
+  'Combo · with tea or Americano': { fr: 'Combo · avec thé ou Americano' },
 };

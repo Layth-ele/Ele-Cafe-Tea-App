@@ -2865,3 +2865,30 @@
   .cg-frosted-desc { color: rgba(255, 255, 255, 0.9); }
   .cg-frosted .price-group { color: #fff; }
 }
+
+/* Pastry prices are combos: say so right above / under the price. */
+.price-stack { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.price-combo {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+  white-space: nowrap;
+}
+/* Light gold only on the dark carousel panel (600px+); phones use the white card. */
+@media (min-width: 600px) { .cg-frosted .price-combo { color: #e8cf99; } }
+/* Pairing page: details are a left-aligned column. */
+.cpp-hero-overlay .price-stack { align-items: flex-start; }
+.pix-card-combo {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+@media (max-width: 720px) {
+  .cg-frosted .price-stack { align-items: flex-start; }
+}

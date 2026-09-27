@@ -331,9 +331,12 @@ function ComboPairingPage() {
               <h1 className="cpp-hero-title">{shown.title}</h1>
               <p className="cpp-hero-desc">{shown.description}</p>
             </div>
-            <div className="price-group">
-              <div className="cpp-price-chip">{priceText}</div>
-              {caloriesText(combo) && <span className="price-cal">{caloriesText(combo)}</span>}
+            <div className="price-stack">
+              <span className="price-combo">{tr('Combo · with tea or Americano')}</span>
+              <div className="price-group">
+                <div className="cpp-price-chip">{priceText}</div>
+                {caloriesText(combo) && <span className="price-cal">{caloriesText(combo)}</span>}
+              </div>
             </div>
             {/* Mobile companion to the corner icon — rendered always
                 but CSS hides it on desktop. Pill variant is more

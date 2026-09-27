@@ -202,6 +202,7 @@ function PairingsIndexPage() {
                         {caloriesText(item) && (
                           <span className="pix-card-cal"> · {caloriesText(item)}</span>
                         )}
+                        <span className="pix-card-combo">{t('Combo · with tea or Americano')}</span>
                       </p>
                     )}
                   </div>
