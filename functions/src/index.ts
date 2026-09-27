@@ -5520,7 +5520,7 @@ function patchHeadForTea(
     const tag = set.length
       ? `<link rel="preload" as="image" type="image/webp" href="${seoEscHtml(set[0].url as string)}" imagesrcset="${seoEscHtml(set.map((x) => `${x.url} ${x.w}w`).join(', '))}" imagesizes="(min-width: 768px) 50vw, 100vw" fetchpriority="high" />`
       : `<link rel="preload" as="image" href="${seoEscHtml(image)}" fetchpriority="high" />`;
-    html = html.replace(/(\s*)<\/head>/, `\n    ${tag}$1</head>`);
+    html = html.replace(/(\s*)<\/head>/, (_m: string, ws: string) => `\n    ${tag}${ws}</head>`);
   }
 
   // Phase 8.3 — Inject a <noscript> body block with the tea content
@@ -6235,7 +6235,8 @@ function patchHeadForPairing(template: string, raw: ComboSeoFields): string {
   // bundle. Same pattern as the tea-profile page.
   html = html.replace(
     /(\s*)<\/head>/,
-    `\n    <link rel="preload" as="image" href="${seoEscHtml(image)}" fetchpriority="high" />$1</head>`,
+    (_m: string, ws: string) =>
+      `\n    <link rel="preload" as="image" href="${seoEscHtml(image)}" fetchpriority="high" />${ws}</head>`,
   );
 
   // Phase 8.3 — Inject a <noscript> body block with pairing content
@@ -6859,7 +6860,8 @@ function patchHeadForHome(template: string, teas: TeaSummary[], criticalCss = ''
   if (teas.length) {
     html = html.replace(
       /(\s*)<\/head>/,
-      `\n    <meta name="ele:tea-count" content="${teas.length}" />$1</head>`,
+      (_m: string, ws: string) =>
+        `\n    <meta name="ele:tea-count" content="${teas.length}" />${ws}</head>`,
     );
   }
   // The hero itself, in the app's own markup (lib/homeHero.ts): phones paint
@@ -6885,7 +6887,8 @@ function patchHeadForHome(template: string, teas: TeaSummary[], criticalCss = ''
       )
     : html.replace(
         /(\s*)<\/head>/,
-        '\n    <style>#root>.min-h-screen{display:none}</style>$1</head>',
+        (_m: string, ws: string) =>
+          `\n    <style>#root>.min-h-screen{display:none}</style>${ws}</head>`,
       );
   html = html.replace(
     '<div id="root"></div>',
@@ -6973,7 +6976,7 @@ function patchTemplateHead(template: string, h: SeoHeadPatch): string {
   const u = seoEscHtml(h.canonical);
   const im = seoEscHtml(h.ogImage);
 
-  out = out.replace(/<title>[^<]*<\/title>/i, `<title>${t}</title>`);
+  out = out.replace(/<title>[^<]*<\/title>/i, () => `<title>${t}</title>`);
   // Language: <html lang>, og:locale, and hreflang links between the English
   // page and its /fr twin (every server-rendered page has both).
   const enUrl = h.canonical.replace(/^(https:\/\/[^/]+)\/fr(?=\/|$)/, '$1');
@@ -6981,10 +6984,11 @@ function patchTemplateHead(template: string, h: SeoHeadPatch): string {
     enUrl === SEO_SITE_BASE
       ? `${SEO_SITE_BASE}/fr`
       : enUrl.replace(SEO_SITE_BASE, `${SEO_SITE_BASE}/fr`);
-  out = out.replace(/<html lang="[^"]*"/i, `<html lang="${seoFr() ? 'fr-CA' : 'en-CA'}"`);
+  out = out.replace(/<html lang="[^"]*"/i, () => `<html lang="${seoFr() ? 'fr-CA' : 'en-CA'}"`);
   out = out.replace(
     /<meta\s+property="og:locale"\s+content="[^"]*"\s*\/?>/i,
-    `<meta property="og:locale" content="${seoFr() ? 'fr_CA' : 'en_CA'}" />\n    <meta property="og:locale:alternate" content="${seoFr() ? 'en_CA' : 'fr_CA'}" />`,
+    () =>
+      `<meta property="og:locale" content="${seoFr() ? 'fr_CA' : 'en_CA'}" />\n    <meta property="og:locale:alternate" content="${seoFr() ? 'en_CA' : 'fr_CA'}" />`,
   );
   const langLinks = [
     `<link rel="alternate" hreflang="en" href="${seoEscHtml(enUrl)}" />`,
@@ -6995,7 +6999,7 @@ function patchTemplateHead(template: string, h: SeoHeadPatch): string {
   out = out.replace(/<\/title>/i, () => `</title>\n    ${langLinks}`);
   out = out.replace(
     /<meta\s+name="description"\s+content="[^"]*"\s*\/?>/i,
-    `<meta name="description" content="${d}" />`,
+    () => `<meta name="description" content="${d}" />`,
   );
   // The shell carries no canonical (it's served for every route), so add
   // one; older shells that still have one get it replaced.
@@ -7006,35 +7010,35 @@ function patchTemplateHead(template: string, h: SeoHeadPatch): string {
     : out.replace(/<\/title>/i, () => `</title>\n    ${canonicalTag}`);
   out = out.replace(
     /<meta\s+property="og:type"\s+content="[^"]*"\s*\/?>/i,
-    `<meta property="og:type" content="${h.ogType}" />`,
+    () => `<meta property="og:type" content="${h.ogType}" />`,
   );
   out = out.replace(
     /<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/i,
-    `<meta property="og:title" content="${t}" />`,
+    () => `<meta property="og:title" content="${t}" />`,
   );
   out = out.replace(
     /<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/i,
-    `<meta property="og:description" content="${d}" />`,
+    () => `<meta property="og:description" content="${d}" />`,
   );
   out = out.replace(
     /<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/i,
-    `<meta property="og:url" content="${u}" />`,
+    () => `<meta property="og:url" content="${u}" />`,
   );
   out = out.replace(
     /<meta\s+property="og:image"\s+content="[^"]*"\s*\/?>/i,
-    `<meta property="og:image" content="${im}" />`,
+    () => `<meta property="og:image" content="${im}" />`,
   );
   out = out.replace(
     /<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/?>/i,
-    `<meta name="twitter:title" content="${t}" />`,
+    () => `<meta name="twitter:title" content="${t}" />`,
   );
   out = out.replace(
     /<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/?>/i,
-    `<meta name="twitter:description" content="${d}" />`,
+    () => `<meta name="twitter:description" content="${d}" />`,
   );
   out = out.replace(
     /<meta\s+name="twitter:image"\s+content="[^"]*"\s*\/?>/i,
-    `<meta name="twitter:image" content="${im}" />`,
+    () => `<meta name="twitter:image" content="${im}" />`,
   );
 
   // Preload the LCP image — only when it's an actual product image
@@ -7062,7 +7066,10 @@ function patchTemplateHead(template: string, h: SeoHeadPatch): string {
       '\n'
     : '';
 
-  out = out.replace(/(\s*)<\/head>/, `${preloadBlock}${extraOgBlock}${extraJsonBlock}$1</head>`);
+  out = out.replace(
+    /(\s*)<\/head>/,
+    (_m: string, ws: string) => `${preloadBlock}${extraOgBlock}${extraJsonBlock}${ws}</head>`,
+  );
   return out;
 }
 

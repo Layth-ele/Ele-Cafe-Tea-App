@@ -59,7 +59,31 @@ function checks(teaPath: string | null): Check[] {
     { name: 'Home page', run: expectPage('/', '<section class="hero">', 'the hero') },
     { name: 'Tea list', run: expectPage('/products', 'seo-fallback', 'the tea list') },
     ...(teaPath
-      ? [{ name: 'Tea page', run: expectPage(teaPath, 'ele-ssr-tea', 'the tea data') }]
+      ? [
+          { name: 'Tea page', run: expectPage(teaPath, 'ele-ssr-tea', 'the tea data') },
+          {
+            // Google ignores structured data it can't parse (a "$1…" in a
+            // price once corrupted every product block).
+            name: 'Product data (JSON-LD)',
+            run: async () => {
+              const { status, body } = await get(teaPath);
+              if (status !== 200) return `${teaPath} returned HTTP ${status}`;
+              const blocks = [
+                ...body.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g),
+              ];
+              if (!blocks.some((b) => b[1].includes('"Product"')))
+                return `${teaPath} has no Product data`;
+              for (const b of blocks) {
+                try {
+                  JSON.parse(b[1]);
+                } catch {
+                  return `${teaPath} has structured data Google can't read (invalid JSON-LD)`;
+                }
+              }
+              return null;
+            },
+          },
+        ]
       : []),
     { name: 'Sitemap', run: expectPage('/sitemap.xml', '<urlset', 'the URL list') },
     {

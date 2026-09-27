@@ -241,6 +241,23 @@ export const SEO_COLLECTION_BY_SLUG: Readonly<Record<string, CollectionDef>> = O
 
 /** "Assam — Loose Leaf Black Tea | Ele Café Vancouver" (matches how people search). */
 export function teaSeoTitle(name: string, category: string, lang: 'en' | 'fr' = 'en'): string {
+  // Google shows ~60–65 characters: for long tea names drop "Vancouver",
+  // then the "loose leaf" wording, so the tea name and brand stay visible.
+  const full = teaSeoTitleFull(name, category, lang);
+  if (full.length <= 65) return full;
+  const noCity = full.replace(/ Vancouver$/, '');
+  if (noCity.length <= 65) return noCity;
+  const label =
+    category === 'powder'
+      ? lang === 'fr'
+        ? 'Thé en poudre'
+        : 'Tea Powder'
+      : ((lang === 'fr' ? CATEGORY_SEO[category]?.labelFr : CATEGORY_SEO[category]?.label) ??
+        (lang === 'fr' ? 'Thé' : 'Tea'));
+  return `${name} — ${label} | Ele Café`;
+}
+
+function teaSeoTitleFull(name: string, category: string, lang: 'en' | 'fr'): string {
   if (lang === 'fr') {
     if (category === 'powder') return `${name} | Thé japonais en poudre | Ele Café Vancouver`;
     const labelFr = (CATEGORY_SEO[category]?.labelFr ?? 'Thé').toLowerCase();
