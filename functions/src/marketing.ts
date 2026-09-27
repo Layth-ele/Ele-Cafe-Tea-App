@@ -448,15 +448,22 @@ function teaPath(t: Tea) {
 }
 
 async function sendNewArrivals(): Promise<void> {
-  // Wait 30 min after publishing so the French translation and photo settle.
+  // Wait 30 min after publishing so the French translation settles, and
+  // hold a tea until it has a photo (a new-tea email without a picture
+  // sells nothing) — up to 7 days, then announce it anyway.
   const q = await db().collection('newArrivalQueue').where('sentAt', '==', null).get();
-  const ready = q.docs.filter((d) => Date.now() - Number(d.get('queuedAt') ?? 0) > 30 * 60_000);
-  if (!ready.length) return;
+  const ready: typeof q.docs = [];
   const teas: Array<Tea & { id: string }> = [];
-  for (const d of ready) {
+  for (const d of q.docs) {
+    const age = Date.now() - Number(d.get('queuedAt') ?? 0);
+    if (age < 30 * 60_000) continue;
     const t = (await db().doc(`teas/${d.id}`).get()).data() as Tea | undefined;
+    const hasPhoto = !!(t && typeof t.image === 'string' && t.image.trim());
+    if (t && t.isActive !== false && !hasPhoto && age < 7 * 86400_000) continue;
+    ready.push(d);
     if (t && t.isActive !== false) teas.push({ ...t, id: d.id });
   }
+  if (!ready.length) return;
   // Claim first so an overlapping run can't resend.
   const claim = db().batch();
   ready.forEach((d) => claim.update(d.ref, { sentAt: Date.now() }));
