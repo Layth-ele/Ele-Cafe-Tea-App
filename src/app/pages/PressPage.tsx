@@ -4,6 +4,8 @@
  * shared with renderSeo; facts come from Admin → Settings + the catalog.
  */
 import { useQuery } from '@tanstack/react-query';
+import { Navigate } from 'react-router';
+import { useAuth } from '@/contexts/AuthContext';
 import { Copy, Download, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { SeoHead } from '@/app/components/SeoHead';
@@ -26,6 +28,8 @@ function PressPage() {
   const fr = lang === 'fr';
   const L = (en: string, frText: string) => (fr ? frText : en);
   const store = useStoreContent();
+  // Admin-only for now (owner's choice): everyone else goes home.
+  const { isAdmin, loading: authLoading } = useAuth();
   const { data: teaCount = 0 } = useQuery({
     queryKey: queryKeys.teaCount(),
     queryFn: fetchActiveTeaCount,
@@ -85,12 +89,16 @@ function PressPage() {
       : []),
   ];
 
+  if (authLoading) return null;
+  if (!isAdmin) return <Navigate to={ROUTES.HOME} replace />;
+
   return (
     <div className="pp-page press-page">
       <SeoHead
         title={PRESS_TITLE}
         description={PRESS_DESCRIPTION}
         url={url}
+        noIndex
         breadcrumbs={[
           { name: 'Home', url: SITE_BASE },
           { name: 'Press', url },

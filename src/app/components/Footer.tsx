@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { TransitionLink } from './TransitionLink';
 import { useSettingsQuery, formatFreeShippingSubline } from '@/hooks/useSettings';
+import { useAuth } from '@/contexts/AuthContext';
 import { useStoreContent } from '@/hooks/useStoreContent';
 import { ROUTES, TEA_CATEGORIES } from '@/lib/routes';
 import { useLang, useT, type TFunc } from '@/i18n/useT';
@@ -223,6 +224,7 @@ export function Footer() {
   const t = useT();
   const lang = useLang();
   const { data: settings } = useSettingsQuery();
+  const { isAdmin } = useAuth();
   const store = useStoreContent();
   const visibleCats = useVisibleCategoryIds();
   const year = new Date().getFullYear();
@@ -378,9 +380,11 @@ export function Footer() {
             <TransitionLink to={ROUTES.CAFFEINE_CALCULATOR} className="footer-link">
               {t('Caffeine calculator')}
             </TransitionLink>
-            <TransitionLink to={ROUTES.PRESS} className="footer-link">
-              {t('Press')}
-            </TransitionLink>
+            {isAdmin && (
+              <TransitionLink to={ROUTES.PRESS} className="footer-link">
+                {t('Press')}
+              </TransitionLink>
+            )}
           </div>
         </div>
 

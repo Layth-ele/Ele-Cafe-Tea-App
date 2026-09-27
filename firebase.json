@@ -120,10 +120,6 @@
         "function": "renderSeo"
       },
       {
-        "source": "/press",
-        "function": "renderSeo"
-      },
-      {
         "source": "/about",
         "function": "renderSeo"
       },

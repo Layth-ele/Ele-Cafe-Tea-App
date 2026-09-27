@@ -100,14 +100,6 @@ import {
   HEALTH_CANADA_CAFFEINE_URL,
 } from './lib/caffeine';
 import {
-  PRESS_ASSETS,
-  PRESS_DESCRIPTION,
-  PRESS_DESCRIPTION_FR,
-  PRESS_TITLE,
-  PRESS_TITLE_FR,
-  pressBoilerplate,
-} from './lib/press';
-import {
   REWARDS_TITLE,
   REWARDS_DESCRIPTION,
   REWARDS_TITLE_FR,
@@ -4395,7 +4387,6 @@ const STATIC_SITEMAP_URLS: Array<{ loc: string; priority: string; changefreq: st
   { loc: '/rewards', priority: '0.7', changefreq: 'monthly' },
   { loc: '/franchise', priority: '0.5', changefreq: 'monthly' },
   { loc: '/tea-caffeine-calculator', priority: '0.6', changefreq: 'monthly' },
-  { loc: '/press', priority: '0.4', changefreq: 'monthly' },
   { loc: '/gifts', priority: '0.7', changefreq: 'weekly' },
   { loc: '/about', priority: '0.5', changefreq: 'monthly' },
   { loc: '/contact', priority: '0.5', changefreq: 'monthly' },
@@ -4519,7 +4510,7 @@ function buildSitemapXml(
   // French twins: every server-rendered page also exists under /fr. Both
   // entries carry the same hreflang set so Google pairs them.
   const FR_PAGE_RE =
-    /^\/(?:$|products|cafe|rewards|franchise|about|contact|pairings|collections|tea-profile|tea-caffeine-calculator|press)/;
+    /^\/(?:$|products|cafe|rewards|franchise|about|contact|pairings|collections|tea-profile|tea-caffeine-calculator)/;
   const withFrench = (entry: string): string => {
     const loc = entry.match(/<loc>([^<]+)<\/loc>/)?.[1] ?? '';
     const path = loc.slice(SITE_BASE.length) || '/';
@@ -6637,42 +6628,6 @@ function patchHeadForCaffeine(template: string): string {
   );
 }
 
-// ── /press: media kit (lib/press.ts) ────────────────────────────────────────
-
-function patchHeadForPress(template: string, teaCount: number): string {
-  const store = SEO_STORE;
-  const url = seoUrl('/press');
-  const [street] = addressLines(store.address);
-  const email = store.email || 'info@elecafe.ca';
-  const html = patchTemplateHead(template, {
-    title: SL(PRESS_TITLE, PRESS_TITLE_FR),
-    description: seoClamp(SL(PRESS_DESCRIPTION, PRESS_DESCRIPTION_FR)),
-    canonical: url,
-    ogType: 'website',
-    ogImage: SEO_DEFAULT_OG,
-    extraOgMeta: [],
-    extraJsonLd: [infoBreadcrumb(SL('Press', 'Presse'), url)],
-  });
-  const assets = PRESS_ASSETS.map(
-    (a) => `<li><a href="${SEO_SITE_BASE}${a.file}">${seoEscHtml(SL(a.label, a.labelFr))}</a></li>`,
-  ).join('');
-  return replaceNoscript(
-    html,
-    `
-    <noscript>
-      <article class="seo-fallback">
-        <h1>${SL('Ele Café press kit', 'Trousse média d’Ele Café')}</h1>
-        <p>${seoEscHtml(pressBoilerplate({ teaCount, street }, SEO_LANG))}</p>
-        <h2>${SL('Logos &amp; images', 'Logos et images')}</h2>
-        <ul>${assets}</ul>
-        <h2>${SL('Media contact', 'Contact médias')}</h2>
-        <p><a href="mailto:${seoEscHtml(email)}">${seoEscHtml(email)}</a></p>
-        ${seoContactHtml(store)}
-      </article>
-    </noscript>`,
-  );
-}
-
 // ── /rewards: Ele Rewards loyalty program (lib/rewards.ts) ─────────────────
 
 function patchHeadForRewards(template: string): string {
@@ -7292,18 +7247,6 @@ async function renderSeoHandler(req: functions.https.Request, res: SeoResponse):
       res.set('Content-Type', 'text/html; charset=utf-8');
       res.set('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
       res.status(200).send(render(patchHeadForCaffeine, template));
-      return;
-    }
-    if (reqPath === '/press' || reqPath === '/press/') {
-      let n = 0;
-      try {
-        n = (await fetchCatalogForSeo()).length;
-      } catch {
-        /* count is optional */
-      }
-      res.set('Content-Type', 'text/html; charset=utf-8');
-      res.set('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
-      res.status(200).send(render(patchHeadForPress, template, n));
       return;
     }
     if (reqPath === '/rewards' || reqPath === '/rewards/') {
