@@ -2753,15 +2753,37 @@
 .diet-badges .vegan-badge[data-tag='dairy-free'] { background: #2f5f86; }
 .diet-badges .vegan-badge svg { color: #fff; }
 /* Price chip + calories beside it (not squeezed inside the chip). */
-.price-group { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+/* Price + calories: plain type, no pill — the site's sans at a clear
+   weight with lining figures (the serif's old-style digits dipped below
+   the line), calories after a thin divider. Colour follows the surface:
+   white on the dark carousel panel, midnight on light cards. */
+.price-group { display: flex; align-items: center; gap: 12px; flex-shrink: 0; color: var(--midnight); }
+.price-group .cg-price-chip,
+.price-group .cpp-price-chip { margin: 0; align-self: auto; line-height: 1.2; }
+.cg-price-chip,
+.cpp-price-chip {
+  font-family: var(--font-sans);
+  font-size: clamp(1.2rem, 1.7vw, 1.4rem);
+  font-weight: 600;
+  letter-spacing: 0;
+  font-variant-numeric: lining-nums tabular-nums;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  white-space: nowrap;
+}
 .price-cal {
+  padding-left: 12px;
+  border-left: 1px solid currentColor;
   font-size: var(--text-sm);
   font-weight: 500;
-  color: var(--muted);
   white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
+  opacity: 0.75;
 }
-.cg-frosted .price-cal { color: inherit; opacity: 0.85; }
 .pix-card-cal { color: var(--muted); font-weight: 400; }
 
 /* ── Tea caffeine calculator (/tea-caffeine-calculator) ─────────────── */
@@ -2841,13 +2863,5 @@
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
   }
   .cg-frosted-desc { color: rgba(255, 255, 255, 0.9); }
-  /* Cream price chip: contrasts with the dark panel. */
-  .cg-frosted .cg-price-chip {
-    background: #f5ecd9;
-    color: #0f1c26;
-    border-color: #e2cfa6;
-    font-weight: 600;
-    box-shadow: none;
-  }
-  .cg-frosted .price-cal { color: rgba(255, 255, 255, 0.85); opacity: 1; font-weight: 500; }
+  .cg-frosted .price-group { color: #fff; }
 }

@@ -165,13 +165,10 @@ function useAutoAdvance(
 }
 
 // ── Price formatter (CAD default) ────────────────────────────────────────────
-function formatPrice(price: number, currency = 'CAD'): string {
-  try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(price);
-  } catch (err) {
-    console.warn('[ComboGallery] Price formatting failed:', err);
-    return formatMoney(price);
-  }
+// Prices are CAD: the site's own format ("$9.25" / "9,25 $"), not
+// Intl's "CA$9.25".
+function formatPrice(price: number, _currency = 'CAD'): string {
+  return formatMoney(price);
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
