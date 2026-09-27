@@ -30,11 +30,19 @@ function loadMockProducts() {
 function parseProduct(raw: unknown, context: string): Product {
   const r = raw as { image?: unknown; imageVariants?: unknown } | null;
   registerImageVariants(r?.image, r?.imageVariants);
-  const result = validateProduct(raw);
+  // Admin → Edit saves every cleared field as null (e.g. blurhash and
+  // variantsAvailable on a tea with no photo yet). null means "not set":
+  // drop those fields so an optional one can never hide a tea from the
+  // shop. A required field that is null still fails, as before.
+  const clean =
+    r && typeof r === 'object'
+      ? Object.fromEntries(Object.entries(r).filter(([, v]) => v !== null))
+      : raw;
+  const result = validateProduct(clean);
   if (!result.success) {
     throw new TypeError(
       `[firebaseQueries] ${context}: Firestore document failed validation — ` +
-      result.error.issues.map(i => `${i.path.map(String).join('.')}: ${i.message}`).join(', '),
+        result.error.issues.map((i) => `${i.path.map(String).join('.')}: ${i.message}`).join(', '),
     );
   }
   return result.data;
@@ -63,24 +71,24 @@ export function parseProductDocs(
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
-const activeOnly = (list: Product[]) => list.filter(p => p.isActive !== false);
+const activeOnly = (list: Product[]) => list.filter((p) => p.isActive !== false);
 
 /** Applied to every mock in catch paths so customers can never add a mock
  *  tea to cart when Firestore is unreachable. */
 export const markUnavailable = (p: Product): Product => ({
   ...p,
-  available:         false,
+  available: false,
   availabilityLabel: 'out_of_stock' as const,
 });
 
 export const queryKeys = {
-  teas:       ()             => ['teas']               as const,
-  featured:   ()             => ['teas', 'featured']   as const,
-  teaCount:   ()             => ['teas', 'count']      as const,
-  activeCategories: ()       => ['teas', 'active-categories'] as const,
-  tea:        (slug: string) => ['tea', slug]           as const,
-  userOrders: (uid: string)  => ['orders', 'user', uid] as const,
-  allOrders:  (n?: number)   => ['orders', 'all', n]    as const,
+  teas: () => ['teas'] as const,
+  featured: () => ['teas', 'featured'] as const,
+  teaCount: () => ['teas', 'count'] as const,
+  activeCategories: () => ['teas', 'active-categories'] as const,
+  tea: (slug: string) => ['tea', slug] as const,
+  userOrders: (uid: string) => ['orders', 'user', uid] as const,
+  allOrders: (n?: number) => ['orders', 'all', n] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -112,13 +120,17 @@ export async function fetchActiveTeaCount(): Promise<number> {
 export async function fetchActiveCategoryIds(ids: readonly string[]): Promise<string[] | null> {
   try {
     const teas = collection(db, 'teas');
-    const counts = await Promise.all(ids.map(async (id) => {
-      const [all, inactive] = await Promise.all([
-        getCountFromServer(query(teas, where('category', '==', id))),
-        getCountFromServer(query(teas, where('category', '==', id), where('isActive', '==', false))),
-      ]);
-      return [id, all.data().count - inactive.data().count] as const;
-    }));
+    const counts = await Promise.all(
+      ids.map(async (id) => {
+        const [all, inactive] = await Promise.all([
+          getCountFromServer(query(teas, where('category', '==', id))),
+          getCountFromServer(
+            query(teas, where('category', '==', id), where('isActive', '==', false)),
+          ),
+        ]);
+        return [id, all.data().count - inactive.data().count] as const;
+      }),
+    );
     return counts.filter(([, n]) => n > 0).map(([id]) => id);
   } catch (err) {
     console.warn('[firebaseQueries] fetchActiveCategoryIds failed:', err);
@@ -160,11 +172,11 @@ export async function fetchFeaturedTeas(): Promise<Product[]> {
     const rows = parseProductDocs(snap.docs, 'fetchFeaturedTeas');
     if (rows.length) return rows;
 
-    return (await fetchTeas()).filter(t => t.featured).slice(0, 12);
+    return (await fetchTeas()).filter((t) => t.featured).slice(0, 12);
   } catch (err) {
     console.warn('[firebaseQueries] fetchFeaturedTeas failed, falling back to fetchTeas:', err);
     // fetchTeas() already handles its own catch path (marks mocks unavailable).
-    return (await fetchTeas()).filter(t => t.featured).slice(0, 12);
+    return (await fetchTeas()).filter((t) => t.featured).slice(0, 12);
   }
 }
 
@@ -228,9 +240,7 @@ export async function fetchTea(slug: string): Promise<Product | null> {
     try {
       const live = await fetchTeas();
       for (const c of candidates) {
-        const match = live.find(
-          p => (p.slug === c || p.id === c) && hasUsableImage(p),
-        );
+        const match = live.find((p) => (p.slug === c || p.id === c) && hasUsableImage(p));
         if (match) return match;
       }
     } catch (err) {
@@ -252,7 +262,7 @@ export async function fetchTea(slug: string): Promise<Product | null> {
     const { mockProducts } = await loadMockProducts();
     const list = mockProducts as Product[];
     for (const candidate of candidates) {
-      const m = list.find(p => p.slug === candidate || p.id === candidate);
+      const m = list.find((p) => p.slug === candidate || p.id === candidate);
       if (m) return m;
     }
     return null;
@@ -261,7 +271,7 @@ export async function fetchTea(slug: string): Promise<Product | null> {
     const { mockProducts } = await loadMockProducts();
     const list = mockProducts as Product[];
     for (const candidate of candidates) {
-      const m = list.find(x => x.slug === candidate || x.id === candidate);
+      const m = list.find((x) => x.slug === candidate || x.id === candidate);
       if (m) return markUnavailable(m);
     }
     return null;
