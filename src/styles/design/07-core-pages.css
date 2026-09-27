@@ -1954,9 +1954,11 @@
     padding-top: 0;
     gap: 2px;
   }
-  .cga-row-thumb {
+  .cga-row-thumb-wrap {
     grid-area: thumb;
     width: 80px;
+  }
+  .cga-row-thumb {
     border-radius: 8px;
     overflow: hidden;
   }
@@ -2101,11 +2103,36 @@
   outline: 2px solid var(--gold);
   outline-offset: 2px;
 }
-.cga-row-thumb {
+.cga-row-thumb-wrap {
   width: 110px;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cga-row-thumb {
+  width: 100%;
   border: 1px solid var(--border);
 }
+/* "Change photo" under each pairing's thumbnail (a styled file input). */
+.cga-row-photo-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+.cga-row-photo-btn:hover { border-color: var(--gold); color: var(--midnight); }
+.cga-row-photo-btn:focus-within { outline: 2px solid var(--gold); outline-offset: 2px; }
+.cga-row-photo-btn[data-busy='true'] { opacity: 0.6; cursor: progress; }
 .cga-row-fields {
   display: flex;
   flex-direction: column;

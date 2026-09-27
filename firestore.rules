@@ -510,6 +510,10 @@ service cloud.firestore {
                          'titleFr', 'descriptionFr',
                          'price', 'currency', 'order', 'enabled', 'slug',
                          'pairedTeaIds',
+                         // Written by the pairingImageVariants function (small
+                         // WebP copies). Missing here, it made every admin edit
+                         // of a pairing fail once its photo had been resized.
+                         'imageVariants',
                          'createdAt', 'updatedAt',
                        ])
                     && request.resource.data.imageUrl    is string
@@ -533,6 +537,8 @@ service cloud.firestore {
                     // by reading .size() inside a list-only path (.hasAny on
                     // an empty list is a list operation that returns false
                     // for non-list values, which would trip the gate).
+                    && (!('imageVariants' in request.resource.data)
+                        || request.resource.data.imageVariants is map)
                     && (!('pairedTeaIds' in request.resource.data)
                         || (request.resource.data.pairedTeaIds is list
                             && request.resource.data.pairedTeaIds.size() <= 8));

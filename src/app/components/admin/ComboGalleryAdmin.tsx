@@ -26,21 +26,45 @@
  *   • Storage rules cap each file at 5 MB, image MIME only.
  */
 import { useEffect, useRef, useState } from 'react';
+import { Modal, ModalBtn } from '@/app/components/modals/Modal';
 import {
-  collection, onSnapshot, query, orderBy, where,
-  addDoc, updateDoc, deleteDoc, doc, getDocs,
-  serverTimestamp, writeBatch,
+  collection,
+  onSnapshot,
+  query,
+  orderBy,
+  where,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  getDocs,
+  serverTimestamp,
+  writeBatch,
 } from 'firebase/firestore';
 import { toast } from 'sonner';
 import {
-  GripVertical, ImagePlus, Loader2, Save, Trash2,
-  Eye, EyeOff, Upload, Link2, Wand2, ArrowUp, ArrowDown, X,
+  GripVertical,
+  ImagePlus,
+  Loader2,
+  Save,
+  Trash2,
+  Eye,
+  EyeOff,
+  Upload,
+  Link2,
+  Wand2,
+  ArrowUp,
+  ArrowDown,
+  X,
 } from 'lucide-react';
 
 import { db, getStorageLazy } from '@/lib/firebase';
 import {
-  validateCreateComboItem, validateUpdateComboItem,
-  type ComboItem, COMBO_PRICE_MAX, comboSlugFromTitle,
+  validateCreateComboItem,
+  validateUpdateComboItem,
+  type ComboItem,
+  COMBO_PRICE_MAX,
+  comboSlugFromTitle,
 } from '@/schemas/comboGallery.schema';
 import { LazyImage } from '@/app/components/LazyImage';
 
@@ -64,8 +88,8 @@ function safeFilename(name: string): string {
  *  the full Product shape here — just enough to render the dropdown
  *  options and the selected chips. id is the Firestore doc id. */
 interface TeaOption {
-  id:    string;
-  name:  string;
+  id: string;
+  name: string;
   category: string;
 }
 
@@ -74,7 +98,10 @@ export function ComboGalleryAdmin() {
   const [items, setItems] = useState<ComboItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number }>({
+    done: 0,
+    total: 0,
+  });
 
   // Phase 13 — tea catalog for the pairedTeaIds picker. One-shot
   // fetch on mount; the catalog is admin-curated and changes rarely,
@@ -105,7 +132,9 @@ export function ComboGalleryAdmin() {
         console.warn('[ComboGalleryAdmin] tea catalog fetch failed:', err);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Drag-and-drop reorder state
@@ -122,7 +151,7 @@ export function ComboGalleryAdmin() {
     const unsub = onSnapshot(
       q,
       (snap) => {
-        const next = snap.docs.map(d => ({ id: d.id, ...d.data() } as ComboItem));
+        const next = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ComboItem);
         setItems(next);
         setLoading(false);
       },
@@ -153,7 +182,9 @@ export function ComboGalleryAdmin() {
       }
     }
     if (invalid.length) {
-      toast.error(`Skipped ${invalid.length} file${invalid.length === 1 ? '' : 's'}: ${invalid[0]}${invalid.length > 1 ? ' …' : ''}`);
+      toast.error(
+        `Skipped ${invalid.length} file${invalid.length === 1 ? '' : 's'}: ${invalid[0]}${invalid.length > 1 ? ' …' : ''}`,
+      );
     }
     if (accepted.length === 0) return;
 
@@ -192,7 +223,7 @@ export function ComboGalleryAdmin() {
         // to whichever the gallery hook returns first. Admins can fix
         // by renaming. Worth flagging as a known limitation.
         const baseSlug = comboSlugFromTitle('new-pairing');
-        const existingSlugs = new Set(items.map(i => i.slug).filter(Boolean));
+        const existingSlugs = new Set(items.map((i) => i.slug).filter(Boolean));
         let slug = baseSlug;
         let n = 2;
         while (existingSlugs.has(slug)) {
@@ -200,19 +231,19 @@ export function ComboGalleryAdmin() {
         }
 
         const candidate = {
-          imageUrl:    url,
+          imageUrl: url,
           storagePath: path,
-          title:       'New pairing',
+          title: 'New pairing',
           description: 'Add a description for this pairing.',
-          price:       0,
-          currency:    'CAD',
-          order:       nextOrder++,
-          enabled:     true,
+          price: 0,
+          currency: 'CAD',
+          order: nextOrder++,
+          enabled: true,
           slug,
         };
         const parsed = validateCreateComboItem(candidate);
         if (!parsed.success) {
-          throw new Error(parsed.error.issues.map(i => i.message).join('; '));
+          throw new Error(parsed.error.issues.map((i) => i.message).join('; '));
         }
 
         await addDoc(collection(db, 'comboGalleryItems'), {
@@ -226,7 +257,7 @@ export function ComboGalleryAdmin() {
         failures += 1;
         console.error('[ComboGalleryAdmin] upload failed', err);
       }
-      setUploadProgress(p => ({ ...p, done: p.done + 1 }));
+      setUploadProgress((p) => ({ ...p, done: p.done + 1 }));
     }
 
     setUploading(false);
@@ -249,7 +280,9 @@ export function ComboGalleryAdmin() {
     e.preventDefault();
     setDropActive(true);
   }
-  function onDragLeave() { setDropActive(false); }
+  function onDragLeave() {
+    setDropActive(false);
+  }
   function onDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setDropActive(false);
@@ -273,7 +306,7 @@ export function ComboGalleryAdmin() {
     if (!trimmed) return false;
     try {
       const snap = await getDocs(
-        query(collection(db, 'comboGalleryItems'), where('slug', '==', trimmed))
+        query(collection(db, 'comboGalleryItems'), where('slug', '==', trimmed)),
       );
       for (const d of snap.docs) {
         if (d.id !== myId) return true;
@@ -313,9 +346,48 @@ export function ComboGalleryAdmin() {
     }
   }
 
+  // ── Change a pairing's photo (upload, point the item at it, drop the old
+  //    file). imageVariants.ts then remakes the small WebP copies.
+  async function replaceImage(item: ComboItem, file: File) {
+    if (!item.id) return;
+    if (!ACCEPTED_MIME.includes(file.type)) {
+      toast.error('Please choose a JPG, PNG, WebP or GIF image.');
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      toast.error('That image is over 5 MB — please choose a smaller one.');
+      return;
+    }
+    try {
+      const sm = await getStorageLazy();
+      const path = `comboGallery/${safeFilename(file.name)}`;
+      const ref = sm.ref(sm.storage, path);
+      await new Promise<void>((resolve, reject) => {
+        const task = sm.uploadBytesResumable(ref, file, { contentType: file.type });
+        task.on('state_changed', undefined, reject, () => resolve());
+      });
+      const url = await sm.getDownloadURL(ref);
+      await updateDoc(doc(db, 'comboGalleryItems', item.id), {
+        imageUrl: url,
+        storagePath: path,
+        updatedAt: serverTimestamp(),
+      });
+      if (item.storagePath && item.storagePath !== path) {
+        sm.deleteObject(sm.ref(sm.storage, item.storagePath)).catch((err: unknown) =>
+          console.warn('[ComboGalleryAdmin] old photo not removed:', err),
+        );
+      }
+      toast.success('Photo updated');
+    } catch (err) {
+      console.error('[ComboGalleryAdmin] photo change failed', err);
+      toast.error('Could not change the photo — please try again.');
+    }
+  }
+
+  const [confirmDelete, setConfirmDelete] = useState<ComboItem | null>(null);
+
   async function deleteItem(item: ComboItem) {
     if (!item.id) return;
-    if (!confirm(`Delete "${item.title}"? This also removes the image from Storage.`)) return;
     try {
       await deleteDoc(doc(db, 'comboGalleryItems', item.id));
       // Storage delete is best-effort — the Firestore doc is the source of truth
@@ -333,8 +405,12 @@ export function ComboGalleryAdmin() {
   }
 
   // ── Reorder via drag-and-drop ──────────────────────────────────────────────
-  function handleDragStart(id: string) { dragId.current = id; }
-  function handleDragEnter(id: string) { dragOverId.current = id; }
+  function handleDragStart(id: string) {
+    dragId.current = id;
+  }
+  function handleDragEnter(id: string) {
+    dragOverId.current = id;
+  }
 
   /**
    * Persist the new ordering to Firestore as a single batched write,
@@ -352,7 +428,10 @@ export function ComboGalleryAdmin() {
       const batch = writeBatch(db);
       reordered.forEach((it, i) => {
         if (!it.id) return;
-        batch.update(doc(db, 'comboGalleryItems', it.id), { order: i, updatedAt: serverTimestamp() });
+        batch.update(doc(db, 'comboGalleryItems', it.id), {
+          order: i,
+          updatedAt: serverTimestamp(),
+        });
       });
       await batch.commit();
     } catch (err) {
@@ -368,8 +447,8 @@ export function ComboGalleryAdmin() {
     dragOverId.current = null;
     if (!from || !to || from === to) return;
 
-    const fromIdx = items.findIndex(i => i.id === from);
-    const toIdx = items.findIndex(i => i.id === to);
+    const fromIdx = items.findIndex((i) => i.id === from);
+    const toIdx = items.findIndex((i) => i.id === to);
     if (fromIdx < 0 || toIdx < 0) return;
 
     const reordered = [...items];
@@ -386,7 +465,7 @@ export function ComboGalleryAdmin() {
    * buttons themselves disable in those positions.
    */
   async function moveItem(id: string, direction: 'up' | 'down') {
-    const idx = items.findIndex(i => i.id === id);
+    const idx = items.findIndex((i) => i.id === id);
     if (idx < 0) return;
     const swap = direction === 'up' ? idx - 1 : idx + 1;
     if (swap < 0 || swap >= items.length) return;
@@ -396,7 +475,7 @@ export function ComboGalleryAdmin() {
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  const visibleCount = items.filter(i => i.enabled !== false).length;
+  const visibleCount = items.filter((i) => i.enabled !== false).length;
 
   return (
     <div className="cga-root">
@@ -432,12 +511,8 @@ export function ComboGalleryAdmin() {
         aria-label="Drop images here or click to upload"
       >
         <ImagePlus size={26} className="cga-dropzone-icon" aria-hidden />
-        <p className="cga-dropzone-msg">
-          Drop images here or click to upload
-        </p>
-        <p className="cga-dropzone-hint">
-          JPG, PNG, WebP — multiple allowed, 5 MB max each
-        </p>
+        <p className="cga-dropzone-msg">Drop images here or click to upload</p>
+        <p className="cga-dropzone-hint">JPG, PNG, WebP — multiple allowed, 5 MB max each</p>
       </div>
 
       <input
@@ -449,19 +524,15 @@ export function ComboGalleryAdmin() {
         aria-label="Upload combo gallery images"
         onChange={(e) => {
           if (e.target.files) handleFiles(e.target.files);
-          e.target.value = '';  // allow re-selecting the same files
+          e.target.value = ''; // allow re-selecting the same files
         }}
       />
 
       {/* Items grid */}
       {loading ? (
-        <p className="cga-list-msg">
-          Loading…
-        </p>
+        <p className="cga-list-msg">Loading…</p>
       ) : items.length === 0 ? (
-        <p className="cga-list-msg">
-          No items yet. Upload images above to get started.
-        </p>
+        <p className="cga-list-msg">No items yet. Upload images above to get started.</p>
       ) : (
         <ul className="cga-list">
           {items.map((item, idx) => (
@@ -472,7 +543,8 @@ export function ComboGalleryAdmin() {
               isFirst={idx === 0}
               isLast={idx === items.length - 1}
               onPatch={(patch) => item.id && patchItem(item.id, patch)}
-              onDelete={() => deleteItem(item)}
+              onDelete={() => setConfirmDelete(item)}
+              onReplaceImage={(file) => replaceImage(item, file)}
               onMoveUp={() => item.id && moveItem(item.id, 'up')}
               onMoveDown={() => item.id && moveItem(item.id, 'down')}
               onDragStart={() => item.id && handleDragStart(item.id)}
@@ -482,22 +554,56 @@ export function ComboGalleryAdmin() {
           ))}
         </ul>
       )}
+      <Modal
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        title={`Delete “${confirmDelete?.title ?? ''}”?`}
+        size="sm"
+        footer={
+          <>
+            <ModalBtn variant="outline" onClick={() => setConfirmDelete(null)}>
+              Keep it
+            </ModalBtn>
+            <ModalBtn
+              variant="danger"
+              onClick={() => {
+                const it = confirmDelete;
+                setConfirmDelete(null);
+                if (it) void deleteItem(it);
+              }}
+            >
+              Delete
+            </ModalBtn>
+          </>
+        }
+      >
+        <p>This removes the pairing from the café menu and deletes its photo.</p>
+      </Modal>
     </div>
   );
 }
 
 // ── Per-item row ─────────────────────────────────────────────────────────────
 function ComboItemRow({
-  item, teas, isFirst, isLast,
-  onPatch, onDelete,
-  onMoveUp, onMoveDown,
-  onDragStart, onDragEnter, onDragEnd,
+  item,
+  teas,
+  isFirst,
+  isLast,
+  onPatch,
+  onDelete,
+  onReplaceImage,
+  onMoveUp,
+  onMoveDown,
+  onDragStart,
+  onDragEnter,
+  onDragEnd,
 }: {
   item: ComboItem;
   teas: TeaOption[];
   isFirst: boolean;
   isLast: boolean;
   onPatch: (patch: Partial<ComboItem>) => void;
+  onReplaceImage: (file: File) => Promise<void>;
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -512,6 +618,7 @@ function ComboItemRow({
   const [descriptionFr, setDescriptionFr] = useState(item.descriptionFr ?? '');
   const [price, setPrice] = useState(String(item.price ?? 0));
   const [slug, setSlug] = useState(item.slug ?? '');
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
 
   // Resync if the doc changes externally (e.g. another tab) and we haven't
@@ -525,7 +632,15 @@ function ComboItemRow({
       setPrice(String(item.price ?? 0));
       setSlug(item.slug ?? '');
     }
-  }, [dirty, item.title, item.description, item.titleFr, item.descriptionFr, item.price, item.slug]);
+  }, [
+    dirty,
+    item.title,
+    item.description,
+    item.titleFr,
+    item.descriptionFr,
+    item.price,
+    item.slug,
+  ]);
 
   function commit() {
     if (!dirty) return;
@@ -592,11 +707,7 @@ function ComboItemRow({
       className="cga-row"
     >
       <div className="cga-row-handle-col">
-        <div
-          title="Drag to reorder"
-          aria-label="Drag handle"
-          className="cga-row-handle"
-        >
+        <div title="Drag to reorder" aria-label="Drag handle" className="cga-row-handle">
           <GripVertical size={16} aria-hidden />
         </div>
         {/* Keyboard/touch-accessible reorder. HTML5 drag-and-drop
@@ -624,21 +735,48 @@ function ComboItemRow({
         </button>
       </div>
 
-      <LazyImage
-        src={item.imageUrl}
-        alt={item.title}
-        aspectRatio="1/1"
-        borderRadius="10px"
-        className="cga-row-thumb"
-      />
+      <div className="cga-row-thumb-wrap">
+        <LazyImage
+          src={item.imageUrl}
+          alt={item.title}
+          aspectRatio="1/1"
+          borderRadius="10px"
+          className="cga-row-thumb"
+        />
+        <label className="cga-row-photo-btn" data-busy={photoBusy ? 'true' : 'false'}>
+          <input
+            type="file"
+            accept={ACCEPTED_MIME.join(',')}
+            className="sr-only"
+            disabled={photoBusy}
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              e.target.value = '';
+              if (!file) return;
+              setPhotoBusy(true);
+              try {
+                await onReplaceImage(file);
+              } finally {
+                setPhotoBusy(false);
+              }
+            }}
+          />
+          {photoBusy ? 'Uploading…' : 'Change photo'}
+        </label>
+      </div>
 
       <div className="cga-row-fields">
         <input
           type="text"
           value={title}
-          onChange={(e) => { setTitle(e.target.value); setDirty(true); }}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            setDirty(true);
+          }}
           onBlur={commit}
-          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          }}
           aria-label="Title"
           maxLength={100}
           placeholder="Title"
@@ -646,7 +784,10 @@ function ComboItemRow({
         />
         <textarea
           value={description}
-          onChange={(e) => { setDescription(e.target.value); setDirty(true); }}
+          onChange={(e) => {
+            setDescription(e.target.value);
+            setDirty(true);
+          }}
           onBlur={commit}
           aria-label="Description"
           maxLength={500}
@@ -657,9 +798,14 @@ function ComboItemRow({
         <input
           type="text"
           value={titleFr}
-          onChange={(e) => { setTitleFr(e.target.value); setDirty(true); }}
+          onChange={(e) => {
+            setTitleFr(e.target.value);
+            setDirty(true);
+          }}
           onBlur={commit}
-          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          }}
           aria-label="Title (French)"
           maxLength={100}
           placeholder="French title (auto-translated if blank)"
@@ -667,7 +813,10 @@ function ComboItemRow({
         />
         <textarea
           value={descriptionFr}
-          onChange={(e) => { setDescriptionFr(e.target.value); setDirty(true); }}
+          onChange={(e) => {
+            setDescriptionFr(e.target.value);
+            setDirty(true);
+          }}
           onBlur={commit}
           aria-label="Description (French)"
           maxLength={500}
@@ -676,10 +825,7 @@ function ComboItemRow({
           className={inputClass('description')}
         />
         <div className="cga-row-line">
-          <label
-            htmlFor={`price-${item.id}`}
-            className="cga-row-line-label"
-          >
+          <label htmlFor={`price-${item.id}`} className="cga-row-line-label">
             Price
           </label>
           <span className="cga-row-currency">$</span>
@@ -691,9 +837,14 @@ function ComboItemRow({
             max={COMBO_PRICE_MAX}
             step={0.01}
             value={price}
-            onChange={(e) => { setPrice(e.target.value); setDirty(true); }}
+            onChange={(e) => {
+              setPrice(e.target.value);
+              setDirty(true);
+            }}
             onBlur={commit}
-            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+            }}
             aria-label="Price"
             className={`${inputClass('price')} cga-field-price`}
           />
@@ -714,22 +865,22 @@ function ComboItemRow({
             wand derives one from the current title; admins can override.
             Copy-link button puts the full URL on the clipboard. */}
         <div className="cga-row-line cga-row-line-wrap">
-          <label
-            htmlFor={`slug-${item.id}`}
-            className="cga-row-line-label"
-          >
+          <label htmlFor={`slug-${item.id}`} className="cga-row-line-label">
             URL
           </label>
-          <span className="cga-row-slug-prefix">
-            /pairings/
-          </span>
+          <span className="cga-row-slug-prefix">/pairings/</span>
           <input
             id={`slug-${item.id}`}
             type="text"
             value={slug}
-            onChange={(e) => { setSlug(e.target.value.toLowerCase()); setDirty(true); }}
+            onChange={(e) => {
+              setSlug(e.target.value.toLowerCase());
+              setDirty(true);
+            }}
             onBlur={commit}
-            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+            }}
             aria-label="URL slug"
             placeholder="lemon-tart"
             maxLength={80}
@@ -816,7 +967,10 @@ function ComboItemRow({
  * leave the now-shorter list; either is correct.
  */
 function PairedTeasPicker({
-  itemId, selectedIds, allTeas, onChange,
+  itemId,
+  selectedIds,
+  allTeas,
+  onChange,
 }: {
   itemId: string;
   selectedIds: string[];
@@ -824,17 +978,15 @@ function PairedTeasPicker({
   onChange: (next: string[]) => void;
 }) {
   const MAX = 8;
-  const byId = new Map(allTeas.map(t => [t.id, t]));
+  const byId = new Map(allTeas.map((t) => [t.id, t]));
 
   // Render only the chips we can resolve. We DON'T strip unknown IDs
   // from selectedIds on render — that would cause writes via the
   // useEffect→onChange path; instead the parent just sees a shorter
   // chip list and any subsequent re-save naturally cleans the field.
-  const chips = selectedIds
-    .map(id => byId.get(id))
-    .filter((t): t is TeaOption => Boolean(t));
+  const chips = selectedIds.map((id) => byId.get(id)).filter((t): t is TeaOption => Boolean(t));
 
-  const remainingTeas = allTeas.filter(t => !selectedIds.includes(t.id));
+  const remainingTeas = allTeas.filter((t) => !selectedIds.includes(t.id));
   const atCap = selectedIds.length >= MAX;
 
   function handleAdd(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -846,15 +998,12 @@ function PairedTeasPicker({
   }
 
   function handleRemove(id: string) {
-    onChange(selectedIds.filter(x => x !== id));
+    onChange(selectedIds.filter((x) => x !== id));
   }
 
   return (
     <div className="cga-row-line cga-row-line-wrap">
-      <label
-        htmlFor={`paired-${itemId}`}
-        className="cga-row-line-label"
-      >
+      <label htmlFor={`paired-${itemId}`} className="cga-row-line-label">
         Pairs with
       </label>
       <div className="cga-paired-chips">
@@ -863,7 +1012,7 @@ function PairedTeasPicker({
             No teas paired yet — customers see the default featured grid.
           </span>
         )}
-        {chips.map(tea => (
+        {chips.map((tea) => (
           <span key={tea.id} className="cga-paired-chip">
             <span className="cga-paired-chip-name">{tea.name}</span>
             <button
@@ -892,9 +1041,10 @@ function PairedTeasPicker({
               ? 'Loading teas…'
               : '+ Add tea'}
         </option>
-        {remainingTeas.map(tea => (
+        {remainingTeas.map((tea) => (
           <option key={tea.id} value={tea.id}>
-            {tea.name}{tea.category ? ` — ${tea.category}` : ''}
+            {tea.name}
+            {tea.category ? ` — ${tea.category}` : ''}
           </option>
         ))}
       </select>
