@@ -6581,7 +6581,8 @@ function patchHeadForCaffeine(template: string): string {
     description: seoClamp(SL(CAFFEINE_DESCRIPTION, CAFFEINE_DESCRIPTION_FR)),
     canonical: url,
     ogType: 'website',
-    ogImage: SEO_DEFAULT_OG,
+    // Own share card: "Ele Café Caffeine Calculator" (public/og-caffeine-calculator.png).
+    ogImage: `${SEO_SITE_BASE}/og-caffeine-calculator.png`,
     extraOgMeta: [],
     extraJsonLd: [
       infoBreadcrumb(name, url),

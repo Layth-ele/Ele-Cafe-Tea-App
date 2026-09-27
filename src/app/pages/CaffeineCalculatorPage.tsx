@@ -7,7 +7,7 @@
  */
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { Minus, Plus, Copy } from 'lucide-react';
+import { Minus, Plus, Link2, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { SeoHead } from '@/app/components/SeoHead';
 import { Breadcrumbs } from '@/app/components/Breadcrumbs';
@@ -40,25 +40,40 @@ function CaffeineCalculatorPage() {
   const setCount = (id: string, n: number) =>
     setCounts((c) => ({ ...c, [id]: Math.max(0, Math.min(12, n)) }));
 
-  const linkSnippet = `<a href="${url}">${L('Tea caffeine calculator', 'Calculateur de caféine du thé')} — Ele Café</a>`;
-  const copySnippet = async () => {
+  // Share: native share sheet on phones (WhatsApp, Messages, …); copies
+  // the link where there's no share sheet. The link preview itself comes
+  // from /og-caffeine-calculator.png ("Ele Café Caffeine Calculator").
+  const shareTitle = L('Ele Café Caffeine Calculator', 'Calculateur de caféine Ele Café');
+  const shareText = L(
+    'Check your daily caffeine with the Ele Café Caffeine Calculator:',
+    'Calculez votre caféine quotidienne avec le calculateur Ele Café :',
+  );
+  const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(linkSnippet);
-      toast.success(L('Link code copied', 'Code du lien copié'));
+      await navigator.clipboard.writeText(url);
+      toast.success(L('Link copied', 'Lien copié'));
     } catch {
-      toast.error(
-        L(
-          'Could not copy — select the code and copy it',
-          'Copie impossible — sélectionnez le code pour le copier',
-        ),
-      );
+      toast.error(L('Could not copy the link', 'Copie du lien impossible'));
     }
+  };
+  const share = async () => {
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: shareTitle, text: shareText, url });
+        return;
+      } catch (err) {
+        // User closed the share sheet — nothing to do.
+        if ((err as Error)?.name === 'AbortError') return;
+      }
+    }
+    await copyLink();
   };
 
   return (
     <div className="pp-page cc-page">
       <SeoHead
         title={CAFFEINE_TITLE}
+        image={`${SITE_BASE}/og-caffeine-calculator.png`}
         description={CAFFEINE_DESCRIPTION}
         url={url}
         breadcrumbs={[
@@ -250,22 +265,26 @@ function CaffeineCalculatorPage() {
         </ul>
       </section>
 
-      <section className="rw-card cc-cite" aria-labelledby="cc-cite-h">
-        <h2 id="cc-cite-h" className="rw-h2">
-          {L('Link to this calculator', 'Faire un lien vers ce calculateur')}
+      <section className="rw-card cc-share" aria-labelledby="cc-share-h">
+        <p className="cc-share-eyebrow">{shareTitle}</p>
+        <h2 id="cc-share-h" className="rw-h2">
+          {L('Share it with someone you care about', 'Partagez-le avec vos proches')}
         </h2>
         <p className="rw-detail">
           {L(
-            'Writing about tea or caffeine? You’re welcome to link to this free tool.',
-            'Vous écrivez sur le thé ou la caféine? Vous pouvez faire un lien vers cet outil gratuit.',
+            'Invite the tea lovers in your life to discover how much caffeine is in their daily cups — a thoughtful way to help them enjoy every sip, in balance.',
+            'Invitez les amateurs de thé de votre entourage à découvrir la caféine de leurs tasses quotidiennes — une attention délicate pour savourer chaque gorgée, en équilibre.',
           )}
         </p>
-        <pre className="cc-snippet">
-          <code>{linkSnippet}</code>
-        </pre>
-        <button type="button" className="btn btn-outline btn-sm" onClick={copySnippet}>
-          <Copy size={14} aria-hidden="true" /> {L('Copy link code', 'Copier le code du lien')}
-        </button>
+        <div className="cc-share-actions">
+          <button type="button" className="cc-share-btn" onClick={share}>
+            <Share2 size={18} aria-hidden="true" />
+            {L('Share the calculator', 'Partager le calculateur')}
+          </button>
+          <button type="button" className="cc-share-copy" onClick={copyLink}>
+            <Link2 size={15} aria-hidden="true" /> {L('Copy link', 'Copier le lien')}
+          </button>
+        </div>
       </section>
     </div>
   );

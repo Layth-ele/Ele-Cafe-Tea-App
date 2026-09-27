@@ -2851,7 +2851,7 @@
 .cc-bar span { display: block; height: 100%; border-radius: inherit; background: #5d7f2e; transition: width 240ms ease; }
 .cc-result[data-over='true'] .cc-bar span { background: #b4532a; }
 .cc-verdict { margin: 0; font-weight: 500; color: var(--midnight); }
-.cc-table-card, .cc-tips, .cc-cite { width: min(820px, calc(100% - 32px)); margin: 0 auto; }
+.cc-table-card, .cc-tips, .cc-share { width: min(820px, calc(100% - 32px)); margin: 0 auto; }
 .cc-page { padding-bottom: clamp(32px, 5vw, 64px); }
 .press-page .rw-grid { margin-bottom: clamp(32px, 5vw, 64px); }
 .cc-table-wrap { overflow-x: auto; }
@@ -2863,7 +2863,30 @@
 .cc-note { font-size: var(--text-xs); color: var(--muted); margin: 10px 0 0; }
 .cc-tip-list { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; color: var(--text-2); }
 .cc-tip-list a { color: var(--gold-deep); font-weight: 600; }
-.cc-snippet { white-space: pre-wrap; word-break: break-all; max-width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; overflow-x: auto; font-size: var(--text-xs); margin: 8px 0 10px; }
+/* Caffeine calculator: "Share it with someone you care about" card. */
+.cc-share { text-align: center; }
+.cc-share .rw-detail { max-width: 34rem; margin-inline: auto; }
+.cc-share-eyebrow { font-size: var(--text-2xs); font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold-deep); margin: 0 0 6px; }
+.cc-share-actions { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 18px; }
+.cc-share-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 52px; padding: 14px 34px; border: 0; border-radius: 999px; cursor: pointer;
+  font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--_ink-800); /* dark ink on gold in both themes */
+  background: linear-gradient(135deg, var(--gold-light, var(--gold)) 0%, var(--gold) 55%, var(--gold-deep) 100%);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--gold-deep) 35%, transparent), inset 0 1px 0 color-mix(in srgb, var(--white) 45%, transparent);
+  transition: transform var(--dur-normal), box-shadow var(--dur-normal);
+}
+.cc-share-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 30px color-mix(in srgb, var(--gold-deep) 45%, transparent), inset 0 1px 0 color-mix(in srgb, var(--white) 45%, transparent); }
+.cc-share-btn:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 3px; }
+.cc-share-copy {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 14px;
+  background: none; border: 0; cursor: pointer; color: var(--text-2);
+  font-size: var(--text-xs); letter-spacing: 0.08em; text-transform: uppercase;
+  text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--border);
+}
+.cc-share-copy:hover { color: var(--text); }
+@media (max-width: 599px) { .cc-share-btn { width: 100%; } }
 @media (prefers-reduced-motion: reduce) { .cc-bar span { transition: none; } }
 
 /* ── Press kit (/press) ─────────────────────────────────────────────── */
