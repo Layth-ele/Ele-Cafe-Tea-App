@@ -30,6 +30,23 @@ const OPTS = { region: 'us-central1', memory: '256MiB' as const, maxInstances: 5
 const db = () => admin.firestore();
 
 /** Translate a batch of English strings to French. Order is preserved. */
+/**
+ * Canadian-French touches the translation engine gets wrong for a Quebec
+ * tea shop: a teaspoon is a « cuillère à thé » (not France's « à café »),
+ * and caffeine-free is « sans caféine » — « décaféiné » means decaf, so it
+ * stays only when the English actually says decaf.
+ */
+export function quebecFrench(src: string, out: string): string {
+  let s = out.replace(
+    /cuill(è|e)re(s?) à café/gi,
+    (m, e: string, pl: string) => `${m[0]}uill${e}re${pl} à thé`,
+  );
+  if (!/decaf/i.test(src)) {
+    s = s.replace(/(?<!\p{L})décaféiné(?:e?s?)(?!\p{L})/giu, 'sans caféine');
+  }
+  return s;
+}
+
 export async function translateBatchToFrench(texts: string[]): Promise<string[]> {
   if (!texts.length) return [];
   const { access_token } = await admin.credential.applicationDefault().getAccessToken();
@@ -49,7 +66,7 @@ export async function translateBatchToFrench(texts: string[]): Promise<string[]>
     };
     const t = json.data?.translations ?? [];
     if (t.length !== chunk.length) throw new Error('Translation API returned a partial result');
-    out.push(...t.map((x) => x.translatedText ?? ''));
+    out.push(...t.map((x, j) => quebecFrench(chunk[j], x.translatedText ?? '')));
   }
   return out;
 }
