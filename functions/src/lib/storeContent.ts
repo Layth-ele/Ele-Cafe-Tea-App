@@ -258,6 +258,8 @@ export function localBusinessLd(
     image: extra.image ?? `${siteBase}/og-default.png`,
     priceRange: '$$',
     servesCuisine: ['Tea', 'Matcha', 'Coffee', 'Pastries'],
+    // hasMenu is the current schema.org property; menu kept for older parsers.
+    hasMenu: `${siteBase}/cafe`,
     menu: `${siteBase}/cafe`,
     foundingDate: FOUNDING_YEAR,
   };
