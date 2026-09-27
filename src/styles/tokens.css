@@ -296,8 +296,10 @@
   --radius-full: 9999px;
 
   /* ── Typography ───────────────────────────────────────────── */
-  --font-serif:   'Cormorant Garamond', 'Georgia', serif;
-  --font-sans:    'Jost', 'Inter', system-ui, sans-serif;
+  /* The '… Fallback' faces (index.html) are metric-matched system fonts, so
+     text painted before the web fonts arrive doesn't shift when they swap in. */
+  --font-serif:   'Cormorant Garamond', 'Cormorant Garamond Fallback', 'Georgia', serif;
+  --font-sans:    'Jost', 'Jost Fallback', 'Inter', system-ui, sans-serif;
   --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
 
   /* Inventory stock-state surfaces (cards + table rows). */

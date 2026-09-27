@@ -87,6 +87,7 @@ import {
   type StoreContent,
 } from './lib/storeContent';
 import { COLLECTION_GUIDES } from './lib/collectionGuides';
+import { homeHeroHtml } from './lib/homeHero';
 import {
   REWARDS_TITLE,
   REWARDS_DESCRIPTION,
@@ -5488,10 +5489,23 @@ function patchHeadForTea(
   });
 
   if (hasReal) {
-    html = html.replace(
-      /(\s*)<\/head>/,
-      `\n    <link rel="preload" as="image" href="${seoEscHtml(image)}" fetchpriority="high" />$1</head>`,
-    );
+    // Preload exactly what the page shows: when the tea has WebP copies
+    // (imageVariants.ts) the hero is a <picture> WebP source with sizes
+    // SIZES.teaHero — preloading the original instead wasted ~1.7 MB on
+    // phones and delayed the real image.
+    const v = (
+      raw as { imageVariants?: { src?: string; set?: Array<{ w?: number; url?: string }> } }
+    ).imageVariants;
+    const set =
+      v && v.src === raw.image && Array.isArray(v.set)
+        ? v.set
+            .filter((x) => typeof x?.w === 'number' && typeof x?.url === 'string')
+            .sort((a, b) => (a.w as number) - (b.w as number))
+        : [];
+    const tag = set.length
+      ? `<link rel="preload" as="image" type="image/webp" href="${seoEscHtml(set[0].url as string)}" imagesrcset="${seoEscHtml(set.map((x) => `${x.url} ${x.w}w`).join(', '))}" imagesizes="(min-width: 768px) 50vw, 100vw" fetchpriority="high" />`
+      : `<link rel="preload" as="image" href="${seoEscHtml(image)}" fetchpriority="high" />`;
+    html = html.replace(/(\s*)<\/head>/, `\n    ${tag}$1</head>`);
   }
 
   // Phase 8.3 — Inject a <noscript> body block with the tea content
@@ -6706,7 +6720,17 @@ function patchHeadForCafe(template: string, rawCombos: CafeCombo[]): string {
   return replaceNoscript(html, noscriptBlock);
 }
 
-function patchHeadForHome(template: string, teas: TeaSummary[]): string {
+/** Split out the hero's critical CSS that scripts/critical-home.mjs stores
+ *  in the shell as inert text: only the home page uses it. */
+function splitCriticalHomeCss(shell: string): { shell: string; css: string } {
+  const re = /\s*<script type="text\/plain" id="critical-home-css">([\s\S]*?)<\/script>/;
+  const m = shell.match(re);
+  return m
+    ? { shell: shell.replace(re, ''), css: m[1].replace(/<\\\//g, '</') }
+    : { shell, css: '' };
+}
+
+function patchHeadForHome(template: string, teas: TeaSummary[], criticalCss = ''): string {
   const store = SEO_STORE;
   const faq = buildHomeFaq(store, SEO_LANG);
   const desc = seoClamp(homeDescription(teas.length, store, SEO_LANG));
@@ -6747,6 +6771,36 @@ function patchHeadForHome(template: string, teas: TeaSummary[]): string {
       `\n    <meta name="ele:tea-count" content="${teas.length}" />$1</head>`,
     );
   }
+  // The hero itself, in the app's own markup (lib/homeHero.ts): phones paint
+  // it — the LCP element — before the JavaScript loads; React then swaps in
+  // identical DOM. Wrapped like AppShell → main → .hp-page so nothing moves.
+  const hero = homeHeroHtml({
+    lang: SEO_LANG,
+    teaCount: teas.length,
+    giftOn: store.giftBuilderEnabled,
+    street: addressLines(store.address)[0] ?? '',
+    mapsUrl: store.mapsUrl,
+    base: seoFr() ? '/fr' : '',
+  });
+  // The shell loads its stylesheets asynchronously. The hero's own rules
+  // (scripts/critical-home.mjs) go inline so it's drawn in its final layout
+  // straight away — placed BEFORE the main stylesheet, which still wins
+  // every tie once it loads. Without them the hero would wait for the full
+  // CSS (display:none), which is the slower fallback.
+  html = criticalCss
+    ? html.replace(
+        /<link rel="preload" as="style"[^>]*href="\/assets\/index-[^"]+\.css"[^>]*>/,
+        (link) => `<style id="critical-home">${criticalCss}</style>\n    ${link}`,
+      )
+    : html.replace(
+        /(\s*)<\/head>/,
+        '\n    <style>#root>.min-h-screen{display:none}</style>$1</head>',
+      );
+  html = html.replace(
+    '<div id="root"></div>',
+    () =>
+      `<div id="root"><div class="min-h-screen flex flex-col"><main id="main-content" class="flex-1"><div class="hp-page">${hero}</div></main></div></div>`,
+  );
 
   const noscriptBlock = `
     <noscript>
@@ -6954,7 +7008,11 @@ export const renderSeo = functions.https.onRequest(
   {
     region: 'us-central1',
     cors: false,
-    memory: '256MiB',
+    // A full vCPU (billed only while a page is being built — well inside
+    // the free tier at this traffic). At 256 MiB Cloud Run gives ~1/6 of a
+    // CPU, which made a cold start take ~4 s.
+    memory: '512MiB',
+    cpu: 1,
     // minInstances=0 — cold starts add 500–1000 ms to the first
     // request after idle, but the Firebase Hosting CDN caches
     // responses for an hour (s-maxage=3600 in Cache-Control), so
@@ -7010,12 +7068,17 @@ async function renderSeoHandler(req: functions.https.Request, res: SeoResponse):
 
     // getSeoTemplate always returns something — either the cached/fresh
     // SPA shell or the embedded fallback. We can't 503 here.
-    const template = await getSeoTemplate();
+    const { shell: template, css: criticalHomeCss } = splitCriticalHomeCss(await getSeoTemplate());
 
     // Homepage
     if (reqPath === '/' || reqPath === '/index.html') {
       try {
-        const html = render(patchHeadForHome, template, await fetchActiveTeaSummaries());
+        const html = render(
+          patchHeadForHome,
+          template,
+          await fetchActiveTeaSummaries(),
+          criticalHomeCss,
+        );
         res.set('Content-Type', 'text/html; charset=utf-8');
         // Browser always revalidates (new deploys must reach users at
         // once); the CDN keeps it 10 min, then serves stale while it

@@ -147,7 +147,17 @@ if (isFrPath(window.location.pathname)) {
 
 // French visitors: fetch the dictionary first so the page never paints in
 // English and then flips. Everyone else renders immediately.
-const render = () => createRoot(document.getElementById('root')!).render(<App />);
+// Server-painted content in #root (the home hero — renderSeo): keep a copy
+// for the signed-in auth wait (AuthContext shows it instead of a blank
+// screen), and skip the entrance animations on this first page so React
+// swapping in identical DOM doesn't flicker.
+const rootEl = document.getElementById('root')!;
+if (rootEl.firstElementChild) {
+  (window as { __ELE_SSR_ROOT__?: string }).__ELE_SSR_ROOT__ = rootEl.innerHTML;
+  document.documentElement.classList.add('ssr-painted');
+  setTimeout(() => document.documentElement.classList.remove('ssr-painted'), 4000);
+}
+const render = () => createRoot(rootEl).render(<App />);
 if (useLanguageStore.getState().language === 'fr') loadFrench().then(render, render);
 else render();
 

@@ -643,7 +643,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ],
   );
 
+  const ssrPlaceholder = (window as { __ELE_SSR_ROOT__?: string }).__ELE_SSR_ROOT__;
   return (
-    <AuthContext.Provider value={value}>{(!gated || !loading) && children}</AuthContext.Provider>
+    <AuthContext.Provider value={value}>
+      {!gated || !loading ? (
+        children
+      ) : ssrPlaceholder ? (
+        // While a signed-in customer's session restores, keep showing what
+        // the server painted (the home hero) rather than a blank page.
+        <div dangerouslySetInnerHTML={{ __html: ssrPlaceholder }} />
+      ) : null}
+    </AuthContext.Provider>
   );
 }

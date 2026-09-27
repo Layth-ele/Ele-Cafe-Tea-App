@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && cp dist/index.html dist/app.html",
+    "build": "vite build && cp dist/index.html dist/app.html && node scripts/critical-home.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.sw.json",
     "lint:css": "stylelint \"src/**/*.css\"",
@@ -101,6 +101,7 @@
     "@typescript-eslint/parser": "^8.59.4",
     "@vitejs/plugin-react": "4.7.0",
     "@vitest/coverage-v8": "^2.1.9",
+    "beasties": "^0.5.4",
     "chromatic": "^11.18.0",
     "culori": "^4.0.2",
     "eslint": "^9.17.0",

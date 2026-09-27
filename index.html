@@ -181,20 +181,25 @@
         @fontsource imports, re-tune by sampling the new font's
         metrics.
       */
+      /* Measured in Chrome (canvas measureText, Sept 2026): width and
+         ascent/descent of the fallback now equal Cormorant 300 / Jost 400,
+         so the swap to the web font neither moves text nor enlarges it
+         (a larger repaint counted as a later LCP). Overrides are scaled by
+         size-adjust: override = target metric / size-adjust. */
       @font-face {
         font-family: 'Cormorant Garamond Fallback';
         src: local('Georgia'), local('Times New Roman');
-        size-adjust: 96%;
-        ascent-override: 90%;
-        descent-override: 25%;
+        size-adjust: 88.5%;
+        ascent-override: 103.9%;
+        descent-override: 32.8%;
         line-gap-override: 0%;
       }
       @font-face {
         font-family: 'Jost Fallback';
         src: local('Helvetica Neue'), local('Arial');
-        size-adjust: 102%;
-        ascent-override: 92%;
-        descent-override: 22%;
+        size-adjust: 95.7%;
+        ascent-override: 111.8%;
+        descent-override: 39.7%;
         line-gap-override: 0%;
       }
       html.dark, html[data-theme="dark"] {

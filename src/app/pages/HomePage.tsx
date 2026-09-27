@@ -19,16 +19,17 @@ import { StaleIndicator } from '@/app/components/ui/StaleIndicator';
 import { useState, useEffect, useRef, memo } from 'react';
 import { isProductAvailable } from '@/lib/availability';
 import { formatPricePerWeight } from '@/lib/priceFormat';
-import { useT, useTx, localizeTea, useLang } from '@/i18n/useT';
+import { useT, localizeTea, useLang } from '@/i18n/useT';
 import { ShopByMood, TeaGuide, WhyEleCafe, HomeFaq } from '@/app/components/home/HomeGuideSections';
 import { useStoreContent } from '@/hooks/useStoreContent';
-import { CafeTrustLine } from '@/app/components/CafeTrustLine';
+import { HomeHero } from '@/app/components/home/HomeHero';
 import {
   HOME_TITLE,
   buildHomeFaq,
   faqJsonLd,
   homeDescription,
   localBusinessLd,
+  addressLines,
 } from '../../../functions/src/lib/storeContent';
 
 import { formatMoneyShort } from '@/lib/money';
@@ -249,7 +250,6 @@ function CardSkeleton() {
 // ── Page ───────────────────────────────────────────────────────────────────────
 export function HomePage() {
   const t = useT();
-  const tx = useTx();
   const { data: settings } = useSettingsQuery();
   // Phase 5 polish: wire StaleIndicator. When the cache is stale AND
   // a background refetch is in-flight, the indicator shows so users
@@ -286,9 +286,15 @@ export function HomePage() {
   // so the hero (the mobile LCP element) paints final text immediately.
   const { data: teaCount = 0 } = useQuery({
     queryKey: queryKeys.teaCount(),
-    queryFn: fetchActiveTeaCount,
+    // fetchActiveTeaCount returns 0 when it can't read Firestore; keep the
+    // server's count then.
+    queryFn: async () => (await fetchActiveTeaCount()) || serverTeaCount() || 0,
     staleTime: 10 * 60 * 1000,
-    placeholderData: serverTeaCount,
+    // initialData (not placeholder): kept when the live count can't be
+    // read — crawlers fail App Check — so the hero text never changes
+    // after the server painted it.
+    initialData: serverTeaCount,
+    initialDataUpdatedAt: 0,
   });
   const store = useStoreContent();
   const lang = useLang();
@@ -402,83 +408,15 @@ export function HomePage() {
 
       <div className="hp-page">
         {/* ══ HERO ══════════════════════════════════════════════════════════ */}
-        <section className="hero">
-          {/*
-            Outer container does NOT have fade-up.
-
-            Why this matters for LCP: the browser measures Largest
-            Contentful Paint as the moment the largest visible element
-            reaches its final state. When this container had fade-up,
-            the LCP timing waited for the 480ms fade animation to
-            complete + render delays = 1.5s LCP measured in Lighthouse.
-
-            Removing fade-up here makes the container present
-            immediately at full opacity. Inner elements (h1, p, buttons)
-            still have staggered fade-ups for visual polish, but the
-            LCP measurement is now the inner h1 reaching opacity 1
-            after only its 80ms-delay (fade-up-d1) + 480ms duration
-            ≈ 560ms, half the previous LCP.
-
-            Visual impact: barely noticeable. The container itself
-            held nothing visual — it was just a layout wrapper. The
-            content (h1, divider, p, buttons) was always going to fade
-            up via their own classes.
-          */}
-          <div className="container hp-hero-container">
-            {/* Day 16 v14: removed the duplicated logo above the hero
-                (the navbar already shows it) and the small eyebrow
-                strip — the headline alone, larger and on a single
-                line, reads more confidently. */}
-            {/*
-              LCP element. The fade-up classes were REMOVED from this h1
-              specifically because Lighthouse measures Largest Contentful
-              Paint as the moment the element reaches its FINAL state
-              (full opacity, no transform). With fade-up-d1 (80ms delay)
-              + fade-up (480ms duration), the LCP timing waited ~560ms
-              for the animation to finish — adding ~500ms to LCP for no
-              UX benefit.
-
-              The page still feels animated: the gold rule below, the
-              sub-paragraph (.fade-up-d2), and the action buttons
-              (.fade-up-d3) keep their staggered fade-ups. Only the
-              biggest visible element on the page (h1) renders
-              immediately at full opacity.
-            */}
-            <h1 className="hero-title hero-title-flourish">
-              <span className="hp-hero-kicker">
-                {t('Premium loose leaf tea · Vancouver, Canada')}
-              </span>
-              {tx('The Art of {fineTea}', { fineTea: <em>{t('Fine Tea')}</em> })}
-            </h1>
-            {/* Hero rule — always visible, no scroll needed */}
-            <div className="hp-hero-rule" />
-            {/* No fade: on phones this paragraph is the LCP element (see h1 note). */}
-            <p className="hero-sub">
-              {teaCount > 0
-                ? t(
-                    '{count} loose leaf teas — black, green, white, oolong, rooibos, herbal, flower & fruit — shipped across Canada or ready for pickup in Vancouver',
-                    { count: teaCount },
-                  )
-                : t(
-                    'Loose leaf teas — black, green, white, oolong, rooibos, herbal, flower & fruit — shipped across Canada or ready for pickup in Vancouver',
-                  )}
-            </p>
-            <div className="hero-btns fade-up fade-up-d3">
-              <Link to={ROUTES.PRODUCTS} className="btn btn-dark btn-lg">
-                {t('Shop Collection')}
-              </Link>
-              {store.giftBuilderEnabled && (
-                <Link to={ROUTES.GIFTS} className="btn btn-outline btn-lg">
-                  {t('Gift Builder')}
-                </Link>
-              )}
-              <Link to={ROUTES.PAIRINGS} className="btn btn-gold btn-lg">
-                {t('Tea pairings')}
-              </Link>
-            </div>
-            <CafeTrustLine variant="hero" />
-          </div>
-        </section>
+        {/* Hero — also server-rendered into the page (lib/homeHero.ts) so
+            phones paint it before the JavaScript arrives. */}
+        <HomeHero
+          lang={lang}
+          teaCount={teaCount}
+          giftOn={store.giftBuilderEnabled}
+          street={addressLines(store.address)[0] ?? ''}
+          mapsUrl={store.mapsUrl}
+        />
 
         {/* ══ PILLARS ═══════════════════════════════════════════════════════ */}
         <section className="hp-pillars-section">

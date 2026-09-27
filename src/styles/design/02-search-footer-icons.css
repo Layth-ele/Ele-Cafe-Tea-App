@@ -722,6 +722,17 @@
 }
 
 .fade-up      { animation: fadeUp   var(--dur-enter) var(--ease-out) both; }
+/* renderSeo keeps its pre-rendered home hero out of layout until this
+   stylesheet has loaded (inline #root>.min-h-screen{display:none} in the
+   page head); this more specific rule, present only once the full CSS is
+   in, shows it — and the app shell React renders into the same spot. */
+html #root > .min-h-screen { display: flex; }
+/* First page painted by the server (html.ssr-painted, set in main.tsx):
+   React swaps in identical DOM — don't replay the entrance animations over
+   content that is already on screen. Finished animations stay finished
+   when the class is removed a few seconds later. */
+.ssr-painted .page-enter,
+.ssr-painted .hero .fade-up { animation-duration: 0s !important; animation-delay: 0s !important; }
 .fade-in      { animation: fadeIn   var(--dur-base)  ease both; }
 .scale-in     { animation: scaleIn  var(--dur-base)  var(--ease-spring) both; }
 .page-enter   { animation: fadeUp   var(--dur-slow) var(--ease-out) both; }
