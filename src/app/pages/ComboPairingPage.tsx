@@ -35,7 +35,8 @@
  */
 import { DietBadges, caloriesText } from '@/app/components/DietBadges';
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, Link } from 'react-router';
+import { useParams, Link, useNavigate } from 'react-router';
+import { normalizeSlugFromUrl } from '@/lib/slugify';
 import { ArrowRight } from 'lucide-react';
 import {
   collection,
@@ -92,7 +93,14 @@ function ComboPairingPage() {
   const tr = useT();
   const lang = useLang();
   const visibleCats = useVisibleCategoryIds();
-  const { slug = '' } = useParams<{ slug: string }>();
+  const { slug: rawSlug = '' } = useParams<{ slug: string }>();
+  // A link with a shared description glued on still opens the pairing,
+  // and the address bar is cleaned up.
+  const slug = normalizeSlugFromUrl(rawSlug);
+  const navigateTo = useNavigate();
+  useEffect(() => {
+    if (rawSlug && slug && rawSlug !== slug) navigateTo(ROUTES.PAIRING(slug), { replace: true });
+  }, [rawSlug, slug, navigateTo]);
   const { items, loading } = useComboGallery();
 
   // Find the combo by slug. ComboGallery's hook already filters to

@@ -34,20 +34,22 @@
  */
 export function toSlug(input: string): string {
   if (!input) return '';
-  return input
-    .toLowerCase()
-    // Strip apostrophes and quote characters FIRST. Without this step
-    // "Monk's Blend" would become "monk-s-blend" (the apostrophe
-    // collapsing into a dash between 'k' and 's'). Industry convention
-    // (Hugo, Jekyll, WordPress, Rails parameterize) is to drop these
-    // chars entirely, then collapse the remaining whitespace +
-    // punctuation runs into single dashes.
-    .replace(/['\u2018\u2019\u201B\u2032"\u201C\u201D]/g, '')
-    // Anything that isn't a-z, 0-9, or already a `-` becomes `-`.
-    // After the quote-strip above, this collapses spaces and remaining
-    // punctuation into single dashes.
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+  return (
+    input
+      .toLowerCase()
+      // Strip apostrophes and quote characters FIRST. Without this step
+      // "Monk's Blend" would become "monk-s-blend" (the apostrophe
+      // collapsing into a dash between 'k' and 's'). Industry convention
+      // (Hugo, Jekyll, WordPress, Rails parameterize) is to drop these
+      // chars entirely, then collapse the remaining whitespace +
+      // punctuation runs into single dashes.
+      .replace(/['\u2018\u2019\u201B\u2032"\u201C\u201D]/g, '')
+      // Anything that isn't a-z, 0-9, or already a `-` becomes `-`.
+      // After the quote-strip above, this collapses spaces and remaining
+      // punctuation into single dashes.
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  );
 }
 
 /**
@@ -79,5 +81,16 @@ export function normalizeSlugFromUrl(rawFromUrl: string): string {
   } catch (err) {
     console.warn('[slugify] Failed to decode URL slug:', err);
   }
-  return toSlug(decoded);
+  return toSlug(stripSharedText(decoded));
+}
+
+/**
+ * Some apps glue a shared description onto the link
+ * ("…/pairings/matcha-vegan-tart Earthy, creamy, and smooth…"). When a
+ * sentence (3+ words) follows a space, keep only what's before it; a
+ * hand-typed "monk's blend" still reaches toSlug whole.
+ */
+export function stripSharedText(s: string): string {
+  const m = s.trim().match(/^(\S+)\s+(.+)$/);
+  return m && m[2].trim().split(/\s+/).length >= 3 ? m[1] : s;
 }

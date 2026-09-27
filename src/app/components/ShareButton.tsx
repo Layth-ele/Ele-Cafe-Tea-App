@@ -21,13 +21,13 @@ import { toast } from 'sonner';
 
 import { useT, tNow } from '@/i18n/useT';
 export interface ShareButtonProps {
-  title:        string;
-  url:          string;
-  text?:        string;
+  title: string;
+  url: string;
+  text?: string;
   /** Visual variant. 'icon' is a 40×40 round icon button; 'pill' is
    * a labelled outline button. Defaults to 'icon'. */
-  variant?:     'icon' | 'pill';
-  className?:   string;
+  variant?: 'icon' | 'pill';
+  className?: string;
 }
 
 function canUseNativeShare(): boolean {
@@ -69,7 +69,10 @@ export function ShareButton({ title, url, text, variant = 'icon', className }: S
   async function handleShare() {
     if (canUseNativeShare()) {
       try {
-        await navigator.share({ title, text: text ?? title, url });
+        // Title + link only: some apps glue `text` onto the link, which
+        // breaks it when pasted into an address bar.
+        void text;
+        await navigator.share({ title, url });
         return; // success — native sheet handled the rest
       } catch (err) {
         // User cancelled the share sheet → silent abort (the most common
@@ -81,7 +84,7 @@ export function ShareButton({ title, url, text, variant = 'icon', className }: S
     }
     const ok = await copyToClipboard(url);
     if (ok) toast.success(tNow('Link copied to clipboard'), { duration: 3000 });
-    else    toast.error(tNow('Couldn’t copy link'));
+    else toast.error(tNow('Couldn’t copy link'));
   }
 
   if (variant === 'pill') {

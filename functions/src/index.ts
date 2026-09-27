@@ -7080,6 +7080,24 @@ async function renderSeoHandler(req: functions.https.Request, res: SeoResponse):
   {
     await refreshSeoSettings();
     // /fr/… is the French version of the same page.
+    // A shared description glued onto a tea / pairing link ("…/matcha-vegan-
+    // tart%20Earthy,%20creamy…") → 301 to the clean link.
+    const glued = (req.path || '').match(
+      /^(\/(?:fr\/)?(?:pairings|tea-profile\/[^/]+)\/[^/\s%]+)(?:%20|\s)+(.+)$/,
+    );
+    if (glued) {
+      let rest = glued[2];
+      try {
+        rest = decodeURIComponent(rest);
+      } catch {
+        /* keep raw */
+      }
+      if (rest.trim().split(/\s+/).length >= 3) {
+        res.set('Cache-Control', 'public, max-age=3600');
+        res.redirect(301, glued[1]);
+        return;
+      }
+    }
     const rawPath = req.path || '/';
     const lang: SeoLang = rawPath === '/fr' || rawPath.startsWith('/fr/') ? 'fr' : 'en';
     const reqPath = lang === 'fr' ? rawPath.slice(3) || '/' : rawPath;
