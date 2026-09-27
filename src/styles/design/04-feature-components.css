@@ -933,7 +933,9 @@
   }
 
   /* Typography — swap to dark-on-cream palette */
-  .cpp-hero-text  { padding-right: 0; }
+  /* flex: none — in this column layout the base flex-basis (280px)
+     became a height and left a big empty gap under the description. */
+  .cpp-hero-text  { padding-right: 0; flex: none; }
   .cpp-hero-eyebrow {
     color: var(--gold);          /* gold on cream = brand-warm eyebrow */
   }
@@ -978,55 +980,67 @@
    slimmer card padding (was clamp(20px, 3vw, 32px), now 14px). Also
    shrunk to 36×36 from the default 40×40 so it sits more discreetly
    in the corner. */
-/* Desktop hero: a centred photo card with the frosted details panel
-   under it, on the midnight band — a full-bleed backdrop blew a square
-   pastry photo up to the full screen width. */
+/* Desktop hero: light two-column card — photo left, details right, on
+   the page's warm ground (a full-bleed dark band read heavy and blew the
+   square pastry photos up to screen width). */
 @media (min-width: 721px) {
   .cpp-hero {
     min-height: 0;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: minmax(0, 440px) minmax(0, 480px);
+    justify-content: center;
     align-items: center;
-    gap: 20px;
-    padding: clamp(28px, 4vw, 44px) 16px;
+    gap: clamp(28px, 4vw, 64px);
+    padding: clamp(28px, 4vw, 56px) 24px clamp(36px, 5vw, 64px);
+    background: linear-gradient(180deg, var(--surface-2) 0%, var(--bg) 100%);
+    overflow: visible;
   }
   .cpp-hero-image {
     position: relative;
     inset: auto;
-    width: min(460px, 60vw);
+    width: 100%;
     height: auto;
     /* LazyImage sets its aspect ratio inline (16/9 for this page). */
     aspect-ratio: 1 / 1 !important;
-    border-radius: 18px !important;
+    border-radius: 20px !important;
     overflow: hidden;
-    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 22px 50px rgba(15, 28, 38, 0.14), 0 2px 6px rgba(15, 28, 38, 0.06);
   }
   .cpp-hero-veil { display: none; }
   .cpp-hero-overlay {
-    position: relative;
-    left: auto;
-    bottom: auto;
+    position: static;
     transform: none;
-    width: min(720px, 100%);
-    /* Room for the share icon so it never sits on the price. */
-    padding-right: 68px;
+    width: auto;
+    max-width: none;
+    padding: 0;
+    background: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: 0;
+    border-radius: 0;
+    color: var(--text);
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 18px;
   }
-  .cpp-hero-share-corner {
-    position: absolute;
-    top: 50%;
-    right: 12px;
-    transform: translateY(-50%);
-    width: 44px;
-    height: 44px;
-    background: rgba(255, 255, 255, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    color: var(--white);
+  .cpp-hero-text { flex: none; padding-right: 0; }
+  .cpp-hero-eyebrow { color: var(--gold-deep); margin-bottom: 10px; }
+  .cpp-hero-title {
+    font-size: clamp(2rem, 3.2vw, 2.8rem);
+    line-height: 1.1;
+    color: var(--midnight);
+    margin-bottom: 12px;
   }
-  .cpp-hero-share-corner:hover {
-    background: rgba(255, 255, 255, 0.26);
-    border-color: rgba(255, 255, 255, 0.5);
-    color: var(--white);
+  .cpp-hero-desc {
+    font-size: 1.02rem;
+    line-height: 1.7;
+    color: var(--text-2);
+    max-width: 46ch;
   }
+  /* Share: the labelled pill (as on phones) instead of the corner icon. */
+  .cpp-hero-share-corner { display: none; }
+  .cpp-hero-share { display: inline-flex; }
 }
 
 .cpp-section-pair {

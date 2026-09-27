@@ -2726,15 +2726,6 @@
 .cga-vegan-btn[data-on='true'] { background: #e7f0e4; border-color: #9cbf92; color: #2f5a2a; }
 
 
-/* Dietary tags (list) + calories on pastry cards / chips. */
-.diet-badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; padding: 0; list-style: none; }
-.diet-badges .vegan-badge { margin: 0; }
-.diet-badges .vegan-badge[data-tag='gluten-free'],
-.diet-badges .vegan-badge[data-tag='dairy-free'] { background: #f1ebdc; color: #6b5423; }
-.diet-badges .vegan-badge[data-variant='onDark'][data-tag='gluten-free'],
-.diet-badges .vegan-badge[data-variant='onDark'][data-tag='dairy-free'] { background: rgba(214, 190, 140, 0.18); color: #ecdcb8; }
-.pix-card-cal { color: var(--muted); font-weight: 400; }
-.cg-price-cal { display: block; font-size: var(--text-2xs); font-weight: 500; opacity: 0.8; margin-top: 2px; }
 .cga-diet-row { flex-wrap: wrap; gap: 6px; }
 .cga-diet-chip {
   min-height: 30px; padding: 4px 12px; border-radius: 999px;
@@ -2743,3 +2734,32 @@
 }
 .cga-diet-chip[aria-pressed='true'] { background: #e7f0e4; border-color: #9cbf92; color: #2f5a2a; }
 .cga-diet-chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* Dietary tags — solid chips with white text so they read on any card
+   (light, glass or photo). One colour per tag. */
+.diet-badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; padding: 0; list-style: none; }
+.diet-badges .vegan-badge {
+  margin: 0;
+  padding: 4px 10px;
+  border: 0;
+  color: #fff;
+  background: #3f6b35;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  box-shadow: none;
+}
+.diet-badges .vegan-badge[data-tag='vegetarian'] { background: #5d7f2e; }
+.diet-badges .vegan-badge[data-tag='gluten-free'] { background: #9a5b12; }
+.diet-badges .vegan-badge[data-tag='dairy-free'] { background: #2f5f86; }
+.diet-badges .vegan-badge svg { color: #fff; }
+/* Price chip + calories beside it (not squeezed inside the chip). */
+.price-group { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.price-cal {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.cg-frosted .price-cal { color: inherit; opacity: 0.85; }
+.pix-card-cal { color: var(--muted); font-weight: 400; }

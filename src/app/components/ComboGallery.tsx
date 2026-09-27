@@ -378,11 +378,11 @@ export function ComboGallery({
               <h3 className="cg-frosted-title">{localizeCombo(current, lang).title}</h3>
               <p className="cg-frosted-desc">{localizeCombo(current, lang).description}</p>
             </div>
-            <div className="cg-price-chip">
-              {formatPrice(current.price, current.currency || 'CAD')}
-              {caloriesText(current) && (
-                <span className="cg-price-cal">{caloriesText(current)}</span>
-              )}
+            <div className="price-group">
+              <div className="cg-price-chip">
+                {formatPrice(current.price, current.currency || 'CAD')}
+              </div>
+              {caloriesText(current) && <span className="price-cal">{caloriesText(current)}</span>}
             </div>
           </div>
 
