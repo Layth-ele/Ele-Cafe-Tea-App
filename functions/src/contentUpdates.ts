@@ -35,7 +35,7 @@ export const applyApprovedTeaDescriptions = functions.https.onCall(
       if (draft) {
         const now = norm(d.description);
         if (now === norm(draft.proposed)) already += 1;
-        else if (now === norm(draft.current)) patch.description = draft.proposed;
+        else if (draft.from.some((f) => norm(f) === now)) patch.description = draft.proposed;
         else skipped.push(typeof d.name === 'string' ? d.name : slug);
       }
       if (slug === 'green-mate' && d.caffeine !== 'Medium') patch.caffeine = 'Medium';

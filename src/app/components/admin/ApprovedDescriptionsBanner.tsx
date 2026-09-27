@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { getFunctionsLazy } from '@/lib/firebase';
 
-const DONE_KEY = 'ele:approvedDescriptionsApplied';
+const DONE_KEY = 'ele:approvedDescriptionsApplied:v2';
 
 export function ApprovedDescriptionsBanner() {
   const [busy, setBusy] = useState(false);
@@ -30,7 +30,7 @@ export function ApprovedDescriptionsBanner() {
       );
       const { data } = await run({});
       toast.success(
-        `Descriptions published: ${data.updated} updated${data.already ? `, ${data.already} already done` : ''}. French versions update in a minute.`,
+        `Descriptions updated: ${data.updated} changed${data.already ? `, ${data.already} already up to date` : ''}. French versions update in a minute.`,
       );
       if (data.skipped.length) {
         toast.message(`Left unchanged (edited since the draft): ${data.skipped.join(', ')}`);
@@ -52,13 +52,14 @@ export function ApprovedDescriptionsBanner() {
   return (
     <div className="adb-banner" role="region" aria-label="Approved tea descriptions">
       <div>
-        <strong>75 approved tea descriptions are ready.</strong>
+        <strong>Update ready: remove the origin line from tea descriptions.</strong>
         <p>
-          Publishes the longer descriptions you approved and marks Green Mate as medium caffeine.
+          Removes “Grown in… / Sourced from…” from 26 descriptions (origin and region already show
+          in Tea Details).
         </p>
       </div>
       <button type="button" className="btn btn-dark" onClick={apply} disabled={busy}>
-        {busy ? 'Publishing…' : 'Apply approved descriptions'}
+        {busy ? 'Updating…' : 'Apply update'}
       </button>
     </div>
   );
