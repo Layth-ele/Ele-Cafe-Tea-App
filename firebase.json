@@ -38,6 +38,26 @@
         "source": "/pairings/new-pairing-2",
         "destination": "/pairings/blueberry-walnut-danish",
         "type": 301
+      },
+      {
+        "source": "/pairings/leek-and-parmesan-strudal",
+        "destination": "/pairings/leek-and-parmesan-strudel",
+        "type": 301
+      },
+      {
+        "source": "/fr/pairings/leek-and-parmesan-strudal",
+        "destination": "/fr/pairings/leek-and-parmesan-strudel",
+        "type": 301
+      },
+      {
+        "source": "/pairings/spinach-and-feta-strudal",
+        "destination": "/pairings/spinach-and-feta-strudel",
+        "type": 301
+      },
+      {
+        "source": "/fr/pairings/spinach-and-feta-strudal",
+        "destination": "/fr/pairings/spinach-and-feta-strudel",
+        "type": 301
       }
     ],
     "rewrites": [
