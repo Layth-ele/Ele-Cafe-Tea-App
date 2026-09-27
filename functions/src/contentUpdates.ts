@@ -21,6 +21,12 @@ export const applyApprovedTeaDescriptions = functions.https.onCall(
     if (request.auth?.token?.role !== 'admin') {
       throw new functions.https.HttpsError('permission-denied', 'Admins only.');
     }
+    return runTeaDescriptionUpdate();
+  },
+);
+
+export async function runTeaDescriptionUpdate() {
+  {
     const db = admin.firestore();
     const snap = await db.collection('teas').get();
     let updated = 0;
@@ -72,8 +78,8 @@ export const applyApprovedTeaDescriptions = functions.https.onCall(
       `[contentUpdates] descriptions: ${updated} updated, ${already} already done, skipped: ${skipped.join(', ') || 'none'}`,
     );
     return { updated, already, skipped, frCleared };
-  },
-);
+  }
+}
 
 // ── Café pairings: missing descriptions, calories and link fixes ──────────
 
@@ -154,6 +160,12 @@ export const applyPairingUpdates = functions.https.onCall(
     if (request.auth?.token?.role !== 'admin') {
       throw new functions.https.HttpsError('permission-denied', 'Admins only.');
     }
+    return runPairingUpdate();
+  },
+);
+
+export async function runPairingUpdate() {
+  {
     const db = admin.firestore();
     const snap = await db.collection('comboGalleryItems').get();
     const bySlug = new Map(snap.docs.map((d) => [String(d.get('slug') ?? ''), d]));
@@ -187,5 +199,23 @@ export const applyPairingUpdates = functions.https.onCall(
     await batch.commit();
     console.log(`[contentUpdates] pairings updated: ${changed.join(', ') || 'none'}`);
     return { changed };
+  }
+}
+
+/**
+ * Applies the owner-requested updates above once, server-side, so they
+ * don't depend on the Admin banner being clicked. Records completion in
+ * /ops/contentUpdates and does nothing after that. Temporary — remove
+ * with the banner once the updates are live.
+ */
+export const contentUpdatesOnce = functions.scheduler.onSchedule(
+  { region: 'us-central1', schedule: 'every 2 minutes', timeoutSeconds: 120 },
+  async () => {
+    const ref = admin.firestore().doc('ops/contentUpdates');
+    if ((await ref.get()).get('v3AppliedAt')) return;
+    const teas = await runTeaDescriptionUpdate();
+    const pairings = await runPairingUpdate();
+    await ref.set({ v3AppliedAt: Date.now(), teas, pairings }, { merge: true });
+    console.log('[contentUpdates] applied once', JSON.stringify({ teas, pairings }));
   },
 );

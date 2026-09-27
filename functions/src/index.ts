@@ -7882,7 +7882,11 @@ export { onReviewWrite } from './reviews';
 export { unsubscribe } from './unsubscribe';
 
 // One-off, admin-triggered content updates (Admin → Products banner).
-export { applyApprovedTeaDescriptions, applyPairingUpdates } from './contentUpdates';
+export {
+  applyApprovedTeaDescriptions,
+  applyPairingUpdates,
+  contentUpdatesOnce,
+} from './contentUpdates';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // backfillTeaWeights — Admin callable for one-shot migration
