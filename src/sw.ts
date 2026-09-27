@@ -30,18 +30,14 @@
  *   now" button in SwUpdateBanner would silently do nothing.
  */
 
-import { clientsClaim }                         from 'workbox-core';
+import { clientsClaim } from 'workbox-core';
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
-import { NavigationRoute, registerRoute }         from 'workbox-routing';
-import {
-  NetworkFirst,
-  CacheFirst,
-  StaleWhileRevalidate,
-}                                                 from 'workbox-strategies';
-import { ExpirationPlugin }                       from 'workbox-expiration';
-import { CacheableResponsePlugin }               from 'workbox-cacheable-response';
+import { NavigationRoute, registerRoute } from 'workbox-routing';
+import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategies';
+import { ExpirationPlugin } from 'workbox-expiration';
+import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 import { initializeApp, getApps, type FirebaseOptions } from 'firebase/app';
-import { getMessaging, onBackgroundMessage }      from 'firebase/messaging/sw';
+import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -118,9 +114,7 @@ registerRoute(
   ({ request }) => request.destination === 'font',
   new CacheFirst({
     cacheName: 'fonts',
-    plugins: [
-      new ExpirationPlugin({ maxEntries: 20, maxAgeSeconds: 365 * 24 * 60 * 60 }),
-    ],
+    plugins: [new ExpirationPlugin({ maxEntries: 20, maxAgeSeconds: 365 * 24 * 60 * 60 })],
   }),
 );
 
@@ -151,20 +145,19 @@ registerRoute(
 // the messaging SDK throws, we log and continue — offline caching still
 // works, push just won't be available.
 const FCM_CONFIG = {
-  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY            as string | undefined,
-  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN        as string | undefined,
-  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID         as string | undefined,
-  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET     as string | undefined,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string | undefined,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string | undefined,
-  appId:             import.meta.env.VITE_FIREBASE_APP_ID             as string | undefined,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID as string | undefined,
 };
 
 try {
   if (FCM_CONFIG.apiKey && FCM_CONFIG.projectId && FCM_CONFIG.appId) {
     // Re-use an existing Firebase app if the SW was refreshed (dev HMR).
-    const firebaseApp = getApps().length > 0
-      ? getApps()[0]
-      : initializeApp(FCM_CONFIG as FirebaseOptions);
+    const firebaseApp =
+      getApps().length > 0 ? getApps()[0] : initializeApp(FCM_CONFIG as FirebaseOptions);
 
     const messaging = getMessaging(firebaseApp);
 
@@ -185,17 +178,17 @@ try {
         // `actions` (Android buttons) is valid in service workers but missing
         // from TypeScript's DOM lib, hence the widened options type.
         const options: NotificationOptions & { actions?: { action: string; title: string }[] } = {
-          body:     data.body || 'You have a new notification.',
-          icon:     '/icons/icon-192.png',
-          badge:    '/icons/icon-192.png',
-          tag:      data.notifId || `ele-${Date.now()}`,
+          body: data.body || 'You have a new notification.',
+          icon: '/icons/icon-192.png',
+          badge: '/icons/icon-192.png',
+          tag: data.notifId || `ele-${Date.now()}`,
           data: {
-            url:     data.url     ?? '/',
+            url: data.url ?? '/',
             notifId: data.notifId ?? '',
-            type:    data.type    ?? '',
+            type: data.type ?? '',
           },
           actions: [
-            { action: 'open',    title: 'View' },
+            { action: 'open', title: 'View' },
             { action: 'dismiss', title: 'Dismiss' },
           ],
         };
@@ -205,14 +198,15 @@ try {
       // Update the app badge only when the push carries an unread count.
       // (Previously a missing count parsed as 0 and cleared the badge on
       // every push.) The app re-syncs the badge whenever it's opened.
+      // Returned so the FCM SDK awaits it inside the push event — iOS can
+      // suspend the worker before an un-awaited badge update lands.
       const badge = parseInt(data.unreadCount ?? '', 10);
       if (!Number.isNaN(badge) && 'setAppBadge' in self.navigator) {
         const nav = self.navigator as WorkerNavigator & {
           setAppBadge: (n?: number) => Promise<void>;
           clearAppBadge: () => Promise<void>;
         };
-        if (badge > 0) nav.setAppBadge(badge).catch(() => {});
-        else           nav.clearAppBadge().catch(() => {});
+        return (badge > 0 ? nav.setAppBadge(badge) : nav.clearAppBadge()).catch(() => {});
       }
     });
   }
@@ -228,26 +222,24 @@ self.addEventListener('notificationclick', (event: NotificationEvent) => {
   // User explicitly dismissed — don't navigate.
   if (event.action === 'dismiss') return;
 
-  const data    = event.notification.data as { url?: string; FCM_MSG?: unknown } | undefined;
+  const data = event.notification.data as { url?: string; FCM_MSG?: unknown } | undefined;
   // Notifications displayed by the FCM SDK carry FCM_MSG and are opened by
   // the SDK's own click handler (fcmOptions.link) — don't navigate twice.
   if (data?.FCM_MSG) return;
-  const url     = data?.url ?? '/';
+  const url = data?.url ?? '/';
   const fullUrl = new URL(url, self.location.origin).href;
 
   event.waitUntil(
-    self.clients
-      .matchAll({ type: 'window', includeUncontrolled: true })
-      .then((windowClients) => {
-        // Bring an existing Ele Café tab into focus and navigate it.
-        for (const client of windowClients as WindowClient[]) {
-          if (client.url.startsWith(self.location.origin) && 'focus' in client) {
-            return client.navigate(fullUrl).then(() => client.focus());
-          }
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Bring an existing Ele Café tab into focus and navigate it.
+      for (const client of windowClients as WindowClient[]) {
+        if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+          return client.navigate(fullUrl).then(() => client.focus());
         }
-        // No open tab — open a new one.
-        return self.clients.openWindow(fullUrl);
-      }),
+      }
+      // No open tab — open a new one.
+      return self.clients.openWindow(fullUrl);
+    }),
   );
 });
 
@@ -273,7 +265,7 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
         clearAppBadge: () => Promise<void>;
       };
       if (count > 0) nav.setAppBadge(count).catch(() => {});
-      else           nav.clearAppBadge().catch(() => {});
+      else nav.clearAppBadge().catch(() => {});
     }
   }
 });
