@@ -37,7 +37,12 @@ import { safeReturnUrlOr } from '@/lib/safeReturnUrl';
 import { Field } from '@/app/components/ui/Field';
 import { SubmitButton } from '@/app/components/ui/SubmitButton';
 import { AuthBootSplash } from '@/app/components/AuthBootSplash';
-import { loginSchema, passwordResetSchema, type LoginInput, type PasswordResetInput } from '@/schemas/auth.schema';
+import {
+  loginSchema,
+  passwordResetSchema,
+  type LoginInput,
+  type PasswordResetInput,
+} from '@/schemas/auth.schema';
 import { PasswordResetSentModal } from '@/app/components/modals/PasswordResetModals';
 import { isInventoryEmail } from '@/lib/inventoryAccount';
 import { clearStaffDevice } from '@/features/inventory/lib/staffDevice';
@@ -46,19 +51,37 @@ import { useT, tNow } from '@/i18n/useT';
 /** Staff account → the inventory app; anyone else → returnUrl, except
  *  never an inventory page (only the staff account can use it — sending a
  *  customer there would bounce straight back here). */
+const LOGIN_TIMEOUT = 'login-timeout';
+const LOGIN_TIMEOUT_MS = 30000;
+
 function postLoginDestination(email: string | null | undefined, returnUrl: string): string {
   if (isInventoryEmail(email)) return ROUTES.INVENTORY;
-  const isInventoryPath = returnUrl === ROUTES.INVENTORY || returnUrl.startsWith(`${ROUTES.INVENTORY}/`) || returnUrl.startsWith(`${ROUTES.INVENTORY}?`);
+  const isInventoryPath =
+    returnUrl === ROUTES.INVENTORY ||
+    returnUrl.startsWith(`${ROUTES.INVENTORY}/`) ||
+    returnUrl.startsWith(`${ROUTES.INVENTORY}?`);
   return isInventoryPath ? ROUTES.HOME : returnUrl;
 }
 
 function GoogleIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden>
-      <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
-      <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
-      <path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/>
-      <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 6.294C4.672 4.167 6.656 3.58 9 3.58z"/>
+      <path
+        fill="#4285F4"
+        d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
+      />
+      <path
+        fill="#34A853"
+        d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"
+      />
+      <path
+        fill="#EA4335"
+        d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 6.294C4.672 4.167 6.656 3.58 9 3.58z"
+      />
     </svg>
   );
 }
@@ -82,8 +105,8 @@ export function LoginPage() {
   const { login, loginWithGoogle, resetPassword, currentUser, loading: authLoading } = useAuth();
   const { executeAndVerify } = useRecaptcha();
   const { data: settings } = useSettingsQuery();
-  const navigate  = useNavigate();
-  const location  = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const returnUrl = safeReturnUrlOr(location.search, ROUTES.HOME);
 
   // RHF for the login form. defaultValues are required so the
@@ -141,9 +164,23 @@ export function LoginPage() {
       // Signing in as anyone but the staff account: this device is no
       // longer a staff device (stops the boot-time jump to /inventory).
       if (!isInventoryEmail(data.email)) clearStaffDevice();
-      const user = await login(data.email, data.password);
+      // Never leave the button spinning: if Firebase hasn't answered in
+      // 30 s, stop and say so. Should the sign-in land later anyway, the
+      // auth listener picks it up and this page redirects on its own.
+      const user = await Promise.race([
+        login(data.email, data.password),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(LOGIN_TIMEOUT)), LOGIN_TIMEOUT_MS),
+        ),
+      ]);
       navigate(postLoginDestination(user.email, returnUrl), { replace: true });
     } catch (err: unknown) {
+      if ((err as Error)?.message === LOGIN_TIMEOUT) {
+        toast.error(
+          tNow('Signing in is taking longer than expected. Check your connection and try again.'),
+        );
+        return;
+      }
       const msg = tNow(authErrorMessage(err));
       if (msg) toast.error(msg);
     }
@@ -187,12 +224,11 @@ export function LoginPage() {
       // returning), so the "no account" modal branch was removed —
       // showing it would leak the same signal the server now hides.
       const code = (err as { code?: string })?.code ?? '';
-      if (
-        code === 'functions/resource-exhausted'
-        || code === 'resource-exhausted'
-      ) {
+      if (code === 'functions/resource-exhausted' || code === 'resource-exhausted') {
         toast.error(
-          tNow('We\'ve sent a reset link recently for this email. Please check your inbox (including spam) or try again in a few minutes.'),
+          tNow(
+            "We've sent a reset link recently for this email. Please check your inbox (including spam) or try again in a few minutes.",
+          ),
         );
       } else {
         const msg = tNow(authErrorMessage(err));
@@ -201,43 +237,52 @@ export function LoginPage() {
     }
   };
 
-  if (showReset) return (
-    <div className="lp-panel">
-      <SeoHead title="Sign In | Ele Café" description="Sign in to your Ele Café account to track orders, redeem credits, and manage your profile." noIndex={true} />
-      <div className="lp-card">
-        <div className="lp-head">
-          <h2>{t('Reset password')}</h2>
-          <p className="text-sm text-muted lp-subtitle">{t('Enter your email and we\'ll send a reset link.')}</p>
+  if (showReset)
+    return (
+      <div className="lp-panel">
+        <SeoHead
+          title="Sign In | Ele Café"
+          description="Sign in to your Ele Café account to track orders, redeem credits, and manage your profile."
+          noIndex={true}
+        />
+        <div className="lp-card">
+          <div className="lp-head">
+            <h2>{t('Reset password')}</h2>
+            <p className="text-sm text-muted lp-subtitle">
+              {t("Enter your email and we'll send a reset link.")}
+            </p>
+          </div>
+          <form onSubmit={resetForm.handleSubmit(handleReset)} className="stack-4">
+            <Field name="resetEmail" required>
+              <Field.Label>{t('Email address')}</Field.Label>
+              <Field.Input
+                type="email"
+                autoComplete="email"
+                placeholder={t('your@email.com')}
+                {...resetForm.register('email')}
+              />
+              <Field.Error>{resetForm.formState.errors.email?.message}</Field.Error>
+            </Field>
+            <SubmitButton variant="dark" loadingLabel={t('Sending…')} className="btn-full">
+              {t('Send Reset Link')}
+            </SubmitButton>
+            <button
+              type="button"
+              className="btn btn-ghost btn-full btn-sm"
+              onClick={() => setShowReset(false)}
+            >
+              {t('← Back to sign in')}
+            </button>
+          </form>
         </div>
-        <form onSubmit={resetForm.handleSubmit(handleReset)} className="stack-4">
-          <Field name="resetEmail" required>
-            <Field.Label>{t('Email address')}</Field.Label>
-            <Field.Input
-              type="email"
-              autoComplete="email"
-              placeholder={t('your@email.com')}
-              {...resetForm.register('email')}
-            />
-            <Field.Error>{resetForm.formState.errors.email?.message}</Field.Error>
-          </Field>
-          <SubmitButton variant="dark" loadingLabel={t('Sending…')} className="btn-full">
-            {t('Send Reset Link')}
-          </SubmitButton>
-          <button type="button" className="btn btn-ghost btn-full btn-sm" onClick={() => setShowReset(false)}>
-            {t('← Back to sign in')}
-          </button>
-        </form>
       </div>
-    </div>
-  );
+    );
 
   return (
     <div className="lp-panel">
       <div className="lp-card">
         <div className="lp-head">
-          {brandLogoUrl && (
-            <img src={brandLogoUrl} alt="Ele Café" className="lp-logo" />
-          )}
+          {brandLogoUrl && <img src={brandLogoUrl} alt="Ele Café" className="lp-logo" />}
           <span className="overline lp-overline">{t('Ele Café · Vancouver')}</span>
           <h2>{t('Welcome back')}</h2>
           <p className="text-sm text-muted lp-subtitle">{t('Sign in to your account')}</p>
@@ -278,7 +323,10 @@ export function LoginPage() {
                 <Field.Label className="lp-pass-label">{t('Password')}</Field.Label>
                 <button
                   type="button"
-                  onClick={() => { resetForm.reset({ email: loginForm.getValues('email') }); setShowReset(true); }}
+                  onClick={() => {
+                    resetForm.reset({ email: loginForm.getValues('email') });
+                    setShowReset(true);
+                  }}
                   className="lp-forgot-btn"
                 >
                   {t('Forgot?')}

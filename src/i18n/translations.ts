@@ -1523,6 +1523,9 @@ export const STRINGS: Record<string, { fr: string }> = {
   'Enter a valid email address': { fr: 'Entrez une adresse courriel valide' },
   'Invalid email address': { fr: 'Adresse courriel invalide' },
   'Invalid email or password.': { fr: 'Courriel ou mot de passe invalide.' },
+  'Signing in is taking longer than expected. Check your connection and try again.': {
+    fr: 'La connexion prend plus de temps que prévu. Vérifiez votre connexion et réessayez.',
+  },
   'Message must be 500 characters or less': {
     fr: 'Le message doit contenir 500 caractères ou moins',
   },

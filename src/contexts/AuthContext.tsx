@@ -153,11 +153,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       throw err;
     }
-    await syncUserDocFromKnownState(
-      cred.user,
-      cred.user.displayName || '',
-      isFirstAuthSession(cred.user),
-    );
+    // A Firestore write only resolves on server ack, which can stall for
+    // a long time on a weak phone connection — the user was stuck on
+    // "Signing in…" although Google had already signed them in. Wait a
+    // few seconds at most; the write still lands in the background, and
+    // the auth listener's ensureUserDoc covers anything it misses.
+    await Promise.race([
+      syncUserDocFromKnownState(
+        cred.user,
+        cred.user.displayName || '',
+        isFirstAuthSession(cred.user),
+      ).catch((err) => console.warn('[loginWithGoogle] /users sync failed:', err)),
+      new Promise((r) => setTimeout(r, 5000)),
+    ]);
     // Same eager-set as the email/password login — see the comment
     // in `login()` for the rationale (avoids the post-login blank-
     // screen race when navigate() outpaces onAuthStateChanged).
