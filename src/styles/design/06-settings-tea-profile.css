@@ -1109,6 +1109,8 @@
   border-radius: 20px;
 }
 .tpf-desc-text {
+  /* Descriptions can have paragraphs (blank-line separated). */
+  white-space: pre-line;
   text-align: center;
   font-size: clamp(14px, 1.6vw, 16px);
   color: var(--text-2);

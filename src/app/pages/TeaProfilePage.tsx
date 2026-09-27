@@ -909,7 +909,11 @@ export function TeaProfilePage() {
               <div className="tpf-gold-rule" />
 
               {/* Description */}
-              {teaText.description && <p className="tpf-desc">{teaText.description}</p>}
+              {/* Buy box: the opening paragraph only; the full description
+                  (brewing, serving, when to drink) is in the section below. */}
+              {teaText.description && (
+                <p className="tpf-desc">{teaText.description.split(/\n\s*\n/)[0]}</p>
+              )}
 
               {/* Spec chips */}
               {(product.caffeine ||
