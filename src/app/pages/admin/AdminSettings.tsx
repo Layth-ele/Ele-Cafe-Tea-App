@@ -116,6 +116,7 @@ const DEFAULTS = {
   socialFacebook: '',
   socialX: '',
   socialPinterest: '',
+  socialProfiles: '',
   socialTiktok: '',
 
   // Google Maps URL — when set, the footer address becomes a clickable
@@ -1171,6 +1172,21 @@ export function AdminSettings() {
             />
           </AdminSettingsField>
         </div>
+        <AdminSettingsField
+          label="Other profiles & directory listings (one link per line)"
+          hint="Your Google Business Profile, Yelp, TripAdvisor, LinkedIn, Apple Maps or Bing Places page. Google uses these to confirm they are the same business (schema.org sameAs); they are not shown on the site."
+        >
+          <textarea
+            id="settings-social-profiles"
+            className="field"
+            rows={5}
+            value={settings.socialProfiles ?? ''}
+            onChange={(e) => setSettings((prev) => ({ ...prev, socialProfiles: e.target.value }))}
+            placeholder={
+              'https://g.page/r/your-google-business-profile\nhttps://www.yelp.ca/biz/ele-cafe-vancouver\nhttps://www.tripadvisor.ca/...\nhttps://www.linkedin.com/company/ele-cafe'
+            }
+          />
+        </AdminSettingsField>
       </Section>
 
       <Section title="Announcement Strip" icon={Bell}>

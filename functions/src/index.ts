@@ -89,6 +89,25 @@ import {
 import { COLLECTION_GUIDES } from './lib/collectionGuides';
 import { homeHeroHtml } from './lib/homeHero';
 import {
+  CAFFEINE_DESCRIPTION,
+  CAFFEINE_DESCRIPTION_FR,
+  CAFFEINE_DRINKS,
+  CAFFEINE_INTRO,
+  CAFFEINE_INTRO_FR,
+  CAFFEINE_LIMITS,
+  CAFFEINE_TITLE,
+  CAFFEINE_TITLE_FR,
+  HEALTH_CANADA_CAFFEINE_URL,
+} from './lib/caffeine';
+import {
+  PRESS_ASSETS,
+  PRESS_DESCRIPTION,
+  PRESS_DESCRIPTION_FR,
+  PRESS_TITLE,
+  PRESS_TITLE_FR,
+  pressBoilerplate,
+} from './lib/press';
+import {
   REWARDS_TITLE,
   REWARDS_DESCRIPTION,
   REWARDS_TITLE_FR,
@@ -4375,6 +4394,8 @@ const STATIC_SITEMAP_URLS: Array<{ loc: string; priority: string; changefreq: st
   { loc: '/cafe', priority: '0.9', changefreq: 'weekly' },
   { loc: '/rewards', priority: '0.7', changefreq: 'monthly' },
   { loc: '/franchise', priority: '0.5', changefreq: 'monthly' },
+  { loc: '/tea-caffeine-calculator', priority: '0.6', changefreq: 'monthly' },
+  { loc: '/press', priority: '0.4', changefreq: 'monthly' },
   { loc: '/gifts', priority: '0.7', changefreq: 'weekly' },
   { loc: '/about', priority: '0.5', changefreq: 'monthly' },
   { loc: '/contact', priority: '0.5', changefreq: 'monthly' },
@@ -4498,7 +4519,7 @@ function buildSitemapXml(
   // French twins: every server-rendered page also exists under /fr. Both
   // entries carry the same hreflang set so Google pairs them.
   const FR_PAGE_RE =
-    /^\/(?:$|products|cafe|rewards|franchise|about|contact|pairings|collections|tea-profile)/;
+    /^\/(?:$|products|cafe|rewards|franchise|about|contact|pairings|collections|tea-profile|tea-caffeine-calculator|press)/;
   const withFrench = (entry: string): string => {
     const loc = entry.match(/<loc>([^<]+)<\/loc>/)?.[1] ?? '';
     const path = loc.slice(SITE_BASE.length) || '/';
@@ -6558,6 +6579,100 @@ function patchHeadForFranchise(template: string): string {
   );
 }
 
+// ── /tea-caffeine-calculator: free tool (lib/caffeine.ts) ──────────────────
+
+function patchHeadForCaffeine(template: string): string {
+  const url = seoUrl('/tea-caffeine-calculator');
+  const name = SL('Tea caffeine calculator', 'Calculateur de caféine du thé');
+  const html = patchTemplateHead(template, {
+    title: SL(CAFFEINE_TITLE, CAFFEINE_TITLE_FR),
+    description: seoClamp(SL(CAFFEINE_DESCRIPTION, CAFFEINE_DESCRIPTION_FR)),
+    canonical: url,
+    ogType: 'website',
+    ogImage: SEO_DEFAULT_OG,
+    extraOgMeta: [],
+    extraJsonLd: [
+      infoBreadcrumb(name, url),
+      {
+        '@context': 'https://schema.org',
+        '@type': 'WebApplication',
+        name: 'Tea Caffeine Calculator',
+        url,
+        applicationCategory: 'HealthApplication',
+        operatingSystem: 'Any',
+        inLanguage: SL('en-CA', 'fr-CA'),
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'CAD' },
+        publisher: { '@id': SEO_BUSINESS_ID },
+      },
+    ],
+  });
+  const rows = CAFFEINE_DRINKS.map((d) => {
+    const n = seoEscHtml(seoFr() ? d.nameFr : d.name);
+    const cell = d.link ? `<a href="${seoUrl(d.link)}">${n}</a>` : n;
+    const mg = d.max === 0 ? SL('None', 'Aucune') : `${d.min}–${d.max} mg`;
+    return `<tr><th scope="row">${cell}</th><td>${seoEscHtml(seoFr() ? d.servingFr : d.serving)}</td><td>${mg}</td></tr>`;
+  }).join('\n          ');
+  const limits = CAFFEINE_LIMITS.map(
+    (l) => `<li>${seoEscHtml(seoFr() ? l.labelFr : l.label)} : ${l.mg} mg</li>`,
+  ).join('');
+  return replaceNoscript(
+    html,
+    `
+    <noscript>
+      <article class="seo-fallback">
+        <h1>${seoEscHtml(name)}</h1>
+        <p>${seoEscHtml(SL(CAFFEINE_INTRO, CAFFEINE_INTRO_FR))}</p>
+        <table>
+          <thead><tr><th>${SL('Drink', 'Boisson')}</th><th>${SL('Serving', 'Portion')}</th><th>${SL('Caffeine', 'Caféine')}</th></tr></thead>
+          <tbody>
+          ${rows}
+          </tbody>
+        </table>
+        <h2>${SL('Daily caffeine guidance (Health Canada)', 'Recommandations quotidiennes (Santé Canada)')}</h2>
+        <ul>${limits}</ul>
+        <p><a href="${HEALTH_CANADA_CAFFEINE_URL}">${SL('Health Canada: caffeine in foods', 'Santé Canada : la caféine dans les aliments')}</a> · <a href="${seoUrl('/collections/caffeine-free')}">${SL('Caffeine-free teas', 'Thés sans caféine')}</a></p>
+        ${seoContactHtml(SEO_STORE)}
+      </article>
+    </noscript>`,
+  );
+}
+
+// ── /press: media kit (lib/press.ts) ────────────────────────────────────────
+
+function patchHeadForPress(template: string, teaCount: number): string {
+  const store = SEO_STORE;
+  const url = seoUrl('/press');
+  const [street] = addressLines(store.address);
+  const email = store.email || 'info@elecafe.ca';
+  const html = patchTemplateHead(template, {
+    title: SL(PRESS_TITLE, PRESS_TITLE_FR),
+    description: seoClamp(SL(PRESS_DESCRIPTION, PRESS_DESCRIPTION_FR)),
+    canonical: url,
+    ogType: 'website',
+    ogImage: SEO_DEFAULT_OG,
+    extraOgMeta: [],
+    extraJsonLd: [infoBreadcrumb(SL('Press', 'Presse'), url)],
+  });
+  const assets = PRESS_ASSETS.map(
+    (a) => `<li><a href="${SEO_SITE_BASE}${a.file}">${seoEscHtml(SL(a.label, a.labelFr))}</a></li>`,
+  ).join('');
+  return replaceNoscript(
+    html,
+    `
+    <noscript>
+      <article class="seo-fallback">
+        <h1>${SL('Ele Café press kit', 'Trousse média d’Ele Café')}</h1>
+        <p>${seoEscHtml(pressBoilerplate({ teaCount, street }, SEO_LANG))}</p>
+        <h2>${SL('Logos &amp; images', 'Logos et images')}</h2>
+        <ul>${assets}</ul>
+        <h2>${SL('Media contact', 'Contact médias')}</h2>
+        <p><a href="mailto:${seoEscHtml(email)}">${seoEscHtml(email)}</a></p>
+        ${seoContactHtml(store)}
+      </article>
+    </noscript>`,
+  );
+}
+
 // ── /rewards: Ele Rewards loyalty program (lib/rewards.ts) ─────────────────
 
 function patchHeadForRewards(template: string): string {
@@ -7173,6 +7288,24 @@ async function renderSeoHandler(req: functions.https.Request, res: SeoResponse):
     }
 
     // /rewards — Ele Rewards loyalty program.
+    if (reqPath === '/tea-caffeine-calculator' || reqPath === '/tea-caffeine-calculator/') {
+      res.set('Content-Type', 'text/html; charset=utf-8');
+      res.set('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
+      res.status(200).send(render(patchHeadForCaffeine, template));
+      return;
+    }
+    if (reqPath === '/press' || reqPath === '/press/') {
+      let n = 0;
+      try {
+        n = (await fetchCatalogForSeo()).length;
+      } catch {
+        /* count is optional */
+      }
+      res.set('Content-Type', 'text/html; charset=utf-8');
+      res.set('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
+      res.status(200).send(render(patchHeadForPress, template, n));
+      return;
+    }
     if (reqPath === '/rewards' || reqPath === '/rewards/') {
       const html = render(patchHeadForRewards, template);
       res.set('Content-Type', 'text/html; charset=utf-8');

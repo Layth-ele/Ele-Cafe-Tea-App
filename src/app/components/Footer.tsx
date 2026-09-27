@@ -375,6 +375,12 @@ export function Footer() {
             <TransitionLink to={ROUTES.FRANCHISE} className="footer-link">
               {t('Franchise')}
             </TransitionLink>
+            <TransitionLink to={ROUTES.CAFFEINE_CALCULATOR} className="footer-link">
+              {t('Caffeine calculator')}
+            </TransitionLink>
+            <TransitionLink to={ROUTES.PRESS} className="footer-link">
+              {t('Press')}
+            </TransitionLink>
           </div>
         </div>
 

@@ -91,9 +91,21 @@ export function readStoreContent(raw: Record<string, unknown> | null | undefined
       (address ? `https://maps.google.com/?q=${encodeURIComponent(address)}` : ''),
     whatsappUrl: httpsUrl(d.socialWhatsapp),
     instagramUrl,
-    sameAs: [instagramUrl, d.socialFacebook, d.socialX, d.socialPinterest, d.socialTiktok]
-      .map(httpsUrl)
-      .filter(Boolean),
+    sameAs: [
+      ...new Set(
+        [
+          instagramUrl,
+          d.socialFacebook,
+          d.socialX,
+          d.socialPinterest,
+          d.socialTiktok,
+          // Other profiles / directory listings, one per line (Admin → Settings).
+          ...(typeof d.socialProfiles === 'string' ? d.socialProfiles.split(/\s+/) : []),
+        ]
+          .map(httpsUrl)
+          .filter(Boolean),
+      ),
+    ],
     hours,
     freeShippingThreshold: num(d.freeShippingThreshold),
     freeSample: d.freeSampleWithOrders !== false,

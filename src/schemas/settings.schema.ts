@@ -101,6 +101,8 @@ export const settingsSchema = z
     socialFacebook: z.string(),
     socialX: z.string(),
     socialPinterest: z.string(),
+    /** Other profile / directory links, one per line (Google Business, Yelp…). */
+    socialProfiles: z.string().optional(),
     socialTiktok: z.string(),
 
     // ── Footer / location ───────────────────────────────────────────────

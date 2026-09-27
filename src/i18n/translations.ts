@@ -1906,4 +1906,6 @@ export const STRINGS: Record<string, { fr: string }> = {
   Vegan: { fr: 'Végétalien' },
   'Filter pairings': { fr: 'Filtrer les accords' },
   All: { fr: 'Tous' },
+  'Caffeine calculator': { fr: 'Calculateur de caféine' },
+  Press: { fr: 'Presse' },
 };

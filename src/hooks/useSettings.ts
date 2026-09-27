@@ -130,6 +130,7 @@ export const SETTING_DEFAULTS = {
   socialFacebook: '' as string,
   socialX: '' as string, // formerly Twitter
   socialPinterest: '' as string,
+  socialProfiles: '' as string,
   socialTiktok: '' as string,
 
   // ── Location / map ───────────────────────────────────────────────────────

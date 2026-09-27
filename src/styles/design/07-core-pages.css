@@ -2763,3 +2763,63 @@
 }
 .cg-frosted .price-cal { color: inherit; opacity: 0.85; }
 .pix-card-cal { color: var(--muted); font-weight: 400; }
+
+/* ── Tea caffeine calculator (/tea-caffeine-calculator) ─────────────── */
+.cc-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(20px, 3vw, 32px); }
+.cc-tool {
+  width: min(820px, calc(100% - 32px)); margin: 0 auto; padding: clamp(16px, 3vw, 28px);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px;
+}
+.cc-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.cc-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg);
+}
+.cc-row[data-active='true'] { border-color: color-mix(in srgb, var(--gold) 55%, transparent); background: var(--gold-tint); }
+.cc-row-name { display: grid; gap: 2px; min-width: 0; }
+.cc-row-name strong { font-weight: 600; color: var(--midnight); }
+.cc-row-meta { font-size: var(--text-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+.cc-stepper { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.cc-stepper button {
+  width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--surface); color: var(--midnight); display: grid; place-items: center; cursor: pointer;
+}
+.cc-stepper button:disabled { opacity: 0.35; cursor: default; }
+.cc-stepper button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.cc-stepper output { min-width: 28px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cc-result { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding-top: 6px; border-top: 1px solid var(--border); }
+.cc-limit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: var(--text-sm); color: var(--text-2); }
+.cc-limit select {
+  font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); width: 100%; min-width: 0;
+}
+.cc-total { margin: 0; color: var(--text-2); }
+.cc-total-num { font-family: var(--font-serif); font-size: clamp(2rem, 5vw, 2.8rem); color: var(--midnight); font-variant-numeric: tabular-nums; }
+.cc-bar { height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.cc-bar span { display: block; height: 100%; border-radius: inherit; background: #5d7f2e; transition: width 240ms ease; }
+.cc-result[data-over='true'] .cc-bar span { background: #b4532a; }
+.cc-verdict { margin: 0; font-weight: 500; color: var(--midnight); }
+.cc-table-card, .cc-tips, .cc-cite { width: min(820px, calc(100% - 32px)); margin: 0 auto; }
+.cc-page { padding-bottom: clamp(32px, 5vw, 64px); }
+.press-page .rw-grid { margin-bottom: clamp(32px, 5vw, 64px); }
+.cc-table-wrap { overflow-x: auto; }
+.cc-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.cc-table th, .cc-table td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+.cc-table thead th { font-size: var(--text-2xs); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.cc-table td { font-variant-numeric: tabular-nums; }
+.cc-table a { color: var(--gold-deep); }
+.cc-note { font-size: var(--text-xs); color: var(--muted); margin: 10px 0 0; }
+.cc-tip-list { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; color: var(--text-2); }
+.cc-tip-list a { color: var(--gold-deep); font-weight: 600; }
+.cc-snippet { white-space: pre-wrap; word-break: break-all; max-width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; overflow-x: auto; font-size: var(--text-xs); margin: 8px 0 10px; }
+@media (prefers-reduced-motion: reduce) { .cc-bar span { transition: none; } }
+
+/* ── Press kit (/press) ─────────────────────────────────────────────── */
+.press-facts { display: grid; gap: 8px; margin: 0; }
+.press-fact { display: grid; grid-template-columns: 7.5em 1fr; gap: 10px; }
+.press-fact dt { font-size: var(--text-2xs); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+.press-fact dd { margin: 0; color: var(--text); }
+.press-boilerplate { line-height: 1.75; color: var(--text); background: var(--bg); border-left: 3px solid var(--gold); padding: 10px 14px; border-radius: 0 8px 8px 0; }
+.press-assets { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
+.press-asset { display: inline-flex; align-items: center; gap: 8px; color: var(--gold-deep); font-weight: 600; }

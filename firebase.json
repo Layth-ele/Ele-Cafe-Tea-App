@@ -116,6 +116,14 @@
         "function": "renderSeo"
       },
       {
+        "source": "/tea-caffeine-calculator",
+        "function": "renderSeo"
+      },
+      {
+        "source": "/press",
+        "function": "renderSeo"
+      },
+      {
         "source": "/about",
         "function": "renderSeo"
       },

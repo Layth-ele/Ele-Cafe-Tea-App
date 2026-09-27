@@ -103,6 +103,8 @@ const CollectionPage = lazy_(() => import('./pages/CollectionPage'));
 const CafePage = lazy_(() => import('./pages/CafePage'));
 const RewardsPage = lazy_(() => import('./pages/RewardsPage'));
 const FranchisePage = lazy_(() => import('./pages/FranchisePage'));
+const CaffeineCalculatorPage = lazy_(() => import('./pages/CaffeineCalculatorPage'));
+const PressPage = lazy_(() => import('./pages/PressPage'));
 const CartPage = lazy_(() => import('./pages/CartPage'));
 const LoginPage = lazy_(() => import('./pages/LoginPage'));
 const SignupPage = lazy_(() => import('./pages/SignupPage'));
@@ -287,6 +289,8 @@ function AppShell() {
                   <Route path={ROUTES.CAFE} element={<CafePage />} />
                   <Route path={ROUTES.REWARDS} element={<RewardsPage />} />
                   <Route path={ROUTES.FRANCHISE} element={<FranchisePage />} />
+                  <Route path={ROUTES.CAFFEINE_CALCULATOR} element={<CaffeineCalculatorPage />} />
+                  <Route path={ROUTES.PRESS} element={<PressPage />} />
                   <Route path="/pairings/:slug" element={<ComboPairingPage />} />
 
                   {/* ── PWA share target (Phase 9.5) ─────────────────

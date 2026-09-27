@@ -16,11 +16,14 @@ export const ROUTES = {
   HOME: '/',
   PRODUCTS: '/products',
   PRODUCTS_CAT: (category: string) => `/products/${encodeURIComponent(category)}`,
-  TEA_PROFILE: (category: string, slug: string) => `/tea-profile/${encodeURIComponent(category)}/${encodeURIComponent(slug)}`,
+  TEA_PROFILE: (category: string, slug: string) =>
+    `/tea-profile/${encodeURIComponent(category)}/${encodeURIComponent(slug)}`,
   PAIRINGS: '/pairings',
   CAFE: '/cafe',
   REWARDS: '/rewards',
   FRANCHISE: '/franchise',
+  CAFFEINE_CALCULATOR: '/tea-caffeine-calculator',
+  PRESS: '/press',
   PAIRING: (slug: string) => `/pairings/${encodeURIComponent(slug)}`,
   COLLECTION: (slug: string) => `/collections/${encodeURIComponent(slug)}`,
   CART: '/cart',
@@ -45,9 +48,9 @@ export const ROUTES = {
   ADMIN_PROMOTIONS: '/admin/promotions',
   ADMIN_VERIFICATION_ANALYTICS: '/admin/verification-analytics',
   ADMIN_VISITS_ANALYTICS: '/admin/visits-analytics',
-  ADMIN_INVENTORY:        '/admin/inventory',
-  ADMIN_INVENTORY_LOGS:   '/admin/inventory/logs',
-  ADMIN_EMPLOYEES:        '/admin/employees',
+  ADMIN_INVENTORY: '/admin/inventory',
+  ADMIN_INVENTORY_LOGS: '/admin/inventory/logs',
+  ADMIN_EMPLOYEES: '/admin/employees',
   /** Employee-facing inventory dashboard. Requires sign-in to the
    *  shared `inventory@elecafe.ca` account AND a validated 4-digit
    *  access code (session-only, see InventoryGuard).
