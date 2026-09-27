@@ -21,6 +21,7 @@ import { sendPushToUser } from './lib/push';
 import { isInventoryEmail } from './lib/inventoryAccount';
 import { unsubscribeHeaders, unsubscribeToken, unsubscribeUrl } from './unsubscribe';
 import { translateBatchToFrench } from './translate';
+import { runWatchdog } from './watchdog';
 import {
   renderEmail,
   emailBrandFrom,
@@ -865,6 +866,11 @@ export const marketingTick = functions.scheduler.onSchedule(
       await sendRefillReminders();
     } catch (err) {
       console.error('[marketingTick] refill reminders failed:', err);
+    }
+    try {
+      await runWatchdog();
+    } catch (err) {
+      console.error('[marketingTick] watchdog failed:', err);
     }
   },
 );
