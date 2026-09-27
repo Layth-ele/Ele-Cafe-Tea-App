@@ -26,7 +26,9 @@
  * gate as the carousel. Renders a friendly "no pairings yet" message
  * if the toggle is on but no items exist.
  */
+import { useState } from 'react';
 import { Link } from 'react-router';
+import { VeganBadge } from '@/app/components/VeganBadge';
 import { ArrowRight } from 'lucide-react';
 import { ROUTES, SITE_BASE } from '@/lib/routes';
 import { useComboGallery } from '@/app/components/ComboGallery';
@@ -51,7 +53,11 @@ function formatPrice(price: number, currency = 'CAD'): string {
 function PairingsIndexPage() {
   const t = useT();
   const lang = useLang();
-  const { enabled, items, loading } = useComboGallery();
+  const { enabled, items: allItems, loading } = useComboGallery();
+  // "Vegan" filter — shown only when at least one pairing is vegan.
+  const [veganOnly, setVeganOnly] = useState(false);
+  const veganCount = allItems.filter((i) => i.vegan).length;
+  const items = veganOnly ? allItems.filter((i) => i.vegan) : allItems;
 
   // Toggle-off: render an apologetic empty page rather than 404, so a
   // link from social media to /pairings doesn't bounce the visitor
@@ -72,7 +78,9 @@ function PairingsIndexPage() {
             <p className="cpp-eyebrow-gold">{t('Pairings')}</p>
             <h1 className="pix-empty-title">{t('Pairings coming soon')}</h1>
             <p className="pix-empty-body">
-              {t('We’re curating a new round of pastries and bites that pair beautifully with our teas. Check back soon.')}
+              {t(
+                'We’re curating a new round of pastries and bites that pair beautifully with our teas. Check back soon.',
+              )}
             </p>
             <Link to={ROUTES.PRODUCTS} className="btn btn-lg cpp-cta-dark">
               {t('Browse all teas')} <ArrowRight size={15} />
@@ -90,7 +98,7 @@ function PairingsIndexPage() {
         description={PAIRINGS_DESCRIPTION}
         url={`${SITE_BASE}/pairings`}
         breadcrumbs={[
-          { name: 'Home',     url: SITE_BASE },
+          { name: 'Home', url: SITE_BASE },
           { name: 'Pairings', url: `${SITE_BASE}/pairings` },
         ]}
       />
@@ -100,7 +108,7 @@ function PairingsIndexPage() {
           <Breadcrumbs
             withoutSchema
             items={[
-              { name: 'Home',     url: '/' },
+              { name: 'Home', url: '/' },
               { name: 'Pairings', url: '/pairings' },
             ]}
           />
@@ -110,7 +118,9 @@ function PairingsIndexPage() {
           <p className="cpp-eyebrow-gold">{t('Curated pairings')}</p>
           <h1 className="pix-h1">{t('Pairs with our tea')}</h1>
           <p className="pix-sub">
-            {t('Hand-selected pastries, cakes, and bites that bring out the best in every cup. Click any pairing to see what teas it loves most.')}
+            {t(
+              'Hand-selected pastries, cakes, and bites that bring out the best in every cup. Click any pairing to see what teas it loves most.',
+            )}
           </p>
           {/* Phase 20 — share affordance. Lets visitors send the pairings
               index to a friend; on mobile this opens the native share
@@ -127,6 +137,27 @@ function PairingsIndexPage() {
           <div className="cg-rule" />
         </header>
 
+        {veganCount > 0 && (
+          <div className="pix-filter" role="group" aria-label={t('Filter pairings')}>
+            <button
+              type="button"
+              className="pix-filter-chip"
+              aria-pressed={!veganOnly}
+              onClick={() => setVeganOnly(false)}
+            >
+              {t('All')} <span>{allItems.length}</span>
+            </button>
+            <button
+              type="button"
+              className="pix-filter-chip"
+              aria-pressed={veganOnly}
+              onClick={() => setVeganOnly(true)}
+            >
+              {t('Vegan')} <span>{veganCount}</span>
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <div className="pix-grid" aria-busy="true" aria-label={t('Loading pairings')}>
             {Array.from({ length: 6 }).map((_, i) => (
@@ -142,7 +173,7 @@ function PairingsIndexPage() {
           </div>
         ) : (
           <section className="pix-grid">
-            {items.map(item => {
+            {items.map((item) => {
               const hasSlug = typeof item.slug === 'string' && item.slug.length > 0;
               const card = (
                 <>
@@ -154,6 +185,7 @@ function PairingsIndexPage() {
                     className="pix-card-img"
                   />
                   <div className="pix-card-body">
+                    {item.vegan && <VeganBadge />}
                     <h2 className="pix-card-title">{localizeCombo(item, lang).title}</h2>
                     <p className="pix-card-desc">{localizeCombo(item, lang).description}</p>
                     {typeof item.price === 'number' && item.price > 0 && (
@@ -175,7 +207,9 @@ function PairingsIndexPage() {
                   key={item.id}
                   to={ROUTES.PAIRING(item.slug as string)}
                   className="pix-card"
-                  aria-label={t('View pairing details for {name}', { name: localizeCombo(item, lang).title })}
+                  aria-label={t('View pairing details for {name}', {
+                    name: localizeCombo(item, lang).title,
+                  })}
                 >
                   {card}
                 </Link>
@@ -192,7 +226,9 @@ function PairingsIndexPage() {
           <p className="cpp-eyebrow-gold">{t('Best with tea')}</p>
           <h2 className="pix-cta-h2">{t('Find the perfect cup')}</h2>
           <p className="pix-cta-body">
-            {t('Browse our full collection of premium loose-leaf teas — we’ll help you find the one that completes the pairing.')}
+            {t(
+              'Browse our full collection of premium loose-leaf teas — we’ll help you find the one that completes the pairing.',
+            )}
           </p>
           <Link to={ROUTES.PRODUCTS} className="btn btn-lg cpp-cta-dark">
             {t('Browse all teas')} <ArrowRight size={15} />

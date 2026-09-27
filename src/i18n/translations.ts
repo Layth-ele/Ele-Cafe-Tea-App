@@ -1903,4 +1903,7 @@ export const STRINGS: Record<string, { fr: string }> = {
   'Your progress is saved — you can pick up where you left off when you come back.': {
     fr: 'Votre progression est enregistrée — vous pourrez reprendre là où vous étiez à votre retour.',
   },
+  Vegan: { fr: 'Végétalien' },
+  'Filter pairings': { fr: 'Filtrer les accords' },
+  All: { fr: 'Tous' },
 };

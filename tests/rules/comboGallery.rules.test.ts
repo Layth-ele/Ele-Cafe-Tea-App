@@ -77,6 +77,11 @@ describe('café pairings', () => {
     );
   });
 
+  test('admin can mark a pairing vegan (true/false only)', async () => {
+    await assertSucceeds(updateDoc(doc(adminDb(), 'comboGalleryItems/strudel'), { vegan: true }));
+    await assertFails(updateDoc(doc(adminDb(), 'comboGalleryItems/strudel'), { vegan: 'yes' }));
+  });
+
   test('customers cannot edit pairings', async () => {
     await assertFails(updateDoc(doc(customerDb(), 'comboGalleryItems/strudel'), { price: 0 }));
   });

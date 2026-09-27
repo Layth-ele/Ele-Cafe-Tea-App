@@ -592,6 +592,8 @@ export interface CafeCombo {
   /** French title / description from Admin → Pairings (auto-translated). */
   titleFr?: string;
   descriptionFr?: string;
+  /** Vegan pastry (Admin → Pairings). */
+  vegan?: boolean;
 }
 
 function drinkOffers(d: {
@@ -671,6 +673,7 @@ export function cafeMenuLd(
                 name: c.title,
                 ...(c.description ? { description: c.description } : {}),
                 ...(c.imageUrl ? { image: c.imageUrl } : {}),
+                ...(c.vegan ? { suitableForDiet: 'https://schema.org/VeganDiet' } : {}),
                 offers: { '@type': 'Offer', price: c.price.toFixed(2), priceCurrency: 'CAD' },
               })),
             },

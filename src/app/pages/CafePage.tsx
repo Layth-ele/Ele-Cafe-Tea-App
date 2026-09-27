@@ -9,6 +9,7 @@
  * hours come from Admin → Settings (useStoreContent).
  */
 import { useEffect } from 'react';
+import { VeganBadge } from '@/app/components/VeganBadge';
 import { Link, useLocation } from 'react-router';
 import { CafeMenuNav, CafeMenuSectionView } from '@/app/components/cafe/CafeMenuBoard';
 import { ArrowRight, MapPin, Clock } from 'lucide-react';
@@ -24,7 +25,12 @@ import { formatMoney } from '@/lib/money';
 import { ROUTES, SITE_BASE } from '@/lib/routes';
 import { faqJsonLd, hoursText, localBusinessLd } from '../../../functions/src/lib/storeContent';
 import {
-  CAFE_DESCRIPTION, CAFE_MENU, CAFE_TITLE, buildCafeFaq, cafeIntro, cafeMenuLd,
+  CAFE_DESCRIPTION,
+  CAFE_MENU,
+  CAFE_TITLE,
+  buildCafeFaq,
+  cafeIntro,
+  cafeMenuLd,
 } from '../../../functions/src/lib/cafeMenu';
 
 function CafePage() {
@@ -35,8 +41,12 @@ function CafePage() {
 
   const faq = buildCafeFaq(store);
   const combos = items.map((i) => ({
-    title: i.title, description: i.description, price: i.price,
-    slug: i.slug || undefined, imageUrl: i.imageUrl,
+    title: i.title,
+    description: i.description,
+    price: i.price,
+    slug: i.slug || undefined,
+    imageUrl: i.imageUrl,
+    vegan: i.vegan === true,
   }));
   const url = `${SITE_BASE}${ROUTES.CAFE}`;
 
@@ -46,7 +56,10 @@ function CafePage() {
   useEffect(() => {
     if (!hash) return;
     const id = decodeURIComponent(hash.slice(1));
-    const timer = window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: 'start' }), 60);
+    const timer = window.setTimeout(
+      () => document.getElementById(id)?.scrollIntoView({ block: 'start' }),
+      60,
+    );
     return () => window.clearTimeout(timer);
   }, [hash]);
 
@@ -58,17 +71,21 @@ function CafePage() {
         url={url}
         image={items[0]?.imageUrl}
         breadcrumbs={[
-          { name: 'Home',      url: SITE_BASE },
+          { name: 'Home', url: SITE_BASE },
           { name: 'Café Menu', url },
         ]}
-        extraJsonLd={[cafeMenuLd(SITE_BASE, combos), faqJsonLd(faq), localBusinessLd(store, SITE_BASE)]}
+        extraJsonLd={[
+          cafeMenuLd(SITE_BASE, combos),
+          faqJsonLd(faq),
+          localBusinessLd(store, SITE_BASE),
+        ]}
       />
       <div className="bc-page-wrap">
         <Breadcrumbs
           withoutSchema
           items={[
-            { name: 'Home',          url: ROUTES.HOME },
-            { name: t('Café Menu'),  url: ROUTES.CAFE },
+            { name: 'Home', url: ROUTES.HOME },
+            { name: t('Café Menu'), url: ROUTES.CAFE },
           ]}
         />
       </div>
@@ -82,13 +99,20 @@ function CafePage() {
             {store.address && (
               <li>
                 <MapPin size={14} aria-hidden="true" />
-                {store.mapsUrl
-                  ? <a href={store.mapsUrl} target="_blank" rel="noopener noreferrer">{store.address}</a>
-                  : store.address}
+                {store.mapsUrl ? (
+                  <a href={store.mapsUrl} target="_blank" rel="noopener noreferrer">
+                    {store.address}
+                  </a>
+                ) : (
+                  store.address
+                )}
               </li>
             )}
             {store.hours.length > 0 && (
-              <li><Clock size={14} aria-hidden="true" />{hoursText(store.hours, lang)}</li>
+              <li>
+                <Clock size={14} aria-hidden="true" />
+                {hoursText(store.hours, lang)}
+              </li>
             )}
           </ul>
         )}
@@ -96,15 +120,21 @@ function CafePage() {
 
       <div className="cafe-section">
         <CafeMenuNav />
-        {CAFE_MENU.map((section) => <CafeMenuSectionView key={section.id} section={section} />)}
+        {CAFE_MENU.map((section) => (
+          <CafeMenuSectionView key={section.id} section={section} />
+        ))}
       </div>
 
       <section className="cafe-section" aria-labelledby="cafe-pastries">
-        <h2 id="cafe-pastries" className="cafe-h2">{t('Pastry combos')}</h2>
+        <h2 id="cafe-pastries" className="cafe-h2">
+          {t('Pastry combos')}
+        </h2>
         <p className="cafe-sub">{t('Every pastry comes with your choice of tea or Americano.')}</p>
         {loading ? (
           <div className="pix-grid" aria-busy="true">
-            {Array.from({ length: 4 }, (_, i) => <Skeleton.Card key={i} />)}
+            {Array.from({ length: 4 }, (_, i) => (
+              <Skeleton.Card key={i} />
+            ))}
           </div>
         ) : items.length > 0 ? (
           <div className="pix-grid">
@@ -112,17 +142,30 @@ function CafePage() {
               const loc = localizeCombo(item, lang);
               const body = (
                 <>
-                  <LazyImage src={item.imageUrl} alt={loc.title} aspectRatio="4/3" borderRadius="14px" className="pix-card-img" />
+                  <LazyImage
+                    src={item.imageUrl}
+                    alt={loc.title}
+                    aspectRatio="4/3"
+                    borderRadius="14px"
+                    className="pix-card-img"
+                  />
                   <div className="pix-card-body">
+                    {item.vegan && <VeganBadge />}
                     <h3 className="pix-card-title">{loc.title}</h3>
                     <p className="pix-card-desc">{loc.description}</p>
                     {item.price > 0 && <p className="pix-card-price">{formatMoney(item.price)}</p>}
                   </div>
                 </>
               );
-              return item.slug
-                ? <Link key={item.id} to={ROUTES.PAIRING(item.slug)} className="pix-card">{body}</Link>
-                : <article key={item.id} className="pix-card pix-card-static">{body}</article>;
+              return item.slug ? (
+                <Link key={item.id} to={ROUTES.PAIRING(item.slug)} className="pix-card">
+                  {body}
+                </Link>
+              ) : (
+                <article key={item.id} className="pix-card pix-card-static">
+                  {body}
+                </article>
+              );
             })}
           </div>
         ) : null}
@@ -133,7 +176,8 @@ function CafePage() {
         </p>
         <p className="cl-all">
           <Link to={ROUTES.REWARDS} className="hg-guide-link">
-            {t('Earn points on every cup with Ele Rewards')} <ArrowRight size={13} aria-hidden="true" />
+            {t('Earn points on every cup with Ele Rewards')}{' '}
+            <ArrowRight size={13} aria-hidden="true" />
           </Link>
         </p>
       </section>
@@ -142,7 +186,11 @@ function CafePage() {
 
       <section className="pix-cta-section">
         <h2 className="pix-cta-h2">{t('Take your favourite tea home')}</h2>
-        <p className="pix-cta-body">{t('Every loose leaf tea we brew in the café is for sale online, with free pickup in Vancouver.')}</p>
+        <p className="pix-cta-body">
+          {t(
+            'Every loose leaf tea we brew in the café is for sale online, with free pickup in Vancouver.',
+          )}
+        </p>
         <Link to={ROUTES.PRODUCTS} className="btn btn-lg cpp-cta-dark">
           {t('Browse all teas')} <ArrowRight size={15} />
         </Link>

@@ -56,6 +56,7 @@ import {
   ArrowUp,
   ArrowDown,
   X,
+  Leaf,
 } from 'lucide-react';
 
 import { db, getStorageLazy } from '@/lib/firebase';
@@ -936,6 +937,16 @@ function ComboItemRow({
         >
           {item.enabled !== false ? <Eye size={12} /> : <EyeOff size={12} />}
           {item.enabled !== false ? 'Visible' : 'Hidden'}
+        </button>
+        <button
+          type="button"
+          onClick={() => item.id && onPatch({ vegan: !item.vegan })}
+          aria-pressed={item.vegan === true}
+          aria-label={item.vegan ? 'Marked vegan — click to unmark' : 'Mark as vegan'}
+          className="cga-pill-btn cga-vegan-btn"
+          data-on={item.vegan ? 'true' : 'false'}
+        >
+          <Leaf size={12} /> {item.vegan ? 'Vegan' : 'Not vegan'}
         </button>
         <button
           type="button"

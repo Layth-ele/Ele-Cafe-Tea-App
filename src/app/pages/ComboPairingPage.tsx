@@ -33,10 +33,20 @@
  * `cpp-*` classes in design.css. The category-pill JS hover became
  * CSS `:hover` (playbook §step-4). 0 inline styles remain.
  */
+import { VeganBadge } from '@/app/components/VeganBadge';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { ArrowRight } from 'lucide-react';
-import { collection, onSnapshot, query, orderBy, limit, where, documentId, getDocs } from 'firebase/firestore';
+import {
+  collection,
+  onSnapshot,
+  query,
+  orderBy,
+  limit,
+  where,
+  documentId,
+  getDocs,
+} from 'firebase/firestore';
 
 import { db } from '@/lib/firebase';
 import { ROUTES, TEA_CATEGORIES, SITE_BASE } from '@/lib/routes';
@@ -49,16 +59,24 @@ import { ShareButtons } from '@/app/components/ShareButtons';
 import { sendPairingViewBeacon } from '@/lib/rum';
 import type { ComboItem } from '@/schemas/comboGallery.schema';
 
-import { useT, tNow, localizeCombo, localizeTea, categoryName, useLang, currentLang } from '@/i18n/useT';
+import {
+  useT,
+  tNow,
+  localizeCombo,
+  localizeTea,
+  categoryName,
+  useLang,
+  currentLang,
+} from '@/i18n/useT';
 import { useVisibleCategoryIds } from '@/hooks/useVisibleCategoryIds';
 import { formatMoney } from '@/lib/money';
 interface FeaturedTea {
-  id:       string;
-  slug:     string;
-  name:     string;
+  id: string;
+  slug: string;
+  name: string;
   category: string;
-  image?:   string;
-  price?:   number;
+  image?: string;
+  price?: number;
 }
 
 function formatPrice(price: number, currency = 'CAD'): string {
@@ -82,7 +100,7 @@ function ComboPairingPage() {
   // because IG would still show the OG card and customers would tap
   // through to a "this isn't available" experience.
   const combo: ComboItem | undefined = useMemo(
-    () => items.find(c => c.slug && c.slug === slug),
+    () => items.find((c) => c.slug && c.slug === slug),
     [items, slug],
   );
 
@@ -110,10 +128,7 @@ function ComboPairingPage() {
         try {
           // Firestore IN supports up to 10 values. Schema caps at 8.
           const snap = await getDocs(
-            query(
-              collection(db, 'teas'),
-              where(documentId(), 'in', ids.slice(0, 10)),
-            )
+            query(collection(db, 'teas'), where(documentId(), 'in', ids.slice(0, 10))),
           );
           if (cancelled) return;
           // Filter to active only (silently drop deactivated teas), then
@@ -121,19 +136,19 @@ function ComboPairingPage() {
           // doesn't preserve input order, so we sort here to keep the
           // first chip the admin added showing first.
           const byId = new Map<string, FeaturedTea>();
-          snap.forEach(d => {
+          snap.forEach((d) => {
             const data = d.data();
             if (data.isActive === false) return;
             if (typeof data.slug !== 'string') return;
             if (typeof data.category !== 'string') return;
             if (typeof data.name !== 'string') return;
             byId.set(d.id, {
-              id:       d.id,
-              slug:     data.slug,
-              name:     data.name,
+              id: d.id,
+              slug: data.slug,
+              name: data.name,
               category: data.category,
-              image:    typeof data.image === 'string' ? data.image : undefined,
-              price:    typeof data.price === 'number' ? data.price : undefined,
+              image: typeof data.image === 'string' ? data.image : undefined,
+              price: typeof data.price === 'number' ? data.price : undefined,
             });
           });
           const ordered: FeaturedTea[] = [];
@@ -148,7 +163,9 @@ function ComboPairingPage() {
           setFeaturedError(tNow('Curated pairings are temporarily unavailable.'));
         }
       })();
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+      };
     }
 
     // ── Fallback path: no curation, show 4 featured teas ──────────
@@ -163,27 +180,35 @@ function ComboPairingPage() {
       orderBy('name', 'asc'),
       limit(4),
     );
-    const unsub = onSnapshot(q, snap => {
-      const out: FeaturedTea[] = [];
-      snap.forEach(doc => {
-        const d = doc.data();
-        if (typeof d.slug === 'string' && typeof d.category === 'string' && typeof d.name === 'string') {
-          out.push({
-            id:       doc.id,
-            slug:     d.slug,
-            name:     d.name,
-            category: d.category,
-            image:    typeof d.image === 'string' ? d.image : undefined,
-            price:    typeof d.price === 'number' ? d.price : undefined,
-          });
-        }
-      });
-      setFeatured(out);
-      setFeaturedError(null);
-    }, err => {
-      console.error('[ComboPairingPage] featured teas listener failed:', err);
-      setFeaturedError(tNow('Featured teas are temporarily unavailable.'));
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const out: FeaturedTea[] = [];
+        snap.forEach((doc) => {
+          const d = doc.data();
+          if (
+            typeof d.slug === 'string' &&
+            typeof d.category === 'string' &&
+            typeof d.name === 'string'
+          ) {
+            out.push({
+              id: doc.id,
+              slug: d.slug,
+              name: d.name,
+              category: d.category,
+              image: typeof d.image === 'string' ? d.image : undefined,
+              price: typeof d.price === 'number' ? d.price : undefined,
+            });
+          }
+        });
+        setFeatured(out);
+        setFeaturedError(null);
+      },
+      (err) => {
+        console.error('[ComboPairingPage] featured teas listener failed:', err);
+        setFeaturedError(tNow('Featured teas are temporarily unavailable.'));
+      },
+    );
     return () => unsub();
     // pairedKey is the stable string form of pairedTeaIds — see comment above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -202,10 +227,9 @@ function ComboPairingPage() {
   if (loading && !combo) return <PairingSkeleton />;
   if (!combo) return <PairingNotFound slug={slug} />;
 
-  const pageUrl   = `${SITE_BASE}/pairings/${combo.slug}`;
-  const priceText = typeof combo.price === 'number'
-    ? formatPrice(combo.price, combo.currency || 'CAD')
-    : '';
+  const pageUrl = `${SITE_BASE}/pairings/${combo.slug}`;
+  const priceText =
+    typeof combo.price === 'number' ? formatPrice(combo.price, combo.currency || 'CAD') : '';
 
   // Phase 27 — Append pairing context to outbound links so the
   // destination page (TeaProfilePage / ProductsPage) can render a
@@ -223,7 +247,7 @@ function ComboPairingPage() {
   // We carry the title in the URL itself (not fetched on the
   // destination) to avoid a second Firestore read just for a label.
   // ~50 extra chars per link is negligible.
-  const pairingSlug  = combo.slug ?? slug ?? '';
+  const pairingSlug = combo.slug ?? slug ?? '';
   const pairingTitle = combo.title ?? '';
   // Visible text follows the language; SEO + share links stay English.
   const shown = localizeCombo(combo, lang);
@@ -231,7 +255,7 @@ function ComboPairingPage() {
     if (!pairingSlug) return href;
     const sep = href.includes('?') ? '&' : '?';
     const qs = new URLSearchParams({
-      fromPairing:      pairingSlug,
+      fromPairing: pairingSlug,
       fromPairingTitle: pairingTitle,
     }).toString();
     return `${href}${sep}${qs}`;
@@ -246,7 +270,7 @@ function ComboPairingPage() {
         image={combo.imageUrl}
         type="product"
         breadcrumbs={[
-          { name: 'Home',     url: SITE_BASE },
+          { name: 'Home', url: SITE_BASE },
           { name: 'Pairings', url: `${SITE_BASE}/pairings` },
           { name: combo.title, url: pageUrl },
         ]}
@@ -259,7 +283,7 @@ function ComboPairingPage() {
           <Breadcrumbs
             withoutSchema
             items={[
-              { name: 'Home',     url: '/' },
+              { name: 'Home', url: '/' },
               { name: 'Pairings', url: '/pairings' },
               { name: shown.title, url: `/pairings/${combo.slug}` },
             ]}
@@ -297,19 +321,12 @@ function ComboPairingPage() {
               className="cpp-hero-share-corner"
             />
             <div className="cpp-hero-text">
-              <p className="cpp-hero-eyebrow">
-                {tr('Curated Pairing')}
-              </p>
-              <h1 className="cpp-hero-title">
-                {shown.title}
-              </h1>
-              <p className="cpp-hero-desc">
-                {shown.description}
-              </p>
+              <p className="cpp-hero-eyebrow">{tr('Curated Pairing')}</p>
+              {combo.vegan && <VeganBadge variant="onDark" />}
+              <h1 className="cpp-hero-title">{shown.title}</h1>
+              <p className="cpp-hero-desc">{shown.description}</p>
             </div>
-            <div className="cpp-price-chip">
-              {priceText}
-            </div>
+            <div className="cpp-price-chip">{priceText}</div>
             {/* Mobile companion to the corner icon — rendered always
                 but CSS hides it on desktop. Pill variant is more
                 discoverable on the dark mobile card than an icon. */}
@@ -326,20 +343,17 @@ function ComboPairingPage() {
         {/* ── Pair-with-our-tea callout + CTA ──────────────────────────── */}
         <section className="cpp-section-pair">
           <div className="cpp-section-pair-inner">
-            <p className="cpp-eyebrow-gold">
-              {tr('Best with')}
-            </p>
+            <p className="cpp-eyebrow-gold">{tr('Best with')}</p>
             <h2 className="cpp-section-h2">
               {tr('Pair {item} with one of our premium teas', { item: shown.title.toLowerCase() })}
             </h2>
             <p className="cpp-section-body">
-              {tr('We hand-select loose-leaf teas to bring out the best in every pairing — browse our full collection or start with a category that suits your taste.')}
+              {tr(
+                'We hand-select loose-leaf teas to bring out the best in every pairing — browse our full collection or start with a category that suits your taste.',
+              )}
             </p>
             <div className="cpp-cta-row">
-              <Link
-                to={withPairingCtx(ROUTES.PRODUCTS)}
-                className="btn btn-lg cpp-cta-dark"
-              >
+              <Link to={withPairingCtx(ROUTES.PRODUCTS)} className="btn btn-lg cpp-cta-dark">
                 {tr('Browse all teas')} <ArrowRight size={15} />
               </Link>
             </div>
@@ -349,7 +363,7 @@ function ComboPairingPage() {
                 previous version used onMouseEnter/onMouseLeave to mutate
                 style, which is slower and breaks under React StrictMode. */}
             <div className="cpp-cat-row">
-              {TEA_CATEGORIES.filter(cat => visibleCats.has(cat.id)).map(cat => (
+              {TEA_CATEGORIES.filter((cat) => visibleCats.has(cat.id)).map((cat) => (
                 <Link
                   key={cat.id}
                   to={withPairingCtx(ROUTES.PRODUCTS_CAT(cat.id))}
@@ -373,46 +387,46 @@ function ComboPairingPage() {
               <p className="cpp-featured-empty">{featuredError}</p>
             </div>
           </section>
-        ) : featured.length > 0 && (
-          <section className="cpp-section-featured">
-            <div className="cpp-featured-inner">
-              <h3 className="cpp-featured-h3">
-                {/* Headline reflects whether the admin curated this
+        ) : (
+          featured.length > 0 && (
+            <section className="cpp-section-featured">
+              <div className="cpp-featured-inner">
+                <h3 className="cpp-featured-h3">
+                  {/* Headline reflects whether the admin curated this
                     list. When pairedTeaIds is set, customers should
                     see that this is a hand-picked recommendation;
                     when it's a generic fallback, the softer "favourites"
                     line stays in place. */}
-                {(combo.pairedTeaIds ?? []).length > 0
-                  ? tNow('Recommended with {name}', { name: localizeCombo(combo, currentLang()).title })
-                  : tr('A few of our favourites')}
-              </h3>
-              <div className="cpp-featured-grid">
-                {featured.map(tea => (
-                  <Link
-                    key={tea.id}
-                    to={withPairingCtx(ROUTES.TEA_PROFILE(tea.category, tea.slug))}
-                    className="cpp-featured-link"
-                  >
-                    <LazyImage
-                      src={tea.image ?? ''}
-                      alt={localizeTea(tea, lang).name}
-                      aspectRatio="1/1"
-                      borderRadius="14px"
-                      className="cpp-featured-image-mb"
-                    />
-                    <h4 className="cpp-featured-name">
-                      {localizeTea(tea, lang).name}
-                    </h4>
-                    {typeof tea.price === 'number' && (
-                      <p className="cpp-featured-price">
-                        {formatPrice(tea.price)}
-                      </p>
-                    )}
-                  </Link>
-                ))}
+                  {(combo.pairedTeaIds ?? []).length > 0
+                    ? tNow('Recommended with {name}', {
+                        name: localizeCombo(combo, currentLang()).title,
+                      })
+                    : tr('A few of our favourites')}
+                </h3>
+                <div className="cpp-featured-grid">
+                  {featured.map((tea) => (
+                    <Link
+                      key={tea.id}
+                      to={withPairingCtx(ROUTES.TEA_PROFILE(tea.category, tea.slug))}
+                      className="cpp-featured-link"
+                    >
+                      <LazyImage
+                        src={tea.image ?? ''}
+                        alt={localizeTea(tea, lang).name}
+                        aspectRatio="1/1"
+                        borderRadius="14px"
+                        className="cpp-featured-image-mb"
+                      />
+                      <h4 className="cpp-featured-name">{localizeTea(tea, lang).name}</h4>
+                      {typeof tea.price === 'number' && (
+                        <p className="cpp-featured-price">{formatPrice(tea.price)}</p>
+                      )}
+                    </Link>
+                  ))}
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          )
         )}
 
         {/* ── Share strip ────────────────────────────────────────────────
@@ -420,9 +434,7 @@ function ComboPairingPage() {
             WhatsApp / Copy link). Pre-loaded with this combo's
             pageUrl so a visitor can re-share with one tap. */}
         <section className="cpp-section-share">
-          <p className="cpp-share-eyebrow">
-            {tr('Share this pairing')}
-          </p>
+          <p className="cpp-share-eyebrow">{tr('Share this pairing')}</p>
           <ShareButtons title={combo.title} url={pageUrl} size="md" />
         </section>
       </main>
@@ -445,25 +457,19 @@ function PairingNotFound({ slug }: { slug: string }) {
   return (
     <main id="main-content" className="cpp-nf-main">
       <div className="cpp-nf-inner">
-        <p className="cpp-eyebrow-gold">
-          {t('Pairing not found')}
-        </p>
-        <h1 className="cpp-nf-title">
-          {t('We couldn’t find “{slug}”', { slug })}
-        </h1>
+        <p className="cpp-eyebrow-gold">{t('Pairing not found')}</p>
+        <h1 className="cpp-nf-title">{t('We couldn’t find “{slug}”', { slug })}</h1>
         <p className="cpp-nf-body">
-          {t('This pairing may have been removed or the link could be incorrect. Browse our teas or check the gallery on any tea profile.')}
+          {t(
+            'This pairing may have been removed or the link could be incorrect. Browse our teas or check the gallery on any tea profile.',
+          )}
         </p>
-        <Link
-          to={ROUTES.PRODUCTS}
-          className="btn btn-lg cpp-cta-dark"
-        >
+        <Link to={ROUTES.PRODUCTS} className="btn btn-lg cpp-cta-dark">
           {t('Browse all teas')} <ArrowRight size={15} />
         </Link>
       </div>
     </main>
   );
 }
-
 
 export default ComboPairingPage;

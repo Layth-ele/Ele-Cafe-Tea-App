@@ -6083,6 +6083,7 @@ interface ComboSeoFields {
   description: string;
   titleFr?: string;
   descriptionFr?: string;
+  vegan?: boolean;
   imageUrl: string;
   price: number;
   currency?: string;
@@ -6112,6 +6113,7 @@ async function fetchComboBySlug(slug: string): Promise<ComboSeoFields | null> {
     description: typeof data.description === 'string' ? data.description : '',
     titleFr: typeof data.titleFr === 'string' ? data.titleFr : undefined,
     descriptionFr: typeof data.descriptionFr === 'string' ? data.descriptionFr : undefined,
+    vegan: data.vegan === true,
     imageUrl: data.imageUrl,
     price: typeof data.price === 'number' ? data.price : 0,
     currency: typeof data.currency === 'string' ? data.currency : 'CAD',
@@ -6223,7 +6225,7 @@ function patchHeadForPairing(template: string, raw: ComboSeoFields): string {
     <noscript>
       <article class="seo-fallback">
         <header>
-          <p>${SL('Pairing', 'Accord')}</p>
+          <p>${SL('Pairing', 'Accord')}${combo.vegan ? ` · ${SL('Vegan', 'Végétalien')}` : ''}</p>
           <h1>${seoEscHtml(combo.title)}</h1>
           <p>${SL('Price:', 'Prix :')} <strong>${seoEscHtml(seoMoney(combo.price))} ${seoEscHtml(combo.currency || 'CAD')}</strong></p>
         </header>
@@ -6362,7 +6364,8 @@ function patchHeadForPairings(template: string, rawCombos: CafeCombo[]): string 
       const name = c.slug
         ? `<a href="${seoUrl(`/pairings/${seoEscHtml(c.slug)}`)}">${seoEscHtml(c.title)}</a>`
         : seoEscHtml(c.title);
-      return `<li>${name} — ${seoEscHtml(seoMoney(c.price))}${c.description ? `. ${seoEscHtml(teaBlurb(c.description))}` : ''}</li>`;
+      const vegan = c.vegan ? ` (${SL('vegan', 'végétalien')})` : '';
+      return `<li>${name}${vegan} — ${seoEscHtml(seoMoney(c.price))}${c.description ? `. ${seoEscHtml(teaBlurb(c.description))}` : ''}</li>`;
     })
     .join('\n          ');
   return replaceNoscript(
@@ -6624,6 +6627,7 @@ async function fetchCafeCombos(): Promise<CafeCombo[]> {
       slug: typeof d.slug === 'string' && d.slug.trim() ? d.slug.trim() : undefined,
       titleFr: typeof d.titleFr === 'string' && d.titleFr.trim() ? d.titleFr : undefined,
       descriptionFr: typeof d.descriptionFr === 'string' ? d.descriptionFr : undefined,
+      vegan: d.vegan === true,
     });
   }
   return out;
@@ -6682,7 +6686,8 @@ function patchHeadForCafe(template: string, rawCombos: CafeCombo[]): string {
       const name = c.slug
         ? `<a href="${seoUrl(`/pairings/${seoEscHtml(c.slug)}`)}">${seoEscHtml(c.title)}</a>`
         : seoEscHtml(c.title);
-      return `<li>${name} ${SL('with tea or Americano', 'avec thé ou Americano')} — ${seoEscHtml(seoMoney(c.price))}</li>`;
+      const vegan = c.vegan ? ` (${SL('vegan', 'végétalien')})` : '';
+      return `<li>${name}${vegan} ${SL('with tea or Americano', 'avec thé ou Americano')} — ${seoEscHtml(seoMoney(c.price))}</li>`;
     })
     .join('\n          ');
   const faqHtml = faq

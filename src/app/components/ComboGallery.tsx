@@ -38,6 +38,7 @@
  * the `order` integer field. The flat path keeps Firestore rules and
  * queries simple (vs a nested path).
  */
+import { VeganBadge } from '@/app/components/VeganBadge';
 import { registerImageVariants } from '@/lib/imageRegistry';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
@@ -59,7 +60,7 @@ import { formatMoney } from '@/lib/money';
  */
 export function useComboGallery(): {
   enabled: boolean;
-  items:   ComboItem[];
+  items: ComboItem[];
   loading: boolean;
 } {
   const settings = useSettings();
@@ -80,7 +81,7 @@ export function useComboGallery(): {
       q,
       (snap) => {
         const next = snap.docs
-          .map(d => {
+          .map((d) => {
             const raw = d.data();
             registerImageVariants(raw.imageUrl, raw.imageVariants);
             return { id: d.id, ...raw } as ComboItem;
@@ -89,10 +90,9 @@ export function useComboGallery(): {
           // image. Combo items without an imageUrl (shouldn't happen —
           // schema requires it — but defense in depth) are skipped
           // rather than showing a broken image to customers.
-          .filter(i =>
-            i.enabled !== false &&
-            typeof i.imageUrl === 'string' &&
-            i.imageUrl.trim().length > 0
+          .filter(
+            (i) =>
+              i.enabled !== false && typeof i.imageUrl === 'string' && i.imageUrl.trim().length > 0,
           );
         setItems(next);
         setLoading(false);
@@ -145,15 +145,18 @@ function useAutoAdvance(
   // Synchronous clamp during render. Always in `[0, count)` (or 0 if count==0).
   const index = count > 0 ? ((rawIndex % count) + count) % count : 0;
 
-  const jumpTo = useCallback((i: number) => {
-    if (count === 0) return;
-    setRawIndex(((i % count) + count) % count);
-  }, [count]);
+  const jumpTo = useCallback(
+    (i: number) => {
+      if (count === 0) return;
+      setRawIndex(((i % count) + count) % count);
+    },
+    [count],
+  );
 
   useEffect(() => {
     if (count < 2 || paused) return;
     const id = setInterval(() => {
-      setRawIndex(prev => (prev + 1) % count);
+      setRawIndex((prev) => (prev + 1) % count);
     }, intervalMs);
     return () => clearInterval(id);
   }, [count, intervalMs, paused, manualJumpSignal]);
@@ -206,16 +209,27 @@ export function ComboGallery({
   const paused = hovered || reducedMotion || userPaused;
   const { index, jumpTo } = useAutoAdvance(items.length, AUTO_ADVANCE_MS, paused, manualSignal);
 
-  const goTo = useCallback((i: number) => {
-    jumpTo(i);
-    setManualSignal(s => s + 1);
-  }, [jumpTo]);
+  const goTo = useCallback(
+    (i: number) => {
+      jumpTo(i);
+      setManualSignal((s) => s + 1);
+    },
+    [jumpTo],
+  );
 
-  const onKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (items.length < 2) return;
-    if (e.key === 'ArrowRight') { e.preventDefault(); goTo(index + 1); }
-    else if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(index - 1); }
-  }, [goTo, index, items.length]);
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (items.length < 2) return;
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        goTo(index + 1);
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        goTo(index - 1);
+      }
+    },
+    [goTo, index, items.length],
+  );
 
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const onTouchStart = (e: React.TouchEvent) => {
@@ -229,7 +243,8 @@ export function ComboGallery({
     const dy = t.clientY - touchStart.current.y;
     touchStart.current = null;
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      if (dx < 0) goTo(index + 1); else goTo(index - 1);
+      if (dx < 0) goTo(index + 1);
+      else goTo(index - 1);
     }
   };
 
@@ -239,16 +254,11 @@ export function ComboGallery({
   if (!current) return null;
 
   return (
-    <section
-      className="cg-section"
-      aria-label={title}
-    >
+    <section className="cg-section" aria-label={title}>
       <div className="cg-inner">
         {/* ── Section header ───────────────────────────────────────────── */}
         <div className="cg-header">
-          <p className="cg-eyebrow">
-            {tr('Curated pairings')}
-          </p>
+          <p className="cg-eyebrow">{tr('Curated pairings')}</p>
           <h2 className="cg-h2">
             {teaName
               ? tx('Try this tea — {tea}', { tea: <em className="cg-tea-em">{teaName}</em> })
@@ -271,7 +281,11 @@ export function ComboGallery({
           tabIndex={0}
           role="group"
           aria-roledescription="carousel"
-          aria-label={tr('{title} — slide {n} of {total}', { title, n: index + 1, total: items.length })}
+          aria-label={tr('{title} — slide {n} of {total}', {
+            title,
+            n: index + 1,
+            total: items.length,
+          })}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
           onFocus={() => setHovered(true)}
@@ -282,31 +296,31 @@ export function ComboGallery({
         >
           {/* Image stack — desktop: positioned absolutely; mobile: flex item */}
           <div className="cg-img-stack">
-          {/* Cross-fade slide stack */}
-          {items.map((item, i) => {
-            const isActive = i === index;
-            return (
-              <div
-                key={item.id ?? i}
-                aria-hidden={!isActive}
-                className="cg-slide"
-                data-active={isActive ? 'true' : 'false'}
-                data-reduced={reducedMotion ? 'true' : 'false'}
-              >
-                <img
-                  src={item.imageUrl}
-                  alt={localizeCombo(item, lang).title}
-                  loading={isActive ? 'eager' : 'lazy'}
-                  decoding="async"
-                  className="cg-slide-img"
+            {/* Cross-fade slide stack */}
+            {items.map((item, i) => {
+              const isActive = i === index;
+              return (
+                <div
+                  key={item.id ?? i}
+                  aria-hidden={!isActive}
+                  className="cg-slide"
                   data-active={isActive ? 'true' : 'false'}
                   data-reduced={reducedMotion ? 'true' : 'false'}
-                />
-                {/* Gentle gradient veil for text legibility */}
-                <div className="cg-img-veil" />
-              </div>
-            );
-          })}
+                >
+                  <img
+                    src={item.imageUrl}
+                    alt={localizeCombo(item, lang).title}
+                    loading={isActive ? 'eager' : 'lazy'}
+                    decoding="async"
+                    className="cg-slide-img"
+                    data-active={isActive ? 'true' : 'false'}
+                    data-reduced={reducedMotion ? 'true' : 'false'}
+                  />
+                  {/* Gentle gradient veil for text legibility */}
+                  <div className="cg-img-veil" />
+                </div>
+              );
+            })}
           </div>
 
           {/* Pause / Play toggle — WCAG 2.2.2 satisfaction.
@@ -317,14 +331,20 @@ export function ComboGallery({
           {items.length > 1 && !reducedMotion && (
             <button
               type="button"
-              onClick={() => setUserPaused(p => !p)}
+              onClick={() => setUserPaused((p) => !p)}
               aria-label={userPaused ? tr('Resume auto-rotation') : tr('Pause auto-rotation')}
               aria-pressed={userPaused}
               className="cg-playpause-btn"
             >
-              {userPaused
-                ? <><Play size={13} aria-hidden /> {tr('Play')}</>
-                : <><Pause size={13} aria-hidden /> {tr('Pause')}</>}
+              {userPaused ? (
+                <>
+                  <Play size={13} aria-hidden /> {tr('Play')}
+                </>
+              ) : (
+                <>
+                  <Pause size={13} aria-hidden /> {tr('Pause')}
+                </>
+              )}
             </button>
           )}
 
@@ -342,7 +362,9 @@ export function ComboGallery({
                   () => toast.error(tNow('Could not copy link')),
                 );
               }}
-              aria-label={tr('Copy share link for {name}', { name: localizeCombo(current, lang).title })}
+              aria-label={tr('Copy share link for {name}', {
+                name: localizeCombo(current, lang).title,
+              })}
               className="cg-share-btn"
             >
               <Link2 size={13} aria-hidden /> {tr('Share')}
@@ -352,12 +374,9 @@ export function ComboGallery({
           {/* Frosted overlay — title / description / price */}
           <div className="cg-frosted" aria-live="polite" aria-atomic="true">
             <div className="cg-frosted-text">
-              <h3 className="cg-frosted-title">
-                {localizeCombo(current, lang).title}
-              </h3>
-              <p className="cg-frosted-desc">
-                {localizeCombo(current, lang).description}
-              </p>
+              {current.vegan && <VeganBadge variant="onDark" />}
+              <h3 className="cg-frosted-title">{localizeCombo(current, lang).title}</h3>
+              <p className="cg-frosted-desc">{localizeCombo(current, lang).description}</p>
             </div>
             <div className="cg-price-chip">
               {formatPrice(current.price, current.currency || 'CAD')}
@@ -391,11 +410,7 @@ export function ComboGallery({
 
         {/* ── Dot pagination ───────────────────────────────────────────── */}
         {items.length > 1 && (
-          <div
-            role="tablist"
-            aria-label={tr('{title} pagination', { title })}
-            className="cg-dots"
-          >
+          <div role="tablist" aria-label={tr('{title} pagination', { title })} className="cg-dots">
             {items.map((it, i) => {
               const active = i === index;
               return (
@@ -404,7 +419,10 @@ export function ComboGallery({
                   type="button"
                   role="tab"
                   aria-selected={active}
-                  aria-label={tr('Go to slide {n}: {name}', { n: i + 1, name: localizeCombo(it, lang).title })}
+                  aria-label={tr('Go to slide {n}: {name}', {
+                    n: i + 1,
+                    name: localizeCombo(it, lang).title,
+                  })}
                   onClick={() => goTo(i)}
                   className="cg-dot"
                   data-active={active ? 'true' : 'false'}
@@ -420,9 +438,7 @@ export function ComboGallery({
             customer has seen both serving suggestions and pairings.
             Only renders when both teaName + shareUrl are set (i.e.,
             from a tea profile page that opted in). */}
-        {teaName && shareUrl && (
-          <ShareStrip teaName={teaName} url={shareUrl} />
-        )}
+        {teaName && shareUrl && <ShareStrip teaName={teaName} url={shareUrl} />}
       </div>
     </section>
   );
@@ -433,9 +449,7 @@ function ShareStrip({ teaName, url }: { teaName: string; url: string }) {
   const t = useT();
   return (
     <div className="cg-share-strip">
-      <p className="cg-share-strip-eyebrow">
-        {t('Share this pairing')}
-      </p>
+      <p className="cg-share-strip-eyebrow">{t('Share this pairing')}</p>
       <ShareButtons title={teaName} url={url} size="sm" />
     </div>
   );
