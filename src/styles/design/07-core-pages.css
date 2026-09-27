@@ -2725,20 +2725,6 @@
 .pix-filter-chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .cga-vegan-btn[data-on='true'] { background: #e7f0e4; border-color: #9cbf92; color: #2f5a2a; }
 
-/* One-time "apply approved descriptions" banner (Admin → Products). */
-.adb-banner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px 20px;
-  padding: 16px 20px;
-  border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
-  border-radius: 12px;
-  background: var(--gold-tint);
-  color: var(--midnight);
-}
-.adb-banner p { margin: 4px 0 0; color: var(--text-2); font-size: var(--text-sm); }
 
 /* Dietary tags (list) + calories on pastry cards / chips. */
 .diet-badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; padding: 0; list-style: none; }

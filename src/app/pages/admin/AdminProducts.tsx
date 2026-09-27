@@ -57,7 +57,6 @@ import {
 import { getAvailabilityLabel, getAvailabilityStatus } from '@/lib/availability';
 
 import { AdminPageHeader } from '@/app/components/admin/AdminPageHeader';
-import { ApprovedDescriptionsBanner } from '@/app/components/admin/ApprovedDescriptionsBanner';
 function toSlug(n: string) {
   // Phase 11 URL fix — was an inline duplicate of src/lib/slugify.ts.
   // Now delegates so write-side (admin slug generation) and read-side
@@ -1404,7 +1403,6 @@ export function AdminProducts() {
         description="Manage tea products, images, availability and descriptions."
         noIndex={true}
       />
-      <ApprovedDescriptionsBanner />
       {/* ── Luxury page header ─────────────────────────────────────
           Gold-tinted hero banner matches the visual vocabulary of
           the In-Store Pickup card on ShippingPolicyPage and the
