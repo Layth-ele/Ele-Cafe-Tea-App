@@ -2,12 +2,15 @@
    HOMEPAGE — Phase 5 polish: StaleIndicator above Best Sellers grid
    ═══════════════════════════════════════════════════════════════ */
 .hp-best-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
+  /* Centred like every other home section header; the small "updating"
+     indicator sits in the corner instead of pushing the title left. */
+  position: relative;
   margin-bottom: 8px;
+}
+.hp-best-header > :not(.hp-section-header) {
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════

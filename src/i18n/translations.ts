@@ -1302,8 +1302,8 @@ export const STRINGS: Record<string, { fr: string }> = {
   'Only {count} of “{name}” available — set to {count}.': {
     fr: 'Seulement {count} « {name} » disponible(s) — quantité ajustée à {count}.',
   },
-  'Contains caffeine': { fr: 'Contient de la caféine' },
-  'Mostly caffeine-free': { fr: 'Généralement sans caféine' },
+  'Contains caffeine': { fr: 'Avec caféine' },
+  'Mostly caffeine-free': { fr: 'Souvent sans caféine' },
   'Rooibos, herbal & fruit teas for any hour': {
     fr: 'Rooibos, tisanes et thés aux fruits pour toute heure',
   },

@@ -256,14 +256,21 @@
 .hg-guide-desc { margin: 0; font-size: var(--text-ui); line-height: 1.6; color: var(--muted); }
 .hg-guide-facts {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  /* Columns sized to their content so each value stays on one line
+     ("Mostly caffeine-free", "Whisk 20–30 s"). */
+  grid-template-columns: repeat(3, auto);
+  justify-content: space-between;
+  gap: 8px 10px;
   margin: 4px 0 0;
   padding: 10px 0 0;
   border-top: 1px solid var(--border);
 }
-.hg-guide-facts dt { font-size: var(--text-2xs); font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-text); }
-.hg-guide-facts dd { margin: 2px 0 0; font-size: var(--text-sm); line-height: 1.35; color: var(--text); }
+.hg-guide-facts dt { font-size: clamp(0.54rem, 4.2cqi, var(--text-2xs)); font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-text); }
+/* One line per value: the text scales with the card's width (5% of it,
+   capped at the normal small size), so narrow desktop cards still fit
+   "Whisk 20–30 s" and "Contains caffeine" side by side. */
+.hg-guide-facts { container-type: inline-size; }
+.hg-guide-facts dd { margin: 2px 0 0; font-size: clamp(0.6rem, 4.8cqi, var(--text-xs)); line-height: 1.35; color: var(--text); white-space: nowrap; }
 .hg-guide-link {
   display: inline-flex;
   align-items: center;
@@ -1195,4 +1202,9 @@ body:has(.cd-panel[data-open='true']) [data-sonner-toaster][data-y-position='top
   font-size: var(--text-ui);
   line-height: 1.75;
   color: var(--text);
+}
+/* Tiniest phones (≈320 px wide): a long French value may wrap rather
+   than spill out of the card. */
+@container (max-width: 215px) {
+  .hg-guide-facts dd { white-space: normal; }
 }

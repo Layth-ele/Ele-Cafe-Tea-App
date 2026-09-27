@@ -1276,6 +1276,16 @@
   border-top: 1px solid color-mix(in srgb, var(--gold) 18%, transparent);
 }
 
+/* Full card: every section centred (matches the centred section
+   headers); hours keep label/time columns inside a narrow centred block. */
+.cc-card-full .cc-title-block,
+.cc-card-full .cc-grid > *,
+.cc-card-full .cc-note { text-align: center; }
+.cc-card-full .cc-section-header { justify-content: center; }
+.cc-card-full .cc-link-touch,
+.cc-card-full .cc-link-mail { justify-content: center; }
+.cc-card-full .cc-hours-row { max-width: 280px; margin-inline: auto; }
+
 /* Compact variant — stacked single column. */
 .cc-compact-title {
   font-family: var(--font-serif);

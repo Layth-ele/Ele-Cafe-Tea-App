@@ -148,6 +148,13 @@
 
 /* ─── 14. TEA CARD ──────────────────────────────────────────  */
 .tea-card {
+  /* Column so the Add to Cart button sits at the bottom of every card —
+     buttons line up across a row even when a tea name wraps. */
+  display: flex;
+  flex-direction: column;
+  /* Fill the grid cell (or the wrapper the grid stretches) — no-op when
+     the parent's height is auto. */
+  height: 100%;
   text-align: center;
   contain: layout style;
   -webkit-tap-highlight-color: transparent;
@@ -210,6 +217,8 @@
   color: var(--muted); margin-bottom: 12px;
 }
 
+.tea-card > .btn-add,
+.tea-card > .tc-stepper { margin-top: auto; }
 .btn-add {
   display: flex; align-items: center; justify-content: center; gap: 6px;
   width: 100%;
