@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import type { Product } from '@/types';
 import { validateProduct } from '@/schemas/product.schema';
+import { ssrTeaDoc } from './ssrTea';
 import { db } from './firebase';
 import { registerImageVariants } from './imageRegistry';
 
@@ -183,6 +184,23 @@ export async function fetchFeaturedTeas(): Promise<Product[]> {
 // ---------------------------------------------------------------------------
 // fetchTea
 // ---------------------------------------------------------------------------
+/** The tea renderSeo embedded in this page (lib/ssrTea.ts), parsed. */
+export function ssrProduct(slug: string): Product | null {
+  const raw = ssrTeaDoc(slug);
+  if (!raw) return null;
+  // Timestamps travel as epoch ms in the embedded JSON.
+  const toDate = (v: unknown) => (typeof v === 'number' ? new Date(v) : v);
+  try {
+    return parseProduct(
+      { ...raw, createdAt: toDate(raw.createdAt), updatedAt: toDate(raw.updatedAt) },
+      'ssrTea',
+    );
+  } catch (err) {
+    console.warn('[firebaseQueries] embedded tea failed validation:', err);
+    return null;
+  }
+}
+
 export async function fetchTea(slug: string): Promise<Product | null> {
   if (!slug) return null;
 
@@ -267,6 +285,10 @@ export async function fetchTea(slug: string): Promise<Product | null> {
     }
     return null;
   } catch (err) {
+    // The server-rendered page carries the real tea — prefer it over the
+    // "unavailable" mock (Firestore is unreadable for crawlers).
+    const embedded = candidates.map(ssrProduct).find(Boolean);
+    if (embedded) return embedded;
     console.warn('[firebaseQueries] fetchTea failed, using mock fallback:', err);
     const { mockProducts } = await loadMockProducts();
     const list = mockProducts as Product[];

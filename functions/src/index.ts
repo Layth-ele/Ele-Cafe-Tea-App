@@ -5100,7 +5100,53 @@ interface TeaSeoFields {
   ratingCount?: number;
 }
 
-function patchHeadForTea(template: string, raw: TeaSeoFields, catalog: CatalogTea[] = []): string {
+/** A published review as shown on the tea page (no account ids). */
+interface SeoReview {
+  id: string;
+  userName: string;
+  rating: number;
+  comment?: string;
+  createdAt: number;
+  verifiedPurchase?: boolean;
+}
+
+async function fetchSeoReviews(teaId: string): Promise<SeoReview[]> {
+  const snap = await db
+    .collection(`teas/${teaId}/reviews`)
+    .orderBy('createdAt', 'desc')
+    .limit(20)
+    .get();
+  return snap.docs
+    .map((d) => {
+      const r = d.data();
+      const at = r.createdAt?.toMillis?.() ?? 0;
+      return {
+        id: d.id,
+        userName: typeof r.userName === 'string' ? r.userName : '',
+        rating: Number(r.rating) || 0,
+        ...(typeof r.comment === 'string' && r.comment.trim() ? { comment: r.comment } : {}),
+        createdAt: at,
+        ...(r.verifiedPurchase === true ? { verifiedPurchase: true } : {}),
+      };
+    })
+    .filter((r) => r.rating >= 1 && r.rating <= 5);
+}
+
+/** Firestore values → plain JSON (timestamps become epoch ms). */
+function toPlainJson(v: unknown): unknown {
+  if (v === null || typeof v !== 'object') return v;
+  const ts = v as { toMillis?: () => number };
+  if (typeof ts.toMillis === 'function') return ts.toMillis();
+  if (Array.isArray(v)) return v.map(toPlainJson);
+  return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, toPlainJson(x)]));
+}
+
+function patchHeadForTea(
+  template: string,
+  raw: TeaSeoFields,
+  catalog: CatalogTea[] = [],
+  ssr?: { id: string; doc: Record<string, unknown>; reviews: SeoReview[] },
+): string {
   // The tea's own text in the page language (French fields when filled).
   const tea: TeaSeoFields = {
     ...raw,
@@ -5246,6 +5292,17 @@ function patchHeadForTea(template: string, raw: TeaSeoFields, catalog: CatalogTe
       bestRating: '5',
       worstRating: '1',
     };
+    // The written reviews themselves (review snippets), newest first.
+    const written = (ssr?.reviews ?? []).filter((r) => r.comment && r.userName).slice(0, 5);
+    if (written.length) {
+      productLd.review = written.map((r) => ({
+        '@type': 'Review',
+        author: { '@type': 'Person', name: r.userName.split(' ')[0] },
+        reviewRating: { '@type': 'Rating', ratingValue: r.rating, bestRating: 5, worstRating: 1 },
+        reviewBody: r.comment,
+        ...(r.createdAt ? { datePublished: new Date(r.createdAt).toISOString().slice(0, 10) } : {}),
+      }));
+    }
   }
 
   const breadcrumbLd = {
@@ -5531,6 +5588,22 @@ function patchHeadForTea(template: string, raw: TeaSeoFields, catalog: CatalogTe
       </article>
     </noscript>`;
   html = replaceNoscript(html, noscriptBlock);
+
+  // Hand the tea and its reviews to the app (lib/ssrTea.ts): the page shows
+  // real stock, price and reviews at once — and still does when Firestore
+  // can't be read (crawlers fail the App Check challenge, which otherwise
+  // left Google looking at a "sold out" fallback).
+  if (ssr) {
+    const payload = JSON.stringify({
+      slug: tea.slug,
+      tea: { ...(toPlainJson(ssr.doc) as Record<string, unknown>), id: ssr.id },
+      reviews: ssr.reviews,
+    }).replace(/</g, '\\u003c');
+    html = html.replace(
+      /(\s*)<\/head>/,
+      () => `\n    <script type="application/json" id="ele-ssr-tea">${payload}</script>\n  </head>`,
+    );
+  }
 
   return html;
 }
@@ -7038,7 +7111,18 @@ async function renderSeoHandler(req: functions.https.Request, res: SeoResponse):
             } catch {
               /* related teas are optional */
             }
-            const html = render(patchHeadForTea, template, data, catalog);
+            const docId = snap.docs[0].id;
+            let reviews: SeoReview[] = [];
+            try {
+              reviews = await fetchSeoReviews(docId);
+            } catch {
+              /* reviews are optional */
+            }
+            const html = render(patchHeadForTea, template, data, catalog, {
+              id: docId,
+              doc: snap.docs[0].data(),
+              reviews,
+            });
             res.set('Content-Type', 'text/html; charset=utf-8');
             res.set(
               'Cache-Control',

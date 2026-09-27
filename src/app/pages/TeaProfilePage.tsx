@@ -3,7 +3,8 @@ import { teaMetaDescription, teaSeoTitle } from '../../../functions/src/lib/seoC
 import { CafeMenuFor, cafeSectionForTea } from '@/app/components/cafe/CafeMenuBoard';
 import { TeaImage } from '@/app/components/TeaImage';
 import { Skeleton } from '@/app/components/ui/skeleton';
-import { fetchTea, queryKeys } from '@/lib/firebaseQueries';
+import { fetchTea, queryKeys, ssrProduct } from '@/lib/firebaseQueries';
+import { ssrReviews } from '@/lib/ssrTea';
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router';
@@ -266,6 +267,10 @@ export function TeaProfilePage() {
     queryKey: queryKeys.tea(canonicalSlug),
     queryFn: () => fetchTea(canonicalSlug),
     enabled: !!canonicalSlug,
+    // The server-rendered page embeds this tea (lib/ssrTea.ts): show it at
+    // once; the live read still runs and replaces it.
+    initialData: () => ssrProduct(canonicalSlug) ?? undefined,
+    initialDataUpdatedAt: 0,
   });
   // Tea text in the current language (French fields from the /teas doc).
   const teaText = localizeTea(product, language as Lang);
@@ -347,7 +352,15 @@ export function TeaProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when all three are ready
   }, [wantsNotify, user?.uid, product?.slug]);
 
-  const [reviews, setReviews] = useState<ReviewDoc[]>([]);
+  // Reviews embedded by the server (lib/ssrTea.ts) until the live listener
+  // answers — and instead of an error when Firestore can't be read.
+  const embeddedReviews = (): ReviewDoc[] =>
+    (ssrReviews(slug) ?? []).map((r) => ({
+      ...r,
+      userId: '',
+      createdAt: r.createdAt ? Timestamp.fromMillis(r.createdAt) : null,
+    }));
+  const [reviews, setReviews] = useState<ReviewDoc[]>(embeddedReviews);
   const [reviewsError, setReviewsError] = useState<string | null>(null);
   // Arriving from a "Rate your teas" link (…#reviews): scroll to the review
   // form once the page has rendered, like a normal in-page anchor.
@@ -463,7 +476,9 @@ export function TeaProfilePage() {
       (snap) => setReviews(snap.docs.map((d) => ({ ...d.data(), id: d.id }) as ReviewDoc)),
       (err) => {
         console.error('[TeaProfilePage] reviews subscription failed:', err);
-        setReviewsError(tNow('Reviews are temporarily unavailable.'));
+        const embedded = embeddedReviews();
+        if (embedded.length || ssrReviews(slug)) setReviews(embedded);
+        else setReviewsError(tNow('Reviews are temporarily unavailable.'));
       },
     );
   }, [slug]);
