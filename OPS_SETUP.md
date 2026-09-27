@@ -29,7 +29,7 @@ Pick the path that matches your deploy:
 
 ```bash
 echo "VITE_SENTRY_DSN=https://...your-dsn..." >> .env
-pnpm build
+npm run build
 firebase deploy --only hosting
 ```
 

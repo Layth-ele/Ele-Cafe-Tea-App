@@ -1,8 +1,0 @@
-packages:
-  - '.'
-allowBuilds:
-  '@firebase/util': true
-  '@tailwindcss/oxide': true
-  core-js: true
-  esbuild: true
-  protobufjs: true

@@ -128,8 +128,8 @@ The text after `--` is a team convention, not enforced by stylelint, but code re
 ## Scripts
 
 ```bash
-pnpm lint:css       # report violations
-pnpm lint:css:fix   # auto-fix what's fixable
+npm run lint:css       # report violations
+npm run lint:css:fix   # auto-fix what's fixable
 ```
 
 The pre-commit hook (`.husky/pre-commit`) runs `npx lint-staged`, which auto-fixes staged `.css` files and aborts the commit if anything remains.
@@ -157,9 +157,9 @@ A Playwright snapshot suite at `tests/visual/` pixel-diffs 7 public pages agains
 Local usage:
 
 ```bash
-pnpm test:visual           # compare against committed baselines
-pnpm test:visual:update    # regenerate baselines after an intentional change
-pnpm test:visual:ui        # interactive debugger for a failing test
+npm run test:visual           # compare against committed baselines
+npm run test:visual:update    # regenerate baselines after an intentional change
+npm run test:visual:ui        # interactive debugger for a failing test
 ```
 
 Full workflow, including how to extend to admin/protected pages, is in `tests/visual/README.md`.

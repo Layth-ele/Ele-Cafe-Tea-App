@@ -33,7 +33,6 @@ on:
       - 'scripts/local-a11y-snapshot.mjs'
       - 'package.json'
       - 'package-lock.json'
-      - 'pnpm-lock.yaml'
       - '.github/workflows/a11y.yml'
   workflow_dispatch: {}
 
@@ -74,7 +73,7 @@ jobs:
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/pnpm-lock.yaml') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'

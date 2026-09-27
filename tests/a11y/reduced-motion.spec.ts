@@ -20,7 +20,7 @@
  * §"Reduced-motion contract" is wrong and needs a CSS fix.
  *
  * Run locally:
- *   pnpm exec playwright test tests/a11y/reduced-motion.spec.ts \
+ *   npx playwright test tests/a11y/reduced-motion.spec.ts \
  *     --config playwright.a11y.config.ts
  *
  * In CI: hooks into the existing a11y workflow
@@ -61,7 +61,6 @@ async function computedAnimationName(page: Page, selector: string) {
 }
 
 test.describe('Phase 10.7.5 — reduced-motion contract', () => {
-
   test('hero block: no entrance transform, fade-up animations suppressed', async ({ page }) => {
     await page.goto('/');
 
@@ -76,14 +75,16 @@ test.describe('Phase 10.7.5 — reduced-motion contract', () => {
     // 'none' or the identity matrix both indicate no movement.
     expect(
       heroBtnsTransform === 'none' || heroBtnsTransform === 'matrix(1, 0, 0, 1, 0, 0)',
-      `hero buttons should have identity transform; got "${heroBtnsTransform}"`
+      `hero buttons should have identity transform; got "${heroBtnsTransform}"`,
     ).toBeTruthy();
   });
 
   test('product grid: FLIP cards do not transform between sort changes', async ({ page }) => {
     await page.goto('/products');
     // Wait for grid render
-    await page.waitForSelector('.pp-grid-results [data-flipped]', { timeout: 5000 }).catch(() => {});
+    await page
+      .waitForSelector('.pp-grid-results [data-flipped]', { timeout: 5000 })
+      .catch(() => {});
 
     // If no cards rendered (e.g. empty Firestore in CI), the test
     // still passes — there's nothing to violate.
@@ -91,7 +92,8 @@ test.describe('Phase 10.7.5 — reduced-motion contract', () => {
     if (cardCount === 0) {
       test.info().annotations.push({
         type: 'skip-reason',
-        description: 'No product cards rendered; reduced-motion contract not applicable on empty grid',
+        description:
+          'No product cards rendered; reduced-motion contract not applicable on empty grid',
       });
       return;
     }
@@ -106,7 +108,7 @@ test.describe('Phase 10.7.5 — reduced-motion contract', () => {
     });
     expect(
       cardTransition === 'none' || cardTransition === 'all 0s ease 0s',
-      `flipped card transition should be 'none' under reduced motion; got "${cardTransition}"`
+      `flipped card transition should be 'none' under reduced motion; got "${cardTransition}"`,
     ).toBeTruthy();
   });
 
@@ -115,7 +117,7 @@ test.describe('Phase 10.7.5 — reduced-motion contract', () => {
 
     // Wait for add-to-cart button to exist
     const addBtn = page.locator('.tc-add-btn').first();
-    if (await addBtn.count() === 0) {
+    if ((await addBtn.count()) === 0) {
       // No products rendered in CI environment; nothing to test.
       return;
     }
@@ -131,7 +133,7 @@ test.describe('Phase 10.7.5 — reduced-motion contract', () => {
   test('cart icon: bump attribute may set but animation must be absent', async ({ page }) => {
     await page.goto('/products');
     const addBtn = page.locator('.tc-add-btn').first();
-    if (await addBtn.count() === 0) return;
+    if ((await addBtn.count()) === 0) return;
     await addBtn.click();
 
     // The hook still sets data-bumped on the icon (it's an attribute
@@ -142,7 +144,7 @@ test.describe('Phase 10.7.5 — reduced-motion contract', () => {
     const bumpAnim = await computedAnimationName(page, '[data-cart-icon]');
     expect(
       bumpAnim === 'none' || bumpAnim === '',
-      `cart icon bump animation should be 'none' under reduced motion; got "${bumpAnim}"`
+      `cart icon bump animation should be 'none' under reduced motion; got "${bumpAnim}"`,
     ).toBeTruthy();
   });
 
@@ -164,7 +166,10 @@ test.describe('Phase 10.7.5 — reduced-motion contract', () => {
     });
 
     expect(result.found, '.btn-dark or .btn-outline must exist on home page').toBeTruthy();
-    expect(result.matchesReduce, 'prefers-reduced-motion: reduce must be active in this context').toBe(true);
+    expect(
+      result.matchesReduce,
+      'prefers-reduced-motion: reduce must be active in this context',
+    ).toBe(true);
   });
 
   test('global token override: all --dur-* tokens collapse to 1ms', async ({ page }) => {
@@ -174,14 +179,19 @@ test.describe('Phase 10.7.5 — reduced-motion contract', () => {
     // prefers-reduced-motion: reduce. Verify by reading the
     // computed value of one of them on :root.
     const durNormal = await page.evaluate(() => {
-      return window.getComputedStyle(document.documentElement).getPropertyValue('--dur-normal').trim();
+      return window
+        .getComputedStyle(document.documentElement)
+        .getPropertyValue('--dur-normal')
+        .trim();
     });
     expect(durNormal, '--dur-normal should collapse to 1ms under reduced motion').toBe('1ms');
 
     const durSlow = await page.evaluate(() => {
-      return window.getComputedStyle(document.documentElement).getPropertyValue('--dur-slow').trim();
+      return window
+        .getComputedStyle(document.documentElement)
+        .getPropertyValue('--dur-slow')
+        .trim();
     });
     expect(durSlow, '--dur-slow should collapse to 1ms under reduced motion').toBe('1ms');
   });
-
 });

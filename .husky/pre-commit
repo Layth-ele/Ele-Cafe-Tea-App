@@ -3,7 +3,7 @@
 # Fail closed — if stylelint reports an error, the commit is aborted.
 #
 # First-time setup (after unzipping the app):
-#   pnpm install      # runs `husky` via the `prepare` script, installing this hook
+#   npm install       # runs `husky` via the `prepare` script, installing this hook
 #
 # Bypass (emergency only):
 #   git commit --no-verify -m "..."

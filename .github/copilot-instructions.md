@@ -12,7 +12,7 @@
 - **Firebase**: Backend logic and triggers live in `functions/`. Use TypeScript for all cloud functions.
 
 ## Developer Workflows
-- **Install dependencies**: `npm i` or `pnpm i` (pnpm preferred if available)
+- **Install dependencies**: `npm install` (the project uses npm and package-lock.json)
 - **Start dev server**: `npm run dev` (frontend)
 - **Deploy functions**: `firebase deploy --only functions`
 - **Seed data**: Run scripts in `scripts/` or `src/scripts/` (see `seedEverything.tsx`)

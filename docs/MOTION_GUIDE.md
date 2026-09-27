@@ -188,7 +188,7 @@ JS sets `--start-x/y` and `--end-x/y` from `getBoundingClientRect()` of the sour
 When a product card moves from grid position A to B (sort/filter), a generic fade is wrong. FLIP (First, Last, Invert, Play) measures the before-position, lets React/DOM update to the new position, then inverts the transform back to where it was and animates to zero.
 
 ```bash
-pnpm add react-flip-toolkit
+npm install react-flip-toolkit
 ```
 
 Pattern (full implementation in Phase 10.3 next turn):

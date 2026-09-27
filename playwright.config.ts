@@ -13,7 +13,7 @@ import { defineConfig, devices } from '@playwright/test';
  *
  * Baselines live in tests/visual/__screenshots__/ and are committed to git.
  * Regenerate after an intentional visual change with:
- *   pnpm test:visual:update
+ *   npm run test:visual:update
  *
  * Phase 0.4 of the UI/UX roadmap added auth-bearing projects:
  *   user-state  → /checkout, /orders, /account
@@ -58,7 +58,7 @@ export default defineConfig({
 
     /* Leave screenshots+videos to the visual.spec — don't double-capture. */
     screenshot: 'off',
-    video:      'off',
+    video: 'off',
   },
 
   /* Snapshot tolerance — tuned to catch real regressions, not anti-alias jitter. */
@@ -140,7 +140,7 @@ export default defineConfig({
 
   /* Auto-start the dev server for each test run. */
   webServer: {
-    command: 'npm run dev',       // ← change this line
+    command: 'npm run dev', // ← change this line
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
     /* Vite is fast but cold boot + Firebase init takes a moment. */

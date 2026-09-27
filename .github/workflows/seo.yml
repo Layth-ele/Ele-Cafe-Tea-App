@@ -47,7 +47,6 @@ on:
       - 'vite.config.ts'
       - 'package.json'
       - 'package-lock.json'
-      - 'pnpm-lock.yaml'
       - 'tests/seo/**'
       - 'playwright.seo.config.ts'
       - '.github/workflows/seo.yml'
@@ -113,7 +112,7 @@ jobs:
         id: pw-cache
         with:
           path: ~/.cache/ms-playwright
-          key: pw-seo-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/pnpm-lock.yaml') }}
+          key: pw-seo-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
 
       - name: Install Playwright browsers
         if: steps.pw-cache.outputs.cache-hit != 'true'

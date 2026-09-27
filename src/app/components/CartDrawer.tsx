@@ -188,7 +188,7 @@ export function CartDrawer() {
         /* Phase 9.3: --cd-drag-x is a per-instance CSS custom property
            whose value is genuinely dynamic (live pointer position during
            the gesture). The forbid-dom-props rule exempts custom-property
-           pass-through per docs/history/PHASE_3_PLAYBOOK §step-5. */
+           pass-through per docs/PHASE_3_PLAYBOOK §step-5. */
         // eslint-disable-next-line react/forbid-dom-props
         style={{ '--cd-drag-x': `${dragX}px` } as React.CSSProperties}
         {...bindSwipe()}

@@ -38,7 +38,6 @@ on:
       - 'vite.config.ts'
       - 'package.json'
       - 'package-lock.json'
-      - 'pnpm-lock.yaml'
       - 'lighthouserc.json'
       - '.github/workflows/lighthouse-ci.yml'
   push:

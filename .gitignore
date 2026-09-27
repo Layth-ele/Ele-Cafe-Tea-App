@@ -39,3 +39,7 @@ serviceAccount.json
 
 # Emulator debug logs
 *-debug.log
+
+# Any log file, and macOS Finder duplicates ("file 2.ext")
+*.log
+* 2.*

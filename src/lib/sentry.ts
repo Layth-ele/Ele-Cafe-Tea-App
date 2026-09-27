@@ -42,12 +42,12 @@
  * No-op behavior:
  *   If VITE_SENTRY_DSN is unset (dev, fresh clone), this module
  *   short-circuits cleanly and never imports the SDK at runtime.
- *   That keeps `pnpm dev` working without a Sentry account.
+ *   That keeps `npm run dev` working without a Sentry account.
  */
 
-const SENTRY_DSN     = import.meta.env.VITE_SENTRY_DSN as string | undefined;
-const APP_VERSION    = import.meta.env.VITE_APP_VERSION as string | undefined;
-const APP_ENV        = import.meta.env.MODE; // 'development' | 'production' | 'test'
+const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined;
+const APP_VERSION = import.meta.env.VITE_APP_VERSION as string | undefined;
+const APP_ENV = import.meta.env.MODE; // 'development' | 'production' | 'test'
 
 let started = false;
 
@@ -69,8 +69,8 @@ export function initSentry(): void {
     if (APP_ENV === 'production' && typeof window !== 'undefined') {
       console.warn(
         '[sentry] VITE_SENTRY_DSN not set on a production build. ' +
-        'Errors will NOT be captured. Set the env var and redeploy — ' +
-        'see .env.example for setup. (Phase 0.7.3 gate)',
+          'Errors will NOT be captured. Set the env var and redeploy — ' +
+          'see .env.example for setup. (Phase 0.7.3 gate)',
       );
     }
     return;
@@ -82,89 +82,91 @@ export function initSentry(): void {
   // once it loads, so any errors fired during the load delay are
   // captured by the browser's default error queue and replayed when
   // the SDK is ready.
-  import('@sentry/react').then((Sentry) => {
-    Sentry.init({
-      dsn:         SENTRY_DSN,
-      environment: APP_ENV,
-      release:     APP_VERSION,
+  import('@sentry/react')
+    .then((Sentry) => {
+      Sentry.init({
+        dsn: SENTRY_DSN,
+        environment: APP_ENV,
+        release: APP_VERSION,
 
-      /* Performance traces — sample 10% to keep volume manageable. */
-      tracesSampleRate: 0.1,
+        /* Performance traces — sample 10% to keep volume manageable. */
+        tracesSampleRate: 0.1,
 
-      /* Session replays — 5% baseline, 100% on errors. The on-error
-       * path is the value path: when a user hits a problem, we ALWAYS
-       * have the replay regardless of whether their session was
-       * pre-sampled. */
-      replaysSessionSampleRate: 0.05,
-      replaysOnErrorSampleRate: 1.0,
+        /* Session replays — 5% baseline, 100% on errors. The on-error
+         * path is the value path: when a user hits a problem, we ALWAYS
+         * have the replay regardless of whether their session was
+         * pre-sampled. */
+        replaysSessionSampleRate: 0.05,
+        replaysOnErrorSampleRate: 1.0,
 
-      /* Replay integration — privacy posture documented at the top
-       * of this file. Don't change without re-reading that comment. */
-      integrations: [
-        Sentry.replayIntegration({
-          maskAllText:   false,
-          maskAllInputs: true,
-          blockAllMedia: false,
-        }),
-        Sentry.browserTracingIntegration(),
-      ],
+        /* Replay integration — privacy posture documented at the top
+         * of this file. Don't change without re-reading that comment. */
+        integrations: [
+          Sentry.replayIntegration({
+            maskAllText: false,
+            maskAllInputs: true,
+            blockAllMedia: false,
+          }),
+          Sentry.browserTracingIntegration(),
+        ],
 
-      /* Ignore noise that swamps signal:
-       * - The chunk-load errors that ErrorBoundary already auto-recovers.
-       * - Browser extension errors (Safari especially noisy).
-       * - Network failures from offline users (expected).
-       */
-      ignoreErrors: [
-        // Chunk-load — ErrorBoundary handles these. They're noise here.
-        /Failed to fetch dynamically imported module/i,
-        /Loading chunk \d+ failed/i,
-        /ChunkLoadError/i,
-        /Importing a module script failed/i,
+        /* Ignore noise that swamps signal:
+         * - The chunk-load errors that ErrorBoundary already auto-recovers.
+         * - Browser extension errors (Safari especially noisy).
+         * - Network failures from offline users (expected).
+         */
+        ignoreErrors: [
+          // Chunk-load — ErrorBoundary handles these. They're noise here.
+          /Failed to fetch dynamically imported module/i,
+          /Loading chunk \d+ failed/i,
+          /ChunkLoadError/i,
+          /Importing a module script failed/i,
 
-        // Extension noise — Sentry's own list is good but not
-        // exhaustive on Safari.
-        /Non-Error promise rejection captured/i,
-        /ResizeObserver loop limit exceeded/i,
-        /ResizeObserver loop completed with undelivered notifications/i,
+          // Extension noise — Sentry's own list is good but not
+          // exhaustive on Safari.
+          /Non-Error promise rejection captured/i,
+          /ResizeObserver loop limit exceeded/i,
+          /ResizeObserver loop completed with undelivered notifications/i,
 
-        // Offline users.
-        /NetworkError when attempting to fetch resource/i,
-        /Failed to fetch$/i,
-        /Load failed$/i,           // Safari's offline error
-      ],
+          // Offline users.
+          /NetworkError when attempting to fetch resource/i,
+          /Failed to fetch$/i,
+          /Load failed$/i, // Safari's offline error
+        ],
 
-      /* Drop events from URLs we don't control. */
-      denyUrls: [
-        /\/extensions\//i,
-        /^chrome:\/\//i,
-        /^moz-extension:\/\//i,
-        /^safari-extension:\/\//i,
-      ],
+        /* Drop events from URLs we don't control. */
+        denyUrls: [
+          /\/extensions\//i,
+          /^chrome:\/\//i,
+          /^moz-extension:\/\//i,
+          /^safari-extension:\/\//i,
+        ],
 
-      /* Final scrub before send — strips anything PII-shaped that
-       * slipped past redaction. Cheap insurance. */
-      beforeSend(event) {
-        if (event.request?.cookies) delete event.request.cookies;
-        if (event.user) {
-          // Keep id (we want to know which user), drop the rest.
-          event.user = { id: event.user.id };
-        }
-        return event;
-      },
+        /* Final scrub before send — strips anything PII-shaped that
+         * slipped past redaction. Cheap insurance. */
+        beforeSend(event) {
+          if (event.request?.cookies) delete event.request.cookies;
+          if (event.user) {
+            // Keep id (we want to know which user), drop the rest.
+            event.user = { id: event.user.id };
+          }
+          return event;
+        },
+      });
+
+      // Console signal that init worked, dev only. Prod builds skip
+      // (this code path is dead-code-eliminated by Vite when DEV is false).
+      if (import.meta.env.DEV) {
+        console.log('[sentry] initialized');
+      }
+    })
+    .catch((err) => {
+      // Sentry init shouldn't ever block the app. If the SDK fails to
+      // load (network blocked, ad-blocker), log and move on.
+      if (import.meta.env.DEV) {
+        console.warn('[sentry] init failed (continuing without):', err);
+      }
     });
-
-    // Console signal that init worked, dev only. Prod builds skip
-    // (this code path is dead-code-eliminated by Vite when DEV is false).
-    if (import.meta.env.DEV) {
-      console.log('[sentry] initialized');
-    }
-  }).catch((err) => {
-    // Sentry init shouldn't ever block the app. If the SDK fails to
-    // load (network blocked, ad-blocker), log and move on.
-    if (import.meta.env.DEV) {
-      console.warn('[sentry] init failed (continuing without):', err);
-    }
-  });
 }
 
 /**
@@ -188,7 +190,11 @@ export function captureError(err: unknown, context?: Record<string, unknown>): v
   // Lazy access — the dynamic import in initSentry has already loaded
   // the SDK by the time application code calls captureError. Re-import
   // is cheap (dedup'd) but the catch path keeps it bullet-proof.
-  import('@sentry/react').then((Sentry) => {
-    Sentry.captureException(err, { extra: context });
-  }).catch(() => { /* drop */ });
+  import('@sentry/react')
+    .then((Sentry) => {
+      Sentry.captureException(err, { extra: context });
+    })
+    .catch(() => {
+      /* drop */
+    });
 }

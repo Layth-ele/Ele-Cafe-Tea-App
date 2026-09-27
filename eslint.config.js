@@ -105,10 +105,13 @@ export default [
       // Allow ternaries as statements (e.g. `cond ? doA() : doB();`) — a
       // common React pattern for terse side-effect dispatch. The rule still
       // catches genuinely-pointless expressions.
-      '@typescript-eslint/no-unused-expressions': ['error', {
-        allowTernary: true,
-        allowShortCircuit: true,
-      }],
+      '@typescript-eslint/no-unused-expressions': [
+        'error',
+        {
+          allowTernary: true,
+          allowShortCircuit: true,
+        },
+      ],
 
       // Disable the apostrophe-in-JSX rule. It fires on every `'` in
       // ordinary copy ("you'll", "we're", etc.) and offers nothing in
@@ -149,12 +152,18 @@ export default [
       // it to a DOM child (e.g. <Card style={...} /> for parent layout
       // overrides). The guard targets bare DOM elements where the prop
       // could always be a class instead.
-      'react/forbid-dom-props': ['error', {
-        forbid: [{
-          propName: 'style',
-          message: 'Use a class from design.css instead. See docs/history/PHASE_3_PLAYBOOK.md for the migration pattern. Suppress with `// eslint-disable-next-line react/forbid-dom-props` + reason for genuinely dynamic values.',
-        }],
-      }],
+      'react/forbid-dom-props': [
+        'error',
+        {
+          forbid: [
+            {
+              propName: 'style',
+              message:
+                'Use a class from design.css instead. See docs/PHASE_3_PLAYBOOK.md for the migration pattern. Suppress with `// eslint-disable-next-line react/forbid-dom-props` + reason for genuinely dynamic values.',
+            },
+          ],
+        },
+      ],
     },
   },
 
@@ -194,8 +203,8 @@ export default [
   {
     files: ['tests/**/*.{ts,tsx}'],
     rules: {
-      'react-hooks/rules-of-hooks':   'off',
-      'react-hooks/exhaustive-deps':  'off',
+      'react-hooks/rules-of-hooks': 'off',
+      'react-hooks/exhaustive-deps': 'off',
     },
   },
 

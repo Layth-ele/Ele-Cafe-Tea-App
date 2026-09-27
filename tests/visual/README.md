@@ -6,16 +6,16 @@ Pixel-diff the rendered layout of public pages against committed baselines. Catc
 
 ```bash
 # One-time: install Playwright's browser binaries (~300 MB, downloaded once per machine)
-pnpm exec playwright install chromium
+npx playwright install chromium
 
 # First run on a fresh clone: generate baselines
-pnpm test:visual:update
+npm run test:visual:update
 
 # Thereafter: compare against baselines, fail if anything diffs
-pnpm test:visual
+npm run test:visual
 
 # Interactive UI for debugging a failing test
-pnpm test:visual:ui
+npm run test:visual:ui
 ```
 
 The first `test:visual:update` creates PNGs in `tests/visual/__screenshots__/`. **Commit those files to git** — they're the source of truth for "the app looks correct."
@@ -40,7 +40,7 @@ See `public-pages.spec.ts` for the list. Each page:
 # 1. make your CSS change
 # 2. confirm it looks right locally
 # 3. regenerate baselines
-pnpm test:visual:update
+npm run test:visual:update
 # 4. eyeball the updated PNGs in tests/visual/__screenshots__/
 # 5. commit
 git add tests/visual/__screenshots__
@@ -55,7 +55,7 @@ When CI fails:
 2. Open `playwright-report/index.html` in a browser
 3. Each failing test shows: expected (committed), actual (from this CI run), diff (red pixels where they differ)
 
-If the diff is **intentional** (you changed the layout on purpose), run `pnpm test:visual:update` locally and commit the new PNGs.
+If the diff is **intentional** (you changed the layout on purpose), run `npm run test:visual:update` locally and commit the new PNGs.
 
 If the diff is **unintended**, fix the code until the test passes.
 

@@ -9,10 +9,8 @@
       cd ele-cafe
       ```
 
-    2. **Install dependencies** (pnpm preferred, or npm)
+    2. **Install dependencies** (npm)
       ```sh
-      pnpm install
-      # or
       npm install
       ```
 
@@ -39,7 +37,7 @@
 
     #### Example (TypeScript):
     ```sh
-    pnpm tsx src/scripts/seedEverything.tsx
+    npx tsx src/scripts/seedEverything.tsx
     ```
 
     ## Additional Documentation
