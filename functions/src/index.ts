@@ -7982,6 +7982,3 @@ export const backfillTeaWeights = functions.https.onCall(
     return { scanned, updated, skipped };
   },
 );
-
-// Temporary one-off (remove after it runs).
-export { frenchFixOnce } from './frenchFixOnce';
