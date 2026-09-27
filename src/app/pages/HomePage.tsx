@@ -467,9 +467,11 @@ export function HomePage() {
               <Link to={ROUTES.PRODUCTS} className="btn btn-dark btn-lg">
                 {t('Shop Collection')}
               </Link>
-              <Link to={ROUTES.GIFTS} className="btn btn-outline btn-lg">
-                {t('Gift Builder')}
-              </Link>
+              {store.giftBuilderEnabled && (
+                <Link to={ROUTES.GIFTS} className="btn btn-outline btn-lg">
+                  {t('Gift Builder')}
+                </Link>
+              )}
               <Link to={ROUTES.PAIRINGS} className="btn btn-gold btn-lg">
                 {t('Tea pairings')}
               </Link>
@@ -595,13 +597,15 @@ export function HomePage() {
         <TeaGuide />
 
         {/* ══ GIFT CTA ══════════════════════════════════════════════════════ */}
-        <section className="hp-gift-cta">
-          <span className="overline hp-gift-eyebrow">{t('For someone special')}</span>
-          <h2 className="hp-gift-h2">{t('Build a Bespoke Tea Gift Box')}</h2>
-          <Link to={ROUTES.GIFTS} className="btn btn-lg hp-gift-btn">
-            {t('Start Building')} <ArrowRight size={15} />
-          </Link>
-        </section>
+        {store.giftBuilderEnabled && (
+          <section className="hp-gift-cta">
+            <span className="overline hp-gift-eyebrow">{t('For someone special')}</span>
+            <h2 className="hp-gift-h2">{t('Build a Bespoke Tea Gift Box')}</h2>
+            <Link to={ROUTES.GIFTS} className="btn btn-lg hp-gift-btn">
+              {t('Start Building')} <ArrowRight size={15} />
+            </Link>
+          </section>
+        )}
 
         {/* ══ WHY ELE CAFÉ + FAQ (FAQPage JSON-LD via SeoHead) ═══════════════ */}
         <WhyEleCafe store={store} />

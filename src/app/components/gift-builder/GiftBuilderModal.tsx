@@ -31,7 +31,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Modal } from '@/app/components/modals/Modal';
+import { Modal, ModalBtn } from '@/app/components/modals/Modal';
 import { useGiftBuilderStore, type WizardStep } from '@/store/giftBuilderStore';
 import { useCartStore } from '@/store/cartStore';
 import { useCartDrawer } from '@/store/cartDrawerStore';
@@ -39,37 +39,35 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/hooks/useSettings';
 import { findBundle } from './data/bundles';
 import { GiftBuilderStepper } from './GiftBuilderStepper';
-import { GiftBuilderFooter }  from './GiftBuilderFooter';
-import { Step1ChooseBundle }  from './steps/Step1ChooseBundle';
-import { Step2PickTeas }      from './steps/Step2PickTeas';
-import { Step3PickSamples }   from './steps/Step3PickSamples';
-import { Step4Occasion }      from './steps/Step4Occasion';
-import { Step5PersonalInfo }  from './steps/Step5PersonalInfo';
-import { Step6Review }        from './steps/Step6Review';
+import { GiftBuilderFooter } from './GiftBuilderFooter';
+import { Step1ChooseBundle } from './steps/Step1ChooseBundle';
+import { Step2PickTeas } from './steps/Step2PickTeas';
+import { Step3PickSamples } from './steps/Step3PickSamples';
+import { Step4Occasion } from './steps/Step4Occasion';
+import { Step5PersonalInfo } from './steps/Step5PersonalInfo';
+import { Step6Review } from './steps/Step6Review';
 import { toast } from 'sonner';
 import { logGiftBuilderEvent } from '@/lib/giftBuilderEvents';
 
 import { useT, tNow } from '@/i18n/useT';
 const CART_DRAWER_OPEN_DELAY_MS = 240;
-const CLOSE_CONFIRM_MESSAGE =
-  'Close the gift builder? Your progress is saved — you can pick up where you left off when you come back.';
 
 export function GiftBuilderModal() {
   const tr = useT();
-  const isOpen          = useGiftBuilderStore(s => s.isOpen);
-  const close           = useGiftBuilderStore(s => s.close);
-  const reset           = useGiftBuilderStore(s => s.reset);
-  const step            = useGiftBuilderStore(s => s.step);
-  const goToStep        = useGiftBuilderStore(s => s.goToStep);
-  const getNextStep     = useGiftBuilderStore(s => s.getNextStep);
-  const getPrevStep     = useGiftBuilderStore(s => s.getPrevStep);
-  const bundleSlug      = useGiftBuilderStore(s => s.bundleSlug);
-  const selectedTeas    = useGiftBuilderStore(s => s.selectedTeas);
-  const selectedSamples = useGiftBuilderStore(s => s.selectedSamples);
-  const personalization = useGiftBuilderStore(s => s.personalization);
+  const isOpen = useGiftBuilderStore((s) => s.isOpen);
+  const close = useGiftBuilderStore((s) => s.close);
+  const reset = useGiftBuilderStore((s) => s.reset);
+  const step = useGiftBuilderStore((s) => s.step);
+  const goToStep = useGiftBuilderStore((s) => s.goToStep);
+  const getNextStep = useGiftBuilderStore((s) => s.getNextStep);
+  const getPrevStep = useGiftBuilderStore((s) => s.getPrevStep);
+  const bundleSlug = useGiftBuilderStore((s) => s.bundleSlug);
+  const selectedTeas = useGiftBuilderStore((s) => s.selectedTeas);
+  const selectedSamples = useGiftBuilderStore((s) => s.selectedSamples);
+  const personalization = useGiftBuilderStore((s) => s.personalization);
 
-  const addBundle      = useCartStore(s => s.addBundle);
-  const openCartDrawer = useCartDrawer(s => s.open);
+  const addBundle = useCartStore((s) => s.addBundle);
+  const openCartDrawer = useCartDrawer((s) => s.open);
   const { currentUser, isAdmin } = useAuth();
 
   // Defensive feature-flag gate. GiftsPage CTAs already disable themselves
@@ -83,6 +81,8 @@ export function GiftBuilderModal() {
   }, [isOpen, featureEnabled, close]);
 
   const [submitting, setSubmitting] = useState(false);
+  // "Close the gift builder?" — the site's own dialog, not the browser's.
+  const [confirmClose, setConfirmClose] = useState(false);
   const lastStepLoggedRef = useRef<WizardStep | null>(null);
   const wasOpenRef = useRef(false);
 
@@ -137,12 +137,21 @@ export function GiftBuilderModal() {
     }
     if (step === 4) return true; // occasion optional — Skip button in body
     if (step === 5) {
-      return personalization.recipientName.trim().length > 0 &&
-             personalization.senderName.trim().length > 0;
+      return (
+        personalization.recipientName.trim().length > 0 &&
+        personalization.senderName.trim().length > 0
+      );
     }
     return true; // step 6 — Add to Cart is the action
-  }, [step, bundleSlug, bundle, selectedTeas.length, selectedSamples.length,
-      personalization.recipientName, personalization.senderName]);
+  }, [
+    step,
+    bundleSlug,
+    bundle,
+    selectedTeas.length,
+    selectedSamples.length,
+    personalization.recipientName,
+    personalization.senderName,
+  ]);
 
   // ── Furthest step the user can jump to via stepper clicks ─────────────────
   // Goes only as far as the canContinue chain holds. Auto-skip rule
@@ -161,11 +170,17 @@ export function GiftBuilderModal() {
     // Step 5's required names.
     const namesFull =
       personalization.recipientName.trim().length > 0 &&
-      personalization.senderName.trim().length    > 0;
+      personalization.senderName.trim().length > 0;
     if (!namesFull) return 5;
     return 6;
-  }, [bundleSlug, bundle, selectedTeas.length, selectedSamples.length,
-      personalization.recipientName, personalization.senderName]);
+  }, [
+    bundleSlug,
+    bundle,
+    selectedTeas.length,
+    selectedSamples.length,
+    personalization.recipientName,
+    personalization.senderName,
+  ]);
 
   // ── Auto-close on sign-OUT (not "never signed in") ────────────────────────
   // Phase 19 — the previous version closed the modal whenever
@@ -197,11 +212,12 @@ export function GiftBuilderModal() {
       close();
       return;
     }
-    const ok = window.confirm(CLOSE_CONFIRM_MESSAGE);
-    if (ok) {
-      track('modal_closed', { source: 'confirm_close' });
-      close();
-    }
+    setConfirmClose(true);
+  }
+  function confirmAndClose() {
+    setConfirmClose(false);
+    track('modal_closed', { source: 'confirm_close' });
+    close();
   }
 
   // ── Continue / Back ───────────────────────────────────────────────────────
@@ -230,30 +246,30 @@ export function GiftBuilderModal() {
       const heroImage = selectedTeas[0]?.image ?? '';
 
       addBundle({
-        slug:           bundle.slug,
-        name:           bundle.name,
-        price:          bundle.price,
-        image:          heroImage,
+        slug: bundle.slug,
+        name: bundle.name,
+        price: bundle.price,
+        image: heroImage,
         hasFrenchPress: bundle.hasFrenchPress,
-        teas: selectedTeas.map(t => ({
-          id:     t.id ?? '',
-          name:   t.name ?? '',
-          image:  t.image ?? '',
+        teas: selectedTeas.map((t) => ({
+          id: t.id ?? '',
+          name: t.name ?? '',
+          image: t.image ?? '',
           origin: t.origin,
         })),
-        samples: selectedSamples.map(t => ({
-          id:     t.id ?? '',
-          name:   t.name ?? '',
-          image:  t.image ?? '',
+        samples: selectedSamples.map((t) => ({
+          id: t.id ?? '',
+          name: t.name ?? '',
+          image: t.image ?? '',
           origin: t.origin,
         })),
         personalization: {
-          recipientName:  personalization.recipientName.trim(),
-          senderName:     personalization.senderName.trim(),
-          occasion:       personalization.occasion || '',
+          recipientName: personalization.recipientName.trim(),
+          senderName: personalization.senderName.trim(),
+          occasion: personalization.occasion || '',
           customOccasion: personalization.customOccasion.trim(),
-          message:        personalization.message.trim(),
-          deliveryDate:   personalization.deliveryDate,
+          message: personalization.message.trim(),
+          deliveryDate: personalization.deliveryDate,
         },
       });
 
@@ -287,34 +303,52 @@ export function GiftBuilderModal() {
   if (!isOpen) return null;
 
   return (
-    <Modal
-      open={isOpen}
-      onClose={handleClose}
-      size="xxl"
-      title={tr('Build Your Bundle')}
-      subtitle={bundle ? `${bundle.name} · $${bundle.price}` : 'Choose a bundle to begin'}
-      footer={
-        <GiftBuilderFooter
-          step={step}
-          canContinue={canContinue}
-          onBack={handleBack}
-          onContinue={handleContinue}
-          onAddToCart={handleAddToCart}
-          submitting={submitting}
-        />
-      }
-    >
-      <div className="stack-6">
-        <div className="gbm-stepper-pad">
-          <GiftBuilderStepper
-            current={step}
-            furthest={furthest}
-            onJumpTo={goToStep}
+    <>
+      <Modal
+        open={isOpen}
+        onClose={handleClose}
+        size="xxl"
+        title={tr('Build Your Bundle')}
+        subtitle={bundle ? `${bundle.name} · $${bundle.price}` : 'Choose a bundle to begin'}
+        footer={
+          <GiftBuilderFooter
+            step={step}
+            canContinue={canContinue}
+            onBack={handleBack}
+            onContinue={handleContinue}
+            onAddToCart={handleAddToCart}
+            submitting={submitting}
           />
-        </div>
+        }
+      >
+        <div className="stack-6">
+          <div className="gbm-stepper-pad">
+            <GiftBuilderStepper current={step} furthest={furthest} onJumpTo={goToStep} />
+          </div>
 
-        <div>{stepBody}</div>
-      </div>
-    </Modal>
+          <div>{stepBody}</div>
+        </div>
+      </Modal>
+      <Modal
+        open={confirmClose}
+        onClose={() => setConfirmClose(false)}
+        title={tr('Close the gift builder?')}
+        size="sm"
+        footer={
+          <>
+            <ModalBtn variant="outline" onClick={() => setConfirmClose(false)}>
+              {tr('Keep building')}
+            </ModalBtn>
+            <ModalBtn variant="primary" onClick={confirmAndClose}>
+              {tr('Close')}
+            </ModalBtn>
+          </>
+        }
+      >
+        <p className="bdd-p">
+          {tr('Your progress is saved — you can pick up where you left off when you come back.')}
+        </p>
+      </Modal>
+    </>
   );
 }

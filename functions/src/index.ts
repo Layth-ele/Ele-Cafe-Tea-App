@@ -4405,6 +4405,7 @@ function buildSitemapXml(
   teas: SitemapTea[],
   pairings: Array<{ slug: string; lastmod: string; image: string }>,
   today: string,
+  giftsOn = true,
 ): string {
   // Static + category URLs — single lastmod (the build/now date), no image.
   const simpleEntry = (loc: string, priority: string, changefreq: string) => `  <url>
@@ -4448,7 +4449,11 @@ function buildSitemapXml(
   };
 
   const lines: string[] = [];
-  for (const u of STATIC_SITEMAP_URLS) lines.push(simpleEntry(u.loc, u.priority, u.changefreq));
+  // /gifts only while Admin → Settings → Gift Builder is on.
+  for (const u of STATIC_SITEMAP_URLS) {
+    if (u.loc === '/gifts' && !giftsOn) continue;
+    lines.push(simpleEntry(u.loc, u.priority, u.changefreq));
+  }
   // Only categories / collections with at least one live tea — an empty
   // landing page is thin content and wastes crawl budget.
   const liveCats = CATEGORY_IDS.filter((id) => teas.some((t) => t.category === id));
@@ -4614,7 +4619,13 @@ export const getSitemap = functions.https.onRequest(
       pairings = [];
     }
 
-    const xml = buildSitemapXml(teas, pairings, today);
+    let giftsOn = false;
+    try {
+      giftsOn = (await db.doc('settings/global').get()).get('giftBuilderEnabled') === true;
+    } catch {
+      /* leave /gifts out when unsure */
+    }
+    const xml = buildSitemapXml(teas, pairings, today, giftsOn);
     res.set('Content-Type', 'application/xml; charset=utf-8');
     res.set('Cache-Control', 'public, max-age=3600, s-maxage=3600');
     res.status(200).send(xml);
@@ -5691,7 +5702,7 @@ function patchHeadForProducts(template: string, teas: CatalogTea[]): string {
           <h2>${SL('Tea collections', 'Collections de thé')}</h2>
           <p>${collections}</p>
         </section>
-        <p><a href="${seoUrl('/cafe')}">${SL('Café menu', 'Menu du café')}</a> · <a href="${seoUrl('/pairings')}">${SL('Tea &amp; pastry pairings', 'Accords thé et pâtisserie')}</a> · <a href="${seoUrl('/gifts')}">${SL('Gift builder', 'Coffrets-cadeaux')}</a></p>
+        <p><a href="${seoUrl('/cafe')}">${SL('Café menu', 'Menu du café')}</a> · <a href="${seoUrl('/pairings')}">${SL('Tea &amp; pastry pairings', 'Accords thé et pâtisserie')}</a>${SEO_STORE.giftBuilderEnabled ? ` · <a href="${seoUrl('/gifts')}">${SL('Gift builder', 'Coffrets-cadeaux')}</a>` : ''}</p>
         ${seoContactHtml(SEO_STORE)}
       </article>
     </noscript>`,

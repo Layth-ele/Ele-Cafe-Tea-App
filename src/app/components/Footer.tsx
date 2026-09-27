@@ -352,7 +352,9 @@ export function Footer() {
           {/* ── Account ────────────────────────────────────── */}
           <div>
             <span className="footer-col-title">{t('Account')}</span>
-            {ACCOUNT_LINKS.map(({ to, label }) => (
+            {ACCOUNT_LINKS.filter(
+              (l) => l.to !== ROUTES.GIFTS || settings?.giftBuilderEnabled === true,
+            ).map(({ to, label }) => (
               <TransitionLink key={to} to={to} className="footer-link">
                 {t(label)}
               </TransitionLink>

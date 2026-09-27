@@ -23,28 +23,43 @@ import { toast } from 'sonner';
 import { useT, tNow, useLang } from '@/i18n/useT';
 
 // ── NAV_LINKS factory ─────────────────────────────────────────────────────────
-const getNavLinks = (t: (key: string) => string) => ([
-  { to: ROUTES.HOME,     label: t('Home'),         chevron: false },
-  { to: ROUTES.PRODUCTS, label: t('Teas'),         chevron: true  },
+// giftOn: Admin → Settings → Gift Builder. Off = no Gift Builder link anywhere.
+const getNavLinks = (t: (key: string) => string, giftOn: boolean) => [
+  { to: ROUTES.HOME, label: t('Home'), chevron: false },
+  { to: ROUTES.PRODUCTS, label: t('Teas'), chevron: true },
   // Phase 18 — replaces the removed "Discover" entry. Points to the
   // existing /pairings landing page (which lists every curated combo
   // we sell). The label is brand-aligned with the Cormorant Garamond
   // serif voice: "Tea pairings" reads as "tea + pastries together"
   // without being overly literal. French: "Accords gourmands".
-  { to: ROUTES.CAFE,     label: t('Café Menu'),    chevron: false },
+  { to: ROUTES.CAFE, label: t('Café Menu'), chevron: false },
   { to: ROUTES.PAIRINGS, label: t('Tea pairings'), chevron: false },
-  { to: ROUTES.GIFTS,    label: t('Gift Builder'), chevron: false },
+  ...(giftOn ? [{ to: ROUTES.GIFTS, label: t('Gift Builder'), chevron: false }] : []),
   // Side menu only — keeps the desktop top bar uncluttered.
-  { to: ROUTES.REWARDS,  label: t('Ele Rewards'),  chevron: false, drawerOnly: true },
-]);
+  { to: ROUTES.REWARDS, label: t('Ele Rewards'), chevron: false, drawerOnly: true },
+];
 
 // ── Mobile drawer ─────────────────────────────────────────────────────────────
-function Drawer({ open, onClose, currentUser, isAdmin, pathname, onLogout, isInventoryAccount }: {
-  open: boolean; onClose: () => void; currentUser: User | null;
-  isAdmin: boolean; pathname: string; onLogout: () => void;
+function Drawer({
+  open,
+  onClose,
+  currentUser,
+  isAdmin,
+  pathname,
+  onLogout,
+  isInventoryAccount,
+}: {
+  open: boolean;
+  onClose: () => void;
+  currentUser: User | null;
+  isAdmin: boolean;
+  pathname: string;
+  onLogout: () => void;
   isInventoryAccount: boolean;
 }) {
   const t = useT();
+  const { data: drawerSettings } = useSettingsQuery();
+  const giftOn = drawerSettings?.giftBuilderEnabled === true;
   useEffect(() => {
     if (!open) return;
     return lockBodyScroll();
@@ -53,25 +68,29 @@ function Drawer({ open, onClose, currentUser, isAdmin, pathname, onLogout, isInv
   // ESC to close — small accessibility win the previous version was missing.
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
   if (!open) return null;
 
-  const isActive = (to: string) => to === '/' ? pathname === '/' : pathname.startsWith(to);
-  const navLinks = getNavLinks(t);
+  const isActive = (to: string) => (to === '/' ? pathname === '/' : pathname.startsWith(to));
+  const navLinks = getNavLinks(t, giftOn);
   const allLinks = [
     ...(isInventoryAccount
       ? [{ to: ROUTES.INVENTORY, label: t('Inventory'), chevron: false }]
       : [
           ...navLinks,
-          ...(currentUser ? [
-            { to: ROUTES.ORDERS,  label: t('My Orders'),  chevron: false },
-            { to: ROUTES.WISHLIST, label: t('Wishlist'), chevron: false },
-            { to: ROUTES.ACCOUNT, label: t('My Account'), chevron: false },
-          ] : []),
+          ...(currentUser
+            ? [
+                { to: ROUTES.ORDERS, label: t('My Orders'), chevron: false },
+                { to: ROUTES.WISHLIST, label: t('Wishlist'), chevron: false },
+                { to: ROUTES.ACCOUNT, label: t('My Account'), chevron: false },
+              ]
+            : []),
         ]),
     ...(isAdmin ? [{ to: ROUTES.ADMIN, label: t('Admin Dashboard'), chevron: true }] : []),
   ];
@@ -95,11 +114,7 @@ function Drawer({ open, onClose, currentUser, isAdmin, pathname, onLogout, isInv
             the logo here — it's still visible in the header bar
             behind. Cleaner, more whitespace. */}
         <div className="drawer-head">
-          <button
-            className="drawer-close"
-            onClick={onClose}
-            aria-label={t('Close navigation')}
-          >
+          <button className="drawer-close" onClick={onClose} aria-label={t('Close navigation')}>
             <X size={20} strokeWidth={1.5} />
           </button>
         </div>
@@ -144,12 +159,18 @@ function Drawer({ open, onClose, currentUser, isAdmin, pathname, onLogout, isInv
                   await onLogout();
                   onClose();
                 }}
-              >{t('Sign out')}</button>
+              >
+                {t('Sign out')}
+              </button>
             </>
           ) : (
             <>
-              <Link to={ROUTES.LOGIN}  className="drawer-foot-link" onClick={onClose}>{t('Sign in')}</Link>
-              <Link to={ROUTES.SIGNUP} className="drawer-foot-link" onClick={onClose}>{t('Create account')}</Link>
+              <Link to={ROUTES.LOGIN} className="drawer-foot-link" onClick={onClose}>
+                {t('Sign in')}
+              </Link>
+              <Link to={ROUTES.SIGNUP} className="drawer-foot-link" onClick={onClose}>
+                {t('Create account')}
+              </Link>
             </>
           )}
 
@@ -219,7 +240,7 @@ function ResendVerifyBanner() {
 
   useEffect(() => {
     if (cooldown <= 0) return;
-    const t = window.setTimeout(() => setCooldown(c => c - 1), 1000);
+    const t = window.setTimeout(() => setCooldown((c) => c - 1), 1000);
     return () => clearTimeout(t);
   }, [cooldown]);
 
@@ -233,14 +254,19 @@ function ResendVerifyBanner() {
       // Pin the continue URL so the verification link doesn't depend
       // on VITE_FIREBASE_AUTH_DOMAIN being a working hostname. See the
       // identical block in AuthContext.signup for the rationale.
-      const continueUrl = (typeof window !== 'undefined' && window.location?.origin)
-        ? `${window.location.origin}/account?verified=1`
-        : undefined;
+      const continueUrl =
+        typeof window !== 'undefined' && window.location?.origin
+          ? `${window.location.origin}/account?verified=1`
+          : undefined;
       await mod.sendEmailVerification(
         auth.currentUser,
         continueUrl ? { url: continueUrl, handleCodeInApp: false } : undefined,
       );
-      toast.success(tNow('Verification email sent! It can take up to 5 minutes — check your inbox and spam folder.'));
+      toast.success(
+        tNow(
+          'Verification email sent! It can take up to 5 minutes — check your inbox and spam folder.',
+        ),
+      );
     } catch (err) {
       // Log AND surface a useful message — was previously a generic
       // toast that gave the user no path forward. Common cases:
@@ -249,9 +275,10 @@ function ResendVerifyBanner() {
       //     origin to Firebase Console → Authorized domains
       console.error('[Navbar] sendEmailVerification failed:', err);
       const code = (err as { code?: string })?.code ?? '';
-      const friendlyMsg = code === 'auth/too-many-requests'
-        ? 'Too many requests — try again in a few minutes.'
-        : 'Could not send email — try again shortly.';
+      const friendlyMsg =
+        code === 'auth/too-many-requests'
+          ? 'Too many requests — try again in a few minutes.'
+          : 'Could not send email — try again shortly.';
       toast.error(friendlyMsg);
       // Failed — reset cooldown so the user can retry sooner.
       setCooldown(0);
@@ -284,7 +311,7 @@ function ResendVerifyBanner() {
         // Navbar) will now hide this component on the next React
         // render. No manual hide needed.
       } else {
-        toast.info(tNow('Looks like it\'s not verified yet — check your inbox or click Resend.'));
+        toast.info(tNow("Looks like it's not verified yet — check your inbox or click Resend."));
       }
     } catch (err) {
       console.error('[Navbar] verification refresh failed:', err);
@@ -305,7 +332,7 @@ function ResendVerifyBanner() {
         className="nav-verify-btn"
         data-busy={checking ? 'true' : 'false'}
       >
-        {checking ? tr('Checking…') : tr('I\'ve verified')}
+        {checking ? tr('Checking…') : tr("I've verified")}
       </button>
       <button
         onClick={handleResend}
@@ -325,12 +352,12 @@ export function Navbar() {
   const { currentUser, logout, isAdmin } = useAuth();
   const { data: settings } = useSettingsQuery();
   const { theme } = useThemeStore();
-  const totalItems = useCart(s => s.totalItems);
+  const totalItems = useCart((s) => s.totalItems);
   const { open: openCartDrawer } = useCartDrawer();
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [scrolled,   setScrolled]   = useState(false);
-  const [heroMode,   setHeroMode]   = useState(true);
+  const [scrolled, setScrolled] = useState(false);
+  const [heroMode, setHeroMode] = useState(true);
 
   // Theme-aware logo selection. In dark mode we want the white-bg logo
   // (which has a halo so it stays readable on the midnight nav). In
@@ -340,15 +367,13 @@ export function Navbar() {
   // docs from before the two-logo rollout still display something.
   const navLogoUrl: string =
     theme === 'dark'
-      ? ((settings as { logoUrlWhiteBg?: string })?.logoUrlWhiteBg
-          || settings?.footerLogoUrl
-          || settings?.logoUrl
-          || '')
-      : ((settings as { logoUrlNoBg?: string })?.logoUrlNoBg
-          || settings?.logoUrl
-          || '');
+      ? (settings as { logoUrlWhiteBg?: string })?.logoUrlWhiteBg ||
+        settings?.footerLogoUrl ||
+        settings?.logoUrl ||
+        ''
+      : (settings as { logoUrlNoBg?: string })?.logoUrlNoBg || settings?.logoUrl || '';
 
-  const navLinks = getNavLinks(t);
+  const navLinks = getNavLinks(t, settings?.giftBuilderEnabled === true);
   const isInventoryAccount = isInventoryEmail(currentUser?.email);
   const showCustomerControls = !isInventoryAccount;
   const brandLinkTo = isInventoryAccount ? ROUTES.INVENTORY : ROUTES.HOME;
@@ -390,12 +415,12 @@ export function Navbar() {
 
     let ticking = false;
     let lastScrolled: boolean | null = null;
-    let lastHero:     boolean | null = null;
+    let lastHero: boolean | null = null;
 
     const evaluateScrollState = () => {
       const y = window.scrollY;
       const nextScrolled = y > 16;
-      const nextHero     = y < 17;
+      const nextHero = y < 17;
       if (nextScrolled !== lastScrolled) {
         setScrolled(nextScrolled);
         lastScrolled = nextScrolled;
@@ -444,7 +469,9 @@ export function Navbar() {
   }, []);
 
   const navigate = useNavigate();
-  useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     try {
@@ -477,7 +504,13 @@ export function Navbar() {
       <div
         className="nav-fixed-unit"
         // eslint-disable-next-line react/forbid-dom-props -- z-index var sourced from design tokens; cleanest as inline so the navbar always layers above page content
-        style={{ position:'fixed', top:0, left:0, right:0, zIndex:'var(--z-sticky)' as unknown as number }}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 'var(--z-sticky)' as unknown as number,
+        }}
       >
         {/* Announcement strip — inside the fixed unit.
             Two-source render: prefers the new structured `announcements`
@@ -492,73 +525,76 @@ export function Navbar() {
             because useSettingsQuery has placeholderData: SETTING_DEFAULTS
             which makes data truthy from t=0; the token-side fix is the
             actual lever. */}
-        {settings?.announcementEnabled && (() => {
-          // Build the active-message list. Each entry has a `highlight`
-          // (rendered as a flashy chip) and a `message` (the prose).
-          let messages: { id: string; highlight?: string; message: string }[] = [];
+        {settings?.announcementEnabled &&
+          (() => {
+            // Build the active-message list. Each entry has a `highlight`
+            // (rendered as a flashy chip) and a `message` (the prose).
+            let messages: { id: string; highlight?: string; message: string }[] = [];
 
-          if (Array.isArray(settings.announcements) && settings.announcements.length > 0) {
-            // New structured announcements — filter by enabled + date range.
-            // French text when the site is in French and it's been filled in.
-            const fr = language === 'fr';
-            messages = filterActiveAnnouncements(settings.announcements).map(a => {
-              const highlight = (fr && a.highlightFr?.trim()) || a.highlight?.trim();
-              return {
-                id:        a.id,
-                highlight: highlight || undefined,
-                message:   (fr && a.messageFr?.trim()) || a.message,
-              };
-            });
-          } else if (settings?.announcementText) {
-            // Legacy text — split on the same separators the old marquee
-            // used so existing deploys keep working until admin saves
-            // settings (which auto-migrates server-side).
-            messages = settings.announcementText
-              .split(/[·\-–—]/)
-              .map((m: string) => m.trim())
-              .filter(Boolean)
-              .map((m: string, i: number) => ({ id: `legacy-${i}`, message: t(m) }));
-          }
+            if (Array.isArray(settings.announcements) && settings.announcements.length > 0) {
+              // New structured announcements — filter by enabled + date range.
+              // French text when the site is in French and it's been filled in.
+              const fr = language === 'fr';
+              messages = filterActiveAnnouncements(settings.announcements).map((a) => {
+                const highlight = (fr && a.highlightFr?.trim()) || a.highlight?.trim();
+                return {
+                  id: a.id,
+                  highlight: highlight || undefined,
+                  message: (fr && a.messageFr?.trim()) || a.message,
+                };
+              });
+            } else if (settings?.announcementText) {
+              // Legacy text — split on the same separators the old marquee
+              // used so existing deploys keep working until admin saves
+              // settings (which auto-migrates server-side).
+              messages = settings.announcementText
+                .split(/[·\-–—]/)
+                .map((m: string) => m.trim())
+                .filter(Boolean)
+                .map((m: string, i: number) => ({ id: `legacy-${i}`, message: t(m) }));
+            }
 
-          if (messages.length === 0) return null;
+            if (messages.length === 0) return null;
 
-          // Render one copy of the message track. We render it three
-          // times below so the CSS marquee animation loops seamlessly
-          // (item leaves the right edge before the same item from the
-          // next copy enters from the left).
-          const itemSet = (copyIdx: number) => (
-            <span key={`copy-${copyIdx}`} className="announce-item">
-              {messages.map(m => (
-                <span
-                  key={`${copyIdx}-${m.id}`}
-                  className="announce-msg"
-                >
-                  {m.highlight && (
-                    // No aria-label here — the span's visible text content
-                    // IS the accessible name. Adding `aria-label="Highlight"`
-                    // (the previous behaviour) overrode the actual highlight
-                    // text with the literal word "Highlight", which a screen
-                    // reader would announce instead of the message and which
-                    // axe flags as `label-content-name-mismatch`.
-                    <span className="announce-highlight">
-                      {m.highlight}
-                    </span>
-                  )}
-                  <span className="announce-text">{m.message}</span>
-                </span>
-              ))}
-            </span>
-          );
+            // Render one copy of the message track. We render it three
+            // times below so the CSS marquee animation loops seamlessly
+            // (item leaves the right edge before the same item from the
+            // next copy enters from the left).
+            const itemSet = (copyIdx: number) => (
+              <span key={`copy-${copyIdx}`} className="announce-item">
+                {messages.map((m) => (
+                  <span key={`${copyIdx}-${m.id}`} className="announce-msg">
+                    {m.highlight && (
+                      // No aria-label here — the span's visible text content
+                      // IS the accessible name. Adding `aria-label="Highlight"`
+                      // (the previous behaviour) overrode the actual highlight
+                      // text with the literal word "Highlight", which a screen
+                      // reader would announce instead of the message and which
+                      // axe flags as `label-content-name-mismatch`.
+                      <span className="announce-highlight">{m.highlight}</span>
+                    )}
+                    <span className="announce-text">{m.message}</span>
+                  </span>
+                ))}
+              </span>
+            );
 
-          return (
-            <div className="announce" role="marquee" aria-label={t('Announcements')} aria-live="off">
-              <div className="announce-track">
-                {itemSet(0)}{itemSet(1)}{itemSet(2)}
+            return (
+              <div
+                className="announce"
+                role="marquee"
+                aria-label={t('Announcements')}
+                aria-live="off"
+              >
+                <div className="announce-track">
+                  {itemSet(0)}
+                  {itemSet(1)}
+                  {itemSet(2)}
+                </div>
+                <div className="announce-accent-line" aria-hidden="true" />
               </div>
-              <div className="announce-accent-line" aria-hidden="true" />
-            </div>
-          );
-        })()}
+            );
+          })()}
 
         {/* Email verification banner — shows when the user has an
             unverified email AND has a password provider linked.
@@ -566,49 +602,63 @@ export function Navbar() {
             check `.some()` rather than [0] because users with
             multiple providers (e.g. linked Google + password) might
             have password at any index. */}
-        {currentUser && !currentUser.emailVerified
-          && currentUser.providerData.some(p => p.providerId === 'password')
-          && !isInventoryAccount
-          && !location.pathname.startsWith('/inventory') && (
-          <ResendVerifyBanner />
-        )}
+        {currentUser &&
+          !currentUser.emailVerified &&
+          currentUser.providerData.some((p) => p.providerId === 'password') &&
+          !isInventoryAccount &&
+          !location.pathname.startsWith('/inventory') && <ResendVerifyBanner />}
 
         {/* Navbar — sits below the announcement strip inside the fixed unit */}
         <header role="banner">
-          <div className={`nav-root${scrolled ? ' scrolled' : ''}${heroMode ? ' hero-mode' : ' compact-mode'}`}>
-          <div className="nav-inner">
-
-            {/* Left: hamburger + desktop nav links */}
-            <div className="nav-left">
-              <button className="nav-ham" onClick={() => setDrawerOpen(true)} aria-label={t('Open navigation menu')}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                  <line x1="3" y1="6" x2="21" y2="6"/>
-                  <line x1="3" y1="12" x2="21" y2="12"/>
-                  <line x1="3" y1="18" x2="15" y2="18"/>
-                </svg>
-              </button>
-              <nav className="nav-links" aria-label={t('Main navigation')}>
-                {isInventoryAccount && (
-                  <TransitionLink
-                    to={ROUTES.INVENTORY}
-                    className={isActive(ROUTES.INVENTORY) ? 'active' : ''}
-                    {...prefetchHandlers('inventory')}
+          <div
+            className={`nav-root${scrolled ? ' scrolled' : ''}${heroMode ? ' hero-mode' : ' compact-mode'}`}
+          >
+            <div className="nav-inner">
+              {/* Left: hamburger + desktop nav links */}
+              <div className="nav-left">
+                <button
+                  className="nav-ham"
+                  onClick={() => setDrawerOpen(true)}
+                  aria-label={t('Open navigation menu')}
+                >
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
                   >
-                    {t('Inventory')}
-                  </TransitionLink>
-                )}
-                {!isInventoryAccount && navLinks.filter((l) => !('drawerOnly' in l)).map(({ to, label }) => (
-                  <TransitionLink
-                    key={to}
-                    to={to}
-                    className={isActive(to) ? 'active' : ''}
-                    {...prefetchHandlersForPath(to)}
-                  >
-                    {label}
-                  </TransitionLink>
-                ))}
-                {currentUser && (
-                  !isInventoryAccount && (
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="18" x2="15" y2="18" />
+                  </svg>
+                </button>
+                <nav className="nav-links" aria-label={t('Main navigation')}>
+                  {isInventoryAccount && (
+                    <TransitionLink
+                      to={ROUTES.INVENTORY}
+                      className={isActive(ROUTES.INVENTORY) ? 'active' : ''}
+                      {...prefetchHandlers('inventory')}
+                    >
+                      {t('Inventory')}
+                    </TransitionLink>
+                  )}
+                  {!isInventoryAccount &&
+                    navLinks
+                      .filter((l) => !('drawerOnly' in l))
+                      .map(({ to, label }) => (
+                        <TransitionLink
+                          key={to}
+                          to={to}
+                          className={isActive(to) ? 'active' : ''}
+                          {...prefetchHandlersForPath(to)}
+                        >
+                          {label}
+                        </TransitionLink>
+                      ))}
+                  {currentUser && !isInventoryAccount && (
                     <>
                       <TransitionLink
                         to={ROUTES.ORDERS}
@@ -625,73 +675,93 @@ export function Navbar() {
                         {t('Wishlist')}
                       </TransitionLink>
                     </>
-                  )
-                )}
-              </nav>
-            </div>
+                  )}
+                </nav>
+              </div>
 
-            {/* Centre: logo / wordmark */}
-            <div className="nav-mid">
-              <TransitionLink
-                to={brandLinkTo}
-                className="nav-wordmark"
-                aria-label={isInventoryAccount ? t('Inventory dashboard') : t('Ele Café home')}
-              >
-                {navLogoUrl
-                  ? <img src={navLogoUrl} alt="Ele Café" className="nav-logo-img" width={120} height={40} />
-                  : 'Ele Café'
-                }
-              </TransitionLink>
-            </div>
+              {/* Centre: logo / wordmark */}
+              <div className="nav-mid">
+                <TransitionLink
+                  to={brandLinkTo}
+                  className="nav-wordmark"
+                  aria-label={isInventoryAccount ? t('Inventory dashboard') : t('Ele Café home')}
+                >
+                  {navLogoUrl ? (
+                    <img
+                      src={navLogoUrl}
+                      alt="Ele Café"
+                      className="nav-logo-img"
+                      width={120}
+                      height={40}
+                    />
+                  ) : (
+                    'Ele Café'
+                  )}
+                </TransitionLink>
+              </div>
 
-            {/* Right: icons */}
-            <div className="nav-right">
-              {currentUser && showCustomerControls && <NotificationBell />}
-              {/* Day 16 v7: language + theme are hidden in the mobile
+              {/* Right: icons */}
+              <div className="nav-right">
+                {currentUser && showCustomerControls && <NotificationBell />}
+                {/* Day 16 v7: language + theme are hidden in the mobile
                   header (too crowded with 5+ icons) and rendered inside
                   the drawer footer instead. The .nav-mobile-hide wrap
                   lets a single CSS rule pull both off-screen at <768px. */}
-              <span className="nav-mobile-hide"><LanguageToggle /></span>
-              <span className="nav-mobile-hide"><ThemeToggle /></span>
-              {showCustomerControls && (
-                <>
-                  <TransitionLink
-                    to={currentUser ? ROUTES.ACCOUNT : ROUTES.LOGIN}
-                    className="nav-icon"
-                    aria-label={currentUser ? t('My account') : t('Sign in')}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                      <circle cx="12" cy="7" r="4"/>
-                    </svg>
-                  </TransitionLink>
-                  <button
-                    onClick={openCartDrawer}
-                    className="nav-icon nav-cart-btn"
-                    aria-label={totalItems > 0 ? t('Cart — {count} items', { count: totalItems }) : t('Cart')}
-                    data-cart-icon
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-                      <line x1="3" y1="6" x2="21" y2="6"/>
-                      <path d="M16 10a4 4 0 0 1-8 0"/>
-                    </svg>
-                    {totalItems > 0 && (
-                      <span className="nav-badge" aria-hidden="true">{totalItems}</span>
-                    )}
-                  </button>
-                </>
-              )}
+                <span className="nav-mobile-hide">
+                  <LanguageToggle />
+                </span>
+                <span className="nav-mobile-hide">
+                  <ThemeToggle />
+                </span>
+                {showCustomerControls && (
+                  <>
+                    <TransitionLink
+                      to={currentUser ? ROUTES.ACCOUNT : ROUTES.LOGIN}
+                      className="nav-icon"
+                      aria-label={currentUser ? t('My account') : t('Sign in')}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                    </TransitionLink>
+                    <button
+                      onClick={openCartDrawer}
+                      className="nav-icon nav-cart-btn"
+                      aria-label={
+                        totalItems > 0
+                          ? t('Cart — {count} items', { count: totalItems })
+                          : t('Cart')
+                      }
+                      data-cart-icon
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <path d="M16 10a4 4 0 0 1-8 0" />
+                      </svg>
+                      {totalItems > 0 && (
+                        <span className="nav-badge" aria-hidden="true">
+                          {totalItems}
+                        </span>
+                      )}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-          </header>
-      </div>{/* end nav-fixed-unit */}
+        </header>
+      </div>
+      {/* end nav-fixed-unit */}
 
       <Drawer
-        open={drawerOpen} onClose={() => setDrawerOpen(false)}
-        currentUser={currentUser} isAdmin={isAdmin}
-        pathname={location.pathname} onLogout={handleLogout}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        currentUser={currentUser}
+        isAdmin={isAdmin}
+        pathname={location.pathname}
+        onLogout={handleLogout}
         isInventoryAccount={isInventoryAccount}
       />
       {showCustomerControls && <CartDrawer />}

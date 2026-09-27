@@ -34,15 +34,9 @@ import { lockBodyScroll } from '@/lib/bodyScrollLock';
 function Step({ n, title, body }: { n: number; title: string; body: string }) {
   return (
     <li className="gp-step">
-      <span className="gp-step-num">
-        {n}
-      </span>
-      <h3 className="gp-step-title">
-        {title}
-      </h3>
-      <p className="gp-step-body">
-        {body}
-      </p>
+      <span className="gp-step-num">{n}</span>
+      <h3 className="gp-step-title">{title}</h3>
+      <p className="gp-step-body">{body}</p>
     </li>
   );
 }
@@ -50,15 +44,9 @@ function Step({ n, title, body }: { n: number; title: string; body: string }) {
 function Trust({ icon, label, body }: { icon: React.ReactNode; label: string; body: string }) {
   return (
     <div>
-      <div className="gp-trust-icon">
-        {icon}
-      </div>
-      <h4 className="gp-trust-label">
-        {label}
-      </h4>
-      <p className="gp-trust-body">
-        {body}
-      </p>
+      <div className="gp-trust-icon">{icon}</div>
+      <h4 className="gp-trust-label">{label}</h4>
+      <p className="gp-trust-body">{body}</p>
     </div>
   );
 }
@@ -66,7 +54,7 @@ function Trust({ icon, label, body }: { icon: React.ReactNode; label: string; bo
 export function GiftsPage() {
   const t = useT();
   const tx = useTx();
-  const openBuilder = useGiftBuilderStore(s => s.open);
+  const openBuilder = useGiftBuilderStore((s) => s.open);
 
   // Day 16 v9: gift-builder is a feature-flagged experience. The two
   // CTA buttons below ("Build Your Tea Bundle" hero CTA + "Start
@@ -173,9 +161,10 @@ export function GiftsPage() {
         title="Build a Tea Gift Bundle | Ele Café Vancouver"
         description="Curate a tea gift box with bundle sizes from $15 to $99. Personalize with a recipient name, occasion, and handwritten card message."
         url={`${SITE_BASE}/gifts`}
+        noIndex={!settings.giftBuilderEnabled}
         breadcrumbs={[
-          { name:'Home',  url:SITE_BASE },
-          { name:'Gifts', url:`${SITE_BASE}/gifts` },
+          { name: 'Home', url: SITE_BASE },
+          { name: 'Gifts', url: `${SITE_BASE}/gifts` },
         ]}
         extraJsonLd={giftOfferCatalogJsonLd}
       />
@@ -193,7 +182,9 @@ export function GiftsPage() {
         </h1>
 
         <p className="gp-hero-sub">
-          {t('Pick a bundle. Choose your teas. Add a handwritten card message. Shipped wrapped, ready to give.')}
+          {t(
+            'Pick a bundle. Choose your teas. Add a handwritten card message. Shipped wrapped, ready to give.',
+          )}
         </p>
 
         {/* Day 16 v9: admin-only banner — visible only when feature is
@@ -237,15 +228,13 @@ export function GiftsPage() {
 
       {/* ── Bundle preview row ────────────────────────────────────────────── */}
       <section className="gp-bundle-section">
-        <h2 className="gp-bundle-h2">
-          {t('Four sizes, one ritual')}
-        </h2>
+        <h2 className="gp-bundle-h2">{t('Four sizes, one ritual')}</h2>
         <p className="gp-bundle-sub">
           {t('Pick the bundle that fits the moment — or browse all four in the builder.')}
         </p>
 
         <div className="gp-bundle-grid">
-          {BUNDLES.map(b => (
+          {BUNDLES.map((b) => (
             <button
               key={b.slug}
               onClick={() => handleOpen('bundle_card_cta', b.slug)}
@@ -260,22 +249,12 @@ export function GiftsPage() {
                   over the title, which clipped longer names like
                   "Connoisseur's Bundle". */}
               <div className="gp-bundle-badge-row">
-                {b.badge && (
-                  <span className="gp-bundle-badge">
-                    {t(b.badge)}
-                  </span>
-                )}
+                {b.badge && <span className="gp-bundle-badge">{t(b.badge)}</span>}
               </div>
-              <h3 className="gp-bundle-name">
-                {t(b.name)}
-              </h3>
-              <p className="gp-bundle-tag">
-                {t(b.tagline)}
-              </p>
+              <h3 className="gp-bundle-name">{t(b.name)}</h3>
+              <p className="gp-bundle-tag">{t(b.tagline)}</p>
               <div className="gp-bundle-price-row">
-                <span className="gp-bundle-price">
-                  ${b.price}
-                </span>
+                <span className="gp-bundle-price">${b.price}</span>
                 <span className="gp-bundle-cur">CAD</span>
               </div>
             </button>
@@ -286,23 +265,49 @@ export function GiftsPage() {
       {/* ── How it works ──────────────────────────────────────────────────── */}
       <section className="gp-how-section">
         <div className="gp-how-inner">
-          <h2 className="gp-how-h2">
-            {t('How it works')}
-          </h2>
+          <h2 className="gp-how-h2">{t('How it works')}</h2>
           <ol className="gp-how-grid">
-            <Step n={1} title={t('Pick a bundle')} body={t('Four sizes, from a single tea to a seven-tea collection.')} />
-            <Step n={2} title={t('Choose your teas')} body={t('Browse the full catalog. Add the ones you love.')} />
-            <Step n={3} title={t('Personalize')} body={t('Recipient, occasion, a heartfelt card message.')} />
-            <Step n={4} title={t('We wrap, you give')} body={t('Shipped ready to give, anywhere in Canada.')} />
+            <Step
+              n={1}
+              title={t('Pick a bundle')}
+              body={t('Four sizes, from a single tea to a seven-tea collection.')}
+            />
+            <Step
+              n={2}
+              title={t('Choose your teas')}
+              body={t('Browse the full catalog. Add the ones you love.')}
+            />
+            <Step
+              n={3}
+              title={t('Personalize')}
+              body={t('Recipient, occasion, a heartfelt card message.')}
+            />
+            <Step
+              n={4}
+              title={t('We wrap, you give')}
+              body={t('Shipped ready to give, anywhere in Canada.')}
+            />
           </ol>
         </div>
       </section>
 
       {/* ── Trust row ─────────────────────────────────────────────────────── */}
       <section className="gp-trust-row">
-        <Trust icon={<Heart size={20} />} label={t('Hand-curated')} body={t('Every bundle hand-packed in Vancouver.')} />
-        <Trust icon={<Truck size={20} />} label={shippingTrustLabel} body={t('Across Canada, ships within 3 business days.')} />
-        <Trust icon={<Gift size={20} />}  label={t('Wrapped to give')} body={t('Includes the printed card message.')} />
+        <Trust
+          icon={<Heart size={20} />}
+          label={t('Hand-curated')}
+          body={t('Every bundle hand-packed in Vancouver.')}
+        />
+        <Trust
+          icon={<Truck size={20} />}
+          label={shippingTrustLabel}
+          body={t('Across Canada, ships within 3 business days.')}
+        />
+        <Trust
+          icon={<Gift size={20} />}
+          label={t('Wrapped to give')}
+          body={t('Includes the printed card message.')}
+        />
       </section>
 
       {/* ── Bottom CTA ────────────────────────────────────────────────────── */}
@@ -342,53 +347,62 @@ export function GiftsPage() {
           centered the panel halfway down the document — far below
           the viewport. Portalling to body bypasses all parent
           containing-block trickery in one move. */}
-      {signInPromptOpen && createPortal(
-        <div
-          className="gp-signin-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="gp-signin-title"
-          onClick={(e) => { if (e.target === e.currentTarget) setSignInPromptOpen(false); }}
-        >
-          <div className="gp-signin-panel">
-            <div className="gp-signin-icon" aria-hidden="true">
-              <Gift size={28} />
-            </div>
-            <h2 id="gp-signin-title" className="gp-signin-title">
-              {t('Sign in to build your bundle')}
-            </h2>
-            <p className="gp-signin-body">
-              {t('We’ll save your selections to your account so you can come back and finish later. It only takes a moment.')}
-            </p>
-            <div className="gp-signin-actions">
+      {signInPromptOpen &&
+        createPortal(
+          <div
+            className="gp-signin-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="gp-signin-title"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setSignInPromptOpen(false);
+            }}
+          >
+            <div className="gp-signin-panel">
+              <div className="gp-signin-icon" aria-hidden="true">
+                <Gift size={28} />
+              </div>
+              <h2 id="gp-signin-title" className="gp-signin-title">
+                {t('Sign in to build your bundle')}
+              </h2>
+              <p className="gp-signin-body">
+                {t(
+                  'We’ll save your selections to your account so you can come back and finish later. It only takes a moment.',
+                )}
+              </p>
+              <div className="gp-signin-actions">
+                <button
+                  type="button"
+                  className="btn btn-dark btn-lg gp-signin-primary"
+                  onClick={() =>
+                    navigate(`${ROUTES.LOGIN}?returnUrl=${encodeURIComponent('/gifts')}`)
+                  }
+                >
+                  <LogIn size={16} aria-hidden="true" />
+                  {t('Sign in')}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-lg gp-signin-secondary"
+                  onClick={() =>
+                    navigate(`${ROUTES.SIGNUP}?returnUrl=${encodeURIComponent('/gifts')}`)
+                  }
+                >
+                  <UserPlus size={16} aria-hidden="true" />
+                  {t('Create account')}
+                </button>
+              </div>
               <button
                 type="button"
-                className="btn btn-dark btn-lg gp-signin-primary"
-                onClick={() => navigate(`${ROUTES.LOGIN}?returnUrl=${encodeURIComponent('/gifts')}`)}
+                className="gp-signin-cancel"
+                onClick={() => setSignInPromptOpen(false)}
               >
-                <LogIn size={16} aria-hidden="true" />
-                {t('Sign in')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-outline btn-lg gp-signin-secondary"
-                onClick={() => navigate(`${ROUTES.SIGNUP}?returnUrl=${encodeURIComponent('/gifts')}`)}
-              >
-                <UserPlus size={16} aria-hidden="true" />
-                {t('Create account')}
+                {t('Maybe later')}
               </button>
             </div>
-            <button
-              type="button"
-              className="gp-signin-cancel"
-              onClick={() => setSignInPromptOpen(false)}
-            >
-              {t('Maybe later')}
-            </button>
-          </div>
-        </div>,
-        document.body,
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

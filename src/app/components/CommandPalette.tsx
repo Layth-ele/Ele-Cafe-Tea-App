@@ -43,11 +43,26 @@
 import { Command } from 'cmdk';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
+import { useSettingsQuery } from '@/hooks/useSettings';
 import { collection, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
 import {
-  Home, Package, ShoppingBag, User, FileText, MapPin, LogIn, Gift,
+  Home,
+  Package,
+  ShoppingBag,
+  User,
+  FileText,
+  MapPin,
+  LogIn,
+  Gift,
   Coffee,
-  Search, ArrowRight, Settings, BarChart2, Tag, Users, LayoutDashboard, Leaf,
+  Search,
+  ArrowRight,
+  Settings,
+  BarChart2,
+  Tag,
+  Users,
+  LayoutDashboard,
+  Leaf,
 } from 'lucide-react';
 import { ROUTES, TEA_CATEGORIES } from '@/lib/routes';
 import { useAuth } from '@/contexts/AuthContext';
@@ -62,10 +77,10 @@ interface CommandPaletteProps {
 }
 
 interface TeaResult {
-  id:       string;
-  name:     string;
-  nameFr?:  string;
-  slug:     string;
+  id: string;
+  name: string;
+  nameFr?: string;
+  slug: string;
   category: string;
 }
 
@@ -100,25 +115,41 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       orderBy('name', 'asc'),
       limit(50),
     );
-    const unsub = onSnapshot(q, snap => {
-      const out: TeaResult[] = [];
-      snap.forEach(doc => {
-        const d = doc.data();
-        if (typeof d.name === 'string' && typeof d.slug === 'string' && typeof d.category === 'string') {
-          out.push({ id: doc.id, name: d.name, nameFr: typeof d.nameFr === 'string' ? d.nameFr : undefined, slug: d.slug, category: d.category });
-        }
-      });
-      setTeas(out);
-    }, err => {
-      // Permission errors here are common in dev (no Firebase project
-      // wired). The palette degrades to its static category list,
-      // which is still useful — silent failure is fine.
-      console.warn('[CommandPalette] tea listener failed:', err);
-      setTeas([]);
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const out: TeaResult[] = [];
+        snap.forEach((doc) => {
+          const d = doc.data();
+          if (
+            typeof d.name === 'string' &&
+            typeof d.slug === 'string' &&
+            typeof d.category === 'string'
+          ) {
+            out.push({
+              id: doc.id,
+              name: d.name,
+              nameFr: typeof d.nameFr === 'string' ? d.nameFr : undefined,
+              slug: d.slug,
+              category: d.category,
+            });
+          }
+        });
+        setTeas(out);
+      },
+      (err) => {
+        // Permission errors here are common in dev (no Firebase project
+        // wired). The palette degrades to its static category list,
+        // which is still useful — silent failure is fine.
+        console.warn('[CommandPalette] tea listener failed:', err);
+        setTeas([]);
+      },
+    );
     return () => unsub();
   }, [open]);
 
+  const { data: paletteSettings } = useSettingsQuery();
+  const giftOn = paletteSettings?.giftBuilderEnabled === true;
   const go = (to: string) => {
     onOpenChange(false);
     navigate(to);
@@ -162,7 +193,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             filter does the matching against tea name + category. ── */}
         {query_.length > 0 && teas.length > 0 && (
           <Command.Group heading={tr('Teas')} className="cmd-group">
-            {teas.map(t => (
+            {teas.map((t) => (
               <PaletteItem
                 key={t.id}
                 icon={<Leaf size={14} />}
@@ -177,18 +208,49 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
 
         {/* ── Pages ─────────────────────────────────────────────── */}
         <Command.Group heading={tr('Pages')} className="cmd-group">
-          <PaletteItem icon={<Home size={14} />}        label={tr('Home')}            onSelect={() => go(ROUTES.HOME)} />
-          <PaletteItem icon={<Package size={14} />}     label={tr('All Teas')}        onSelect={() => go(ROUTES.PRODUCTS)} />
-          <PaletteItem icon={<Coffee size={14} />}      label={tr('Tea pairings')}    keywords={['pair', 'pastry', 'combo', 'food']} onSelect={() => go(ROUTES.PAIRINGS)} />
-          <PaletteItem icon={<ShoppingBag size={14} />} label={tr('Cart')}            onSelect={() => go(ROUTES.CART)} />
-          <PaletteItem icon={<Gift size={14} />}        label={tr('Gifts')}           onSelect={() => go(ROUTES.GIFTS)} />
-          <PaletteItem icon={<MapPin size={14} />}      label={tr('Visit Us')}        onSelect={() => go(ROUTES.CONTACT)} />
-          <PaletteItem icon={<FileText size={14} />}    label={tr('About')}           onSelect={() => go(ROUTES.ABOUT)} />
+          <PaletteItem
+            icon={<Home size={14} />}
+            label={tr('Home')}
+            onSelect={() => go(ROUTES.HOME)}
+          />
+          <PaletteItem
+            icon={<Package size={14} />}
+            label={tr('All Teas')}
+            onSelect={() => go(ROUTES.PRODUCTS)}
+          />
+          <PaletteItem
+            icon={<Coffee size={14} />}
+            label={tr('Tea pairings')}
+            keywords={['pair', 'pastry', 'combo', 'food']}
+            onSelect={() => go(ROUTES.PAIRINGS)}
+          />
+          <PaletteItem
+            icon={<ShoppingBag size={14} />}
+            label={tr('Cart')}
+            onSelect={() => go(ROUTES.CART)}
+          />
+          {giftOn && (
+            <PaletteItem
+              icon={<Gift size={14} />}
+              label={tr('Gifts')}
+              onSelect={() => go(ROUTES.GIFTS)}
+            />
+          )}
+          <PaletteItem
+            icon={<MapPin size={14} />}
+            label={tr('Visit Us')}
+            onSelect={() => go(ROUTES.CONTACT)}
+          />
+          <PaletteItem
+            icon={<FileText size={14} />}
+            label={tr('About')}
+            onSelect={() => go(ROUTES.ABOUT)}
+          />
         </Command.Group>
 
         {/* ── Tea categories ────────────────────────────────────── */}
         <Command.Group heading={tr('Tea categories')} className="cmd-group">
-          {TEA_CATEGORIES.filter(cat => visibleCats.has(cat.id)).map(cat => (
+          {TEA_CATEGORIES.filter((cat) => visibleCats.has(cat.id)).map((cat) => (
             <PaletteItem
               key={cat.id}
               icon={<Package size={14} />}
@@ -206,13 +268,47 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             is the right cost for it. ── */}
         {isAdmin && (
           <Command.Group heading={tr('Admin')} className="cmd-group">
-            <PaletteItem icon={<LayoutDashboard size={14} />} label={tr('Admin Overview')}     onSelect={() => go(ROUTES.ADMIN)} />
-            <PaletteItem icon={<Package size={14} />}         label={tr('Admin · Products')}   keywords={['admin', 'catalog']} onSelect={() => go(ROUTES.ADMIN_PRODUCTS)} />
-            <PaletteItem icon={<ShoppingBag size={14} />}     label={tr('Admin · Orders')}     keywords={['admin', 'fulfilment']} onSelect={() => go(ROUTES.ADMIN_ORDERS)} />
-            <PaletteItem icon={<Users size={14} />}           label={tr('Admin · Customers')}  keywords={['admin']} onSelect={() => go(ROUTES.ADMIN_CUSTOMERS)} />
-            <PaletteItem icon={<BarChart2 size={14} />}       label={tr('Admin · Analytics')}  keywords={['admin', 'revenue']} onSelect={() => go(ROUTES.ADMIN_ANALYTICS)} />
-            <PaletteItem icon={<Tag size={14} />}             label={tr('Admin · Promotions')} keywords={['admin', 'discount']} onSelect={() => go(ROUTES.ADMIN_PROMOTIONS)} />
-            <PaletteItem icon={<Settings size={14} />}        label={tr('Admin · Settings')}   keywords={['admin', 'config']} onSelect={() => go(ROUTES.ADMIN_SETTINGS)} />
+            <PaletteItem
+              icon={<LayoutDashboard size={14} />}
+              label={tr('Admin Overview')}
+              onSelect={() => go(ROUTES.ADMIN)}
+            />
+            <PaletteItem
+              icon={<Package size={14} />}
+              label={tr('Admin · Products')}
+              keywords={['admin', 'catalog']}
+              onSelect={() => go(ROUTES.ADMIN_PRODUCTS)}
+            />
+            <PaletteItem
+              icon={<ShoppingBag size={14} />}
+              label={tr('Admin · Orders')}
+              keywords={['admin', 'fulfilment']}
+              onSelect={() => go(ROUTES.ADMIN_ORDERS)}
+            />
+            <PaletteItem
+              icon={<Users size={14} />}
+              label={tr('Admin · Customers')}
+              keywords={['admin']}
+              onSelect={() => go(ROUTES.ADMIN_CUSTOMERS)}
+            />
+            <PaletteItem
+              icon={<BarChart2 size={14} />}
+              label={tr('Admin · Analytics')}
+              keywords={['admin', 'revenue']}
+              onSelect={() => go(ROUTES.ADMIN_ANALYTICS)}
+            />
+            <PaletteItem
+              icon={<Tag size={14} />}
+              label={tr('Admin · Promotions')}
+              keywords={['admin', 'discount']}
+              onSelect={() => go(ROUTES.ADMIN_PROMOTIONS)}
+            />
+            <PaletteItem
+              icon={<Settings size={14} />}
+              label={tr('Admin · Settings')}
+              keywords={['admin', 'config']}
+              onSelect={() => go(ROUTES.ADMIN_SETTINGS)}
+            />
           </Command.Group>
         )}
 
@@ -220,22 +316,50 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         <Command.Group heading={tr('Account')} className="cmd-group">
           {currentUser ? (
             <>
-              <PaletteItem icon={<User size={14} />}     label={tr('My Account')}     onSelect={() => go(ROUTES.ACCOUNT)} />
-              <PaletteItem icon={<Package size={14} />}  label={tr('My Orders')}      onSelect={() => go(ROUTES.ORDERS)} />
+              <PaletteItem
+                icon={<User size={14} />}
+                label={tr('My Account')}
+                onSelect={() => go(ROUTES.ACCOUNT)}
+              />
+              <PaletteItem
+                icon={<Package size={14} />}
+                label={tr('My Orders')}
+                onSelect={() => go(ROUTES.ORDERS)}
+              />
             </>
           ) : (
             <>
-              <PaletteItem icon={<LogIn size={14} />}    label={tr('Sign In')}        onSelect={() => go(ROUTES.LOGIN)} />
-              <PaletteItem icon={<User size={14} />}     label={tr('Create Account')} onSelect={() => go(ROUTES.SIGNUP)} />
+              <PaletteItem
+                icon={<LogIn size={14} />}
+                label={tr('Sign In')}
+                onSelect={() => go(ROUTES.LOGIN)}
+              />
+              <PaletteItem
+                icon={<User size={14} />}
+                label={tr('Create Account')}
+                onSelect={() => go(ROUTES.SIGNUP)}
+              />
             </>
           )}
         </Command.Group>
 
         {/* ── Help & policies ───────────────────────────────────── */}
         <Command.Group heading={tr('Help')} className="cmd-group">
-          <PaletteItem icon={<FileText size={14} />} label={tr('Shipping Policy')}  onSelect={() => go(ROUTES.SHIPPING_POLICY)} />
-          <PaletteItem icon={<FileText size={14} />} label={tr('Refund Policy')}    onSelect={() => go(ROUTES.REFUND_POLICY)} />
-          <PaletteItem icon={<FileText size={14} />} label={tr('Privacy Policy')}   onSelect={() => go(ROUTES.PRIVACY_POLICY)} />
+          <PaletteItem
+            icon={<FileText size={14} />}
+            label={tr('Shipping Policy')}
+            onSelect={() => go(ROUTES.SHIPPING_POLICY)}
+          />
+          <PaletteItem
+            icon={<FileText size={14} />}
+            label={tr('Refund Policy')}
+            onSelect={() => go(ROUTES.REFUND_POLICY)}
+          />
+          <PaletteItem
+            icon={<FileText size={14} />}
+            label={tr('Privacy Policy')}
+            onSelect={() => go(ROUTES.PRIVACY_POLICY)}
+          />
         </Command.Group>
       </Command.List>
     </Command.Dialog>
@@ -293,7 +417,7 @@ export function CommandPaletteProvider({ children }: ProviderProps) {
       // not-in-an-input.
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setOpen(o => !o);
+        setOpen((o) => !o);
         return;
       }
       // `/` opens the palette ONLY when not already typing in an

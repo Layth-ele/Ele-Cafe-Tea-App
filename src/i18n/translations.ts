@@ -1898,4 +1898,9 @@ export const STRINGS: Record<string, { fr: string }> = {
   },
   'Buy {name}': { fr: 'Acheter {name}' },
   'In cart ({count}) · View cart': { fr: 'Dans le panier ({count}) · Voir le panier' },
+  'Close the gift builder?': { fr: 'Fermer le créateur de coffret?' },
+  'Keep building': { fr: 'Continuer' },
+  'Your progress is saved — you can pick up where you left off when you come back.': {
+    fr: 'Votre progression est enregistrée — vous pourrez reprendre là où vous étiez à votre retour.',
+  },
 };
