@@ -58,6 +58,13 @@ export const comboItemSchema = z.object({
   enabled: z.boolean().default(true),
   /** Vegan pastry — shows a "Vegan" label and the Vegan filter. */
   vegan: z.boolean().optional(),
+  /** Dietary tags: dairy-free, gluten-free, vegan, vegetarian. */
+  diet: z
+    .array(z.enum(['dairy-free', 'gluten-free', 'vegan', 'vegetarian']))
+    .max(4)
+    .optional(),
+  /** Calories per serving (whole number). */
+  calories: z.number().int().min(0).max(5000).optional(),
   // Slug for /pairings/{slug} share URLs. Optional + may be empty
   // string on legacy docs; the customer share UI hides itself when
   // missing/empty.

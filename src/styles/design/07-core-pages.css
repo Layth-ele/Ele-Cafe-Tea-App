@@ -2739,3 +2739,21 @@
   color: var(--midnight);
 }
 .adb-banner p { margin: 4px 0 0; color: var(--text-2); font-size: var(--text-sm); }
+
+/* Dietary tags (list) + calories on pastry cards / chips. */
+.diet-badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; padding: 0; list-style: none; }
+.diet-badges .vegan-badge { margin: 0; }
+.diet-badges .vegan-badge[data-tag='gluten-free'],
+.diet-badges .vegan-badge[data-tag='dairy-free'] { background: #f1ebdc; color: #6b5423; }
+.diet-badges .vegan-badge[data-variant='onDark'][data-tag='gluten-free'],
+.diet-badges .vegan-badge[data-variant='onDark'][data-tag='dairy-free'] { background: rgba(214, 190, 140, 0.18); color: #ecdcb8; }
+.pix-card-cal { color: var(--muted); font-weight: 400; }
+.cg-price-cal { display: block; font-size: var(--text-2xs); font-weight: 500; opacity: 0.8; margin-top: 2px; }
+.cga-diet-row { flex-wrap: wrap; gap: 6px; }
+.cga-diet-chip {
+  min-height: 30px; padding: 4px 12px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-2);
+  font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer;
+}
+.cga-diet-chip[aria-pressed='true'] { background: #e7f0e4; border-color: #9cbf92; color: #2f5a2a; }
+.cga-diet-chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }

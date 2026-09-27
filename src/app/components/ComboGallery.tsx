@@ -38,7 +38,7 @@
  * the `order` integer field. The flat path keeps Firestore rules and
  * queries simple (vs a nested path).
  */
-import { VeganBadge } from '@/app/components/VeganBadge';
+import { DietBadges, caloriesText } from '@/app/components/DietBadges';
 import { registerImageVariants } from '@/lib/imageRegistry';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
@@ -374,12 +374,15 @@ export function ComboGallery({
           {/* Frosted overlay — title / description / price */}
           <div className="cg-frosted" aria-live="polite" aria-atomic="true">
             <div className="cg-frosted-text">
-              {current.vegan && <VeganBadge variant="onDark" />}
+              <DietBadges item={current} variant="onDark" />
               <h3 className="cg-frosted-title">{localizeCombo(current, lang).title}</h3>
               <p className="cg-frosted-desc">{localizeCombo(current, lang).description}</p>
             </div>
             <div className="cg-price-chip">
               {formatPrice(current.price, current.currency || 'CAD')}
+              {caloriesText(current) && (
+                <span className="cg-price-cal">{caloriesText(current)}</span>
+              )}
             </div>
           </div>
 

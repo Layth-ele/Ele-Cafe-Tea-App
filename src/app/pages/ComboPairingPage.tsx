@@ -33,7 +33,7 @@
  * `cpp-*` classes in design.css. The category-pill JS hover became
  * CSS `:hover` (playbook §step-4). 0 inline styles remain.
  */
-import { VeganBadge } from '@/app/components/VeganBadge';
+import { DietBadges, caloriesText } from '@/app/components/DietBadges';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { ArrowRight } from 'lucide-react';
@@ -322,11 +322,14 @@ function ComboPairingPage() {
             />
             <div className="cpp-hero-text">
               <p className="cpp-hero-eyebrow">{tr('Curated Pairing')}</p>
-              {combo.vegan && <VeganBadge variant="onDark" />}
+              <DietBadges item={combo} variant="onDark" />
               <h1 className="cpp-hero-title">{shown.title}</h1>
               <p className="cpp-hero-desc">{shown.description}</p>
             </div>
-            <div className="cpp-price-chip">{priceText}</div>
+            <div className="cpp-price-chip">
+              {priceText}
+              {caloriesText(combo) && <span className="cg-price-cal">{caloriesText(combo)}</span>}
+            </div>
             {/* Mobile companion to the corner icon — rendered always
                 but CSS hides it on desktop. Pill variant is more
                 discoverable on the dark mobile card than an icon. */}

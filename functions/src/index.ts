@@ -123,6 +123,9 @@ import {
   cafeIntro,
   buildCafeFaq,
   cafeMenuLd,
+  comboDiet,
+  comboCalories,
+  DIET_LABEL,
   type CafeCombo,
 } from './lib/cafeMenu';
 import {
@@ -6084,6 +6087,8 @@ interface ComboSeoFields {
   titleFr?: string;
   descriptionFr?: string;
   vegan?: boolean;
+  diet?: string[];
+  calories?: number;
   imageUrl: string;
   price: number;
   currency?: string;
@@ -6114,6 +6119,8 @@ async function fetchComboBySlug(slug: string): Promise<ComboSeoFields | null> {
     titleFr: typeof data.titleFr === 'string' ? data.titleFr : undefined,
     descriptionFr: typeof data.descriptionFr === 'string' ? data.descriptionFr : undefined,
     vegan: data.vegan === true,
+    diet: Array.isArray(data.diet) ? data.diet : undefined,
+    calories: typeof data.calories === 'number' ? data.calories : undefined,
     imageUrl: data.imageUrl,
     price: typeof data.price === 'number' ? data.price : 0,
     currency: typeof data.currency === 'string' ? data.currency : 'CAD',
@@ -6225,7 +6232,7 @@ function patchHeadForPairing(template: string, raw: ComboSeoFields): string {
     <noscript>
       <article class="seo-fallback">
         <header>
-          <p>${SL('Pairing', 'Accord')}${combo.vegan ? ` · ${SL('Vegan', 'Végétalien')}` : ''}</p>
+          <p>${SL('Pairing', 'Accord')}${seoDietText(combo) ? ` · ${seoDietText(combo)}` : ''}</p>
           <h1>${seoEscHtml(combo.title)}</h1>
           <p>${SL('Price:', 'Prix :')} <strong>${seoEscHtml(seoMoney(combo.price))} ${seoEscHtml(combo.currency || 'CAD')}</strong></p>
         </header>
@@ -6315,6 +6322,13 @@ async function fetchActiveTeaSummaries(): Promise<TeaSummary[]> {
 
 // ── /pairings: tea & pastry pairings index ──────────────────────────────────
 
+/** "vegan, gluten free · 400 Cal" for a pastry, in the page language. */
+function seoDietText(c: { diet?: unknown; vegan?: unknown; calories?: unknown }): string {
+  const tags = comboDiet(c).map((t) => DIET_LABEL[t][seoFr() ? 'fr' : 'en'].toLowerCase());
+  const cal = comboCalories(c);
+  return [tags.join(', '), cal ? `${cal} Cal` : ''].filter(Boolean).join(' · ');
+}
+
 /** Pastry combos with their title / description in the page language. */
 const seoCombos = (combos: CafeCombo[]): CafeCombo[] =>
   combos.map((c) => ({
@@ -6364,7 +6378,7 @@ function patchHeadForPairings(template: string, rawCombos: CafeCombo[]): string 
       const name = c.slug
         ? `<a href="${seoUrl(`/pairings/${seoEscHtml(c.slug)}`)}">${seoEscHtml(c.title)}</a>`
         : seoEscHtml(c.title);
-      const vegan = c.vegan ? ` (${SL('vegan', 'végétalien')})` : '';
+      const vegan = seoDietText(c) ? ` (${seoDietText(c)})` : '';
       return `<li>${name}${vegan} — ${seoEscHtml(seoMoney(c.price))}${c.description ? `. ${seoEscHtml(teaBlurb(c.description))}` : ''}</li>`;
     })
     .join('\n          ');
@@ -6628,6 +6642,8 @@ async function fetchCafeCombos(): Promise<CafeCombo[]> {
       titleFr: typeof d.titleFr === 'string' && d.titleFr.trim() ? d.titleFr : undefined,
       descriptionFr: typeof d.descriptionFr === 'string' ? d.descriptionFr : undefined,
       vegan: d.vegan === true,
+      diet: Array.isArray(d.diet) ? d.diet : undefined,
+      calories: typeof d.calories === 'number' ? d.calories : undefined,
     });
   }
   return out;
@@ -6686,7 +6702,7 @@ function patchHeadForCafe(template: string, rawCombos: CafeCombo[]): string {
       const name = c.slug
         ? `<a href="${seoUrl(`/pairings/${seoEscHtml(c.slug)}`)}">${seoEscHtml(c.title)}</a>`
         : seoEscHtml(c.title);
-      const vegan = c.vegan ? ` (${SL('vegan', 'végétalien')})` : '';
+      const vegan = seoDietText(c) ? ` (${seoDietText(c)})` : '';
       return `<li>${name}${vegan} ${SL('with tea or Americano', 'avec thé ou Americano')} — ${seoEscHtml(seoMoney(c.price))}</li>`;
     })
     .join('\n          ');

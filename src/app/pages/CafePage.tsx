@@ -9,7 +9,7 @@
  * hours come from Admin → Settings (useStoreContent).
  */
 import { useEffect } from 'react';
-import { VeganBadge } from '@/app/components/VeganBadge';
+import { DietBadges, caloriesText } from '@/app/components/DietBadges';
 import { Link, useLocation } from 'react-router';
 import { CafeMenuNav, CafeMenuSectionView } from '@/app/components/cafe/CafeMenuBoard';
 import { ArrowRight, MapPin, Clock } from 'lucide-react';
@@ -47,6 +47,8 @@ function CafePage() {
     slug: i.slug || undefined,
     imageUrl: i.imageUrl,
     vegan: i.vegan === true,
+    diet: i.diet,
+    calories: i.calories,
   }));
   const url = `${SITE_BASE}${ROUTES.CAFE}`;
 
@@ -150,10 +152,17 @@ function CafePage() {
                     className="pix-card-img"
                   />
                   <div className="pix-card-body">
-                    {item.vegan && <VeganBadge />}
+                    <DietBadges item={item} />
                     <h3 className="pix-card-title">{loc.title}</h3>
                     <p className="pix-card-desc">{loc.description}</p>
-                    {item.price > 0 && <p className="pix-card-price">{formatMoney(item.price)}</p>}
+                    {item.price > 0 && (
+                      <p className="pix-card-price">
+                        {formatMoney(item.price)}
+                        {caloriesText(item) && (
+                          <span className="pix-card-cal"> · {caloriesText(item)}</span>
+                        )}
+                      </p>
+                    )}
                   </div>
                 </>
               );

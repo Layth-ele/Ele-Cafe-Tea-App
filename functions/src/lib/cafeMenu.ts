@@ -592,8 +592,42 @@ export interface CafeCombo {
   /** French title / description from Admin → Pairings (auto-translated). */
   titleFr?: string;
   descriptionFr?: string;
-  /** Vegan pastry (Admin → Pairings). */
+  /** Legacy single flag (now part of `diet`). */
   vegan?: boolean;
+  /** Dietary tags from Admin → Pairings. */
+  diet?: readonly string[];
+  /** Calories per serving. */
+  calories?: number;
+}
+
+// ── Pastry dietary tags + calories (Admin → Pairings) ─────────────────────
+export const DIET_TAGS = ['dairy-free', 'gluten-free', 'vegan', 'vegetarian'] as const;
+export type DietTag = (typeof DIET_TAGS)[number];
+export const DIET_LABEL: Record<DietTag, { en: string; fr: string }> = {
+  'dairy-free': { en: 'Dairy free', fr: 'Sans produits laitiers' },
+  'gluten-free': { en: 'Gluten free', fr: 'Sans gluten' },
+  vegan: { en: 'Vegan', fr: 'Végétalien' },
+  vegetarian: { en: 'Vegetarian', fr: 'Végétarien' },
+};
+/** schema.org RestrictedDiet for the tags that have one. */
+const DIET_SCHEMA: Partial<Record<DietTag, string>> = {
+  'gluten-free': 'https://schema.org/GlutenFreeDiet',
+  vegan: 'https://schema.org/VeganDiet',
+  vegetarian: 'https://schema.org/VegetarianDiet',
+};
+
+/** A pairing's dietary tags in display order (the old `vegan` flag counts). */
+export function comboDiet(c: { diet?: unknown; vegan?: unknown }): DietTag[] {
+  const set = new Set<string>(
+    Array.isArray(c.diet) ? c.diet.filter((x): x is string => typeof x === 'string') : [],
+  );
+  if (c.vegan === true) set.add('vegan');
+  return DIET_TAGS.filter((t) => set.has(t));
+}
+
+/** Calories as a whole number, or null when not set. */
+export function comboCalories(c: { calories?: unknown }): number | null {
+  return typeof c.calories === 'number' && c.calories > 0 ? Math.round(c.calories) : null;
 }
 
 function drinkOffers(d: {
@@ -673,7 +707,22 @@ export function cafeMenuLd(
                 name: c.title,
                 ...(c.description ? { description: c.description } : {}),
                 ...(c.imageUrl ? { image: c.imageUrl } : {}),
-                ...(c.vegan ? { suitableForDiet: 'https://schema.org/VeganDiet' } : {}),
+                ...((): Record<string, unknown> => {
+                  const diets = comboDiet(c)
+                    .map((t) => DIET_SCHEMA[t])
+                    .filter(Boolean);
+                  return diets.length
+                    ? { suitableForDiet: diets.length === 1 ? diets[0] : diets }
+                    : {};
+                })(),
+                ...(comboCalories(c)
+                  ? {
+                      nutrition: {
+                        '@type': 'NutritionInformation',
+                        calories: `${comboCalories(c)} calories`,
+                      },
+                    }
+                  : {}),
                 offers: { '@type': 'Offer', price: c.price.toFixed(2), priceCurrency: 'CAD' },
               })),
             },

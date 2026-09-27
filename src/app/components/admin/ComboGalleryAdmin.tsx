@@ -56,8 +56,8 @@ import {
   ArrowUp,
   ArrowDown,
   X,
-  Leaf,
 } from 'lucide-react';
+import { DIET_TAGS, DIET_LABEL, comboDiet } from '../../../../functions/src/lib/cafeMenu';
 
 import { db, getStorageLazy } from '@/lib/firebase';
 import {
@@ -620,6 +620,9 @@ function ComboItemRow({
   const [price, setPrice] = useState(String(item.price ?? 0));
   const [slug, setSlug] = useState(item.slug ?? '');
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [calories, setCalories] = useState(item.calories ? String(item.calories) : '');
+  useEffect(() => setCalories(item.calories ? String(item.calories) : ''), [item.calories]);
+  const diet = comboDiet(item);
   const [dirty, setDirty] = useState(false);
 
   // Resync if the doc changes externally (e.g. another tab) and we haven't
@@ -860,6 +863,59 @@ function ComboItemRow({
             </button>
           )}
         </div>
+        <div className="cga-row-line">
+          <label htmlFor={`cal-${item.id}`} className="cga-row-line-label">
+            Calories
+          </label>
+          <input
+            id={`cal-${item.id}`}
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={5000}
+            step={1}
+            value={calories}
+            placeholder="e.g. 400"
+            onChange={(e) => setCalories(e.target.value)}
+            onBlur={() => {
+              const n = calories.trim() === '' ? 0 : Math.round(Number(calories));
+              if (!Number.isFinite(n) || n < 0 || n > 5000) {
+                toast.error('Calories must be between 0 and 5000');
+                setCalories(item.calories ? String(item.calories) : '');
+                return;
+              }
+              if (n !== (item.calories ?? 0)) onPatch({ calories: n });
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+            }}
+            aria-label="Calories"
+            className={`${inputClass('price')} cga-field-price`}
+          />
+        </div>
+        <div className="cga-row-line cga-diet-row" role="group" aria-label="Dietary preferences">
+          <span className="cga-row-line-label">Diet</span>
+          {DIET_TAGS.map((tag) => {
+            const on = diet.includes(tag);
+            return (
+              <button
+                key={tag}
+                type="button"
+                className="cga-diet-chip"
+                aria-pressed={on}
+                onClick={() => {
+                  const next = on ? diet.filter((t) => t !== tag) : [...diet, tag];
+                  onPatch({
+                    diet: DIET_TAGS.filter((t) => next.includes(t)),
+                    vegan: next.includes('vegan'),
+                  });
+                }}
+              >
+                {DIET_LABEL[tag].en}
+              </button>
+            );
+          })}
+        </div>
 
         {/* ── Slug + share link ───────────────────────────────────────────
             The slug becomes the share URL: /pairings/{slug}. Auto-fill
@@ -937,16 +993,6 @@ function ComboItemRow({
         >
           {item.enabled !== false ? <Eye size={12} /> : <EyeOff size={12} />}
           {item.enabled !== false ? 'Visible' : 'Hidden'}
-        </button>
-        <button
-          type="button"
-          onClick={() => item.id && onPatch({ vegan: !item.vegan })}
-          aria-pressed={item.vegan === true}
-          aria-label={item.vegan ? 'Marked vegan — click to unmark' : 'Mark as vegan'}
-          className="cga-pill-btn cga-vegan-btn"
-          data-on={item.vegan ? 'true' : 'false'}
-        >
-          <Leaf size={12} /> {item.vegan ? 'Vegan' : 'Not vegan'}
         </button>
         <button
           type="button"

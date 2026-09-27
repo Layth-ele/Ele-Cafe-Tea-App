@@ -82,6 +82,14 @@ describe('café pairings', () => {
     await assertFails(updateDoc(doc(adminDb(), 'comboGalleryItems/strudel'), { vegan: 'yes' }));
   });
 
+  test('admin can set dietary tags and calories (valid values only)', async () => {
+    const ref = doc(adminDb(), 'comboGalleryItems/strudel');
+    await assertSucceeds(updateDoc(ref, { diet: ['vegan', 'gluten-free'], calories: 400 }));
+    await assertFails(updateDoc(ref, { diet: ['keto'] }));
+    await assertFails(updateDoc(ref, { calories: 400.5 }));
+    await assertFails(updateDoc(ref, { calories: 99999 }));
+  });
+
   test('customers cannot edit pairings', async () => {
     await assertFails(updateDoc(doc(customerDb(), 'comboGalleryItems/strudel'), { price: 0 }));
   });

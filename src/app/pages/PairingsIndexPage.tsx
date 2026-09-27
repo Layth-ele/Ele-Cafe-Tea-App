@@ -28,7 +28,13 @@
  */
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { VeganBadge } from '@/app/components/VeganBadge';
+import { DietBadges, caloriesText } from '@/app/components/DietBadges';
+import {
+  DIET_TAGS,
+  DIET_LABEL,
+  comboDiet,
+  type DietTag,
+} from '../../../functions/src/lib/cafeMenu';
 import { ArrowRight } from 'lucide-react';
 import { ROUTES, SITE_BASE } from '@/lib/routes';
 import { useComboGallery } from '@/app/components/ComboGallery';
@@ -55,9 +61,11 @@ function PairingsIndexPage() {
   const lang = useLang();
   const { enabled, items: allItems, loading } = useComboGallery();
   // "Vegan" filter — shown only when at least one pairing is vegan.
-  const [veganOnly, setVeganOnly] = useState(false);
-  const veganCount = allItems.filter((i) => i.vegan).length;
-  const items = veganOnly ? allItems.filter((i) => i.vegan) : allItems;
+  const [dietFilter, setDietFilter] = useState<DietTag | null>(null);
+  const dietCounts = DIET_TAGS.map(
+    (tag) => [tag, allItems.filter((i) => comboDiet(i).includes(tag)).length] as const,
+  ).filter(([, n]) => n > 0);
+  const items = dietFilter ? allItems.filter((i) => comboDiet(i).includes(dietFilter)) : allItems;
 
   // Toggle-off: render an apologetic empty page rather than 404, so a
   // link from social media to /pairings doesn't bounce the visitor
@@ -137,24 +145,27 @@ function PairingsIndexPage() {
           <div className="cg-rule" />
         </header>
 
-        {veganCount > 0 && (
+        {dietCounts.length > 0 && (
           <div className="pix-filter" role="group" aria-label={t('Filter pairings')}>
             <button
               type="button"
               className="pix-filter-chip"
-              aria-pressed={!veganOnly}
-              onClick={() => setVeganOnly(false)}
+              aria-pressed={!dietFilter}
+              onClick={() => setDietFilter(null)}
             >
               {t('All')} <span>{allItems.length}</span>
             </button>
-            <button
-              type="button"
-              className="pix-filter-chip"
-              aria-pressed={veganOnly}
-              onClick={() => setVeganOnly(true)}
-            >
-              {t('Vegan')} <span>{veganCount}</span>
-            </button>
+            {dietCounts.map(([tag, n]) => (
+              <button
+                key={tag}
+                type="button"
+                className="pix-filter-chip"
+                aria-pressed={dietFilter === tag}
+                onClick={() => setDietFilter(tag)}
+              >
+                {DIET_LABEL[tag][lang === 'fr' ? 'fr' : 'en']} <span>{n}</span>
+              </button>
+            ))}
           </div>
         )}
 
@@ -185,12 +196,15 @@ function PairingsIndexPage() {
                     className="pix-card-img"
                   />
                   <div className="pix-card-body">
-                    {item.vegan && <VeganBadge />}
+                    <DietBadges item={item} />
                     <h2 className="pix-card-title">{localizeCombo(item, lang).title}</h2>
                     <p className="pix-card-desc">{localizeCombo(item, lang).description}</p>
                     {typeof item.price === 'number' && item.price > 0 && (
                       <p className="pix-card-price">
                         {formatPrice(item.price, item.currency || 'CAD')}
+                        {caloriesText(item) && (
+                          <span className="pix-card-cal"> · {caloriesText(item)}</span>
+                        )}
                       </p>
                     )}
                   </div>
