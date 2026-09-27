@@ -7865,6 +7865,9 @@ export { onReviewWrite } from './reviews';
 // One-click unsubscribe for marketing email (see unsubscribe.ts).
 export { unsubscribe } from './unsubscribe';
 
+// One-off, admin-triggered content updates (Admin → Products banner).
+export { applyApprovedTeaDescriptions } from './contentUpdates';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // backfillTeaWeights — Admin callable for one-shot migration
 // ─────────────────────────────────────────────────────────────────────────────

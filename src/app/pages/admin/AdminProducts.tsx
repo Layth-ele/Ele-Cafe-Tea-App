@@ -2,17 +2,45 @@ import { useEffect, useRef, useState, useMemo, cloneElement, isValidElement } fr
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { ReactElement } from 'react';
-import { ImageIcon, ImageOff, Languages, Loader2, Pencil, Plus, Power, Trash2, Upload } from 'lucide-react';
+import {
+  ImageIcon,
+  ImageOff,
+  Languages,
+  Loader2,
+  Pencil,
+  Plus,
+  Power,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import { SearchBar } from '@/app/components/ui/SearchBar';
 import { toSlug as slugifyShared } from '@/lib/slugify';
 
-import { collection, onSnapshot, query, doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, limit, writeBatch } from 'firebase/firestore';
+import {
+  collection,
+  onSnapshot,
+  query,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  limit,
+  writeBatch,
+} from 'firebase/firestore';
 import { db, getStorageLazy } from '@/lib/firebase';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Input } from '@/app/components/ui/input';
 import { Skeleton } from '@/app/components/ui/skeleton';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/ui/select';
 import { Modal, ModalBtn, ConfirmModal } from '@/app/components/modals/Modal';
 import { useCategoriesRealtime } from '@/hooks/useCategoriesRealtime';
 import type { Product } from '@/types';
@@ -20,10 +48,16 @@ import { toast } from 'sonner';
 import { translateMultipleToFrench } from '@/lib/translation';
 import { SeoHead } from '@/app/components/SeoHead';
 import { LazyImage } from '@/app/components/LazyImage';
-import { validateCreateProduct, validateUpdateProduct, productFormSchema, type ProductFormInput } from '@/schemas/product.schema';
+import {
+  validateCreateProduct,
+  validateUpdateProduct,
+  productFormSchema,
+  type ProductFormInput,
+} from '@/schemas/product.schema';
 import { getAvailabilityLabel, getAvailabilityStatus } from '@/lib/availability';
 
 import { AdminPageHeader } from '@/app/components/admin/AdminPageHeader';
+import { ApprovedDescriptionsBanner } from '@/app/components/admin/ApprovedDescriptionsBanner';
 function toSlug(n: string) {
   // Phase 11 URL fix — was an inline duplicate of src/lib/slugify.ts.
   // Now delegates so write-side (admin slug generation) and read-side
@@ -34,49 +68,72 @@ function toSlug(n: string) {
 }
 
 type ProductFormState = {
-  name: string; nameFr: string; description: string; descriptionFr: string;
+  name: string;
+  nameFr: string;
+  description: string;
+  descriptionFr: string;
   // category is required in the form (admin must pick one), so this
   // is `string` not `Product['category']` which is optional in the
   // canonical schema. Keeping the form's shape strict prevents the
   // RHF resolver from getting a `string | undefined` it can't reconcile.
-  price: string; category: string; image: string;
-  featured: boolean; isOrganic: boolean; allergens: string;
-  caffeine: string; brewingTemp: string; brewingTime: string;
+  price: string;
+  category: string;
+  image: string;
+  featured: boolean;
+  isOrganic: boolean;
+  allergens: string;
+  caffeine: string;
+  brewingTemp: string;
+  brewingTime: string;
   weight: string;
   gstApplicable: boolean;
   servingSuggestions: { label: string; enabled: boolean }[];
   // Tea profile detail fields — surfaced on the public TeaProfilePage
   // "Tea Details" card. Schema for these existed but the admin form
   // was missing them, so admin couldn't update what customers saw.
-  benefits:        string;   // free-text, multi-line
-  benefitsFr:      string;   // French mirror of benefits
-  ingredients:     string;   // free-text (used by ingredient filter via includes())
-  ingredientsFr:   string;   // French mirror of ingredients
-  antioxidants:    string;   // enum select: None / Low / Medium / High / Very High
-  origin:          string;   // primary country, e.g. "China"
-  originFr:        string;   // French mirror of origin
-  regions:         string;   // specific area, e.g. "Fujian Province"
-  regionsFr:       string;   // French mirror of regions
+  benefits: string; // free-text, multi-line
+  benefitsFr: string; // French mirror of benefits
+  ingredients: string; // free-text (used by ingredient filter via includes())
+  ingredientsFr: string; // French mirror of ingredients
+  antioxidants: string; // enum select: None / Low / Medium / High / Very High
+  origin: string; // primary country, e.g. "China"
+  originFr: string; // French mirror of origin
+  regions: string; // specific area, e.g. "Fujian Province"
+  regionsFr: string; // French mirror of regions
   // Phase 2 image-pipeline fields. Both written by ImageUploader's
   // onBlurhash / onVariantsReady callbacks. Optional in the schema —
   // legacy products without them still render fine via the original
   // src + skeleton fallback.
-  blurhash:           string;   // ~30-char placeholder hash
-  variantsAvailable:  boolean;  // resized variants exist alongside the original
+  blurhash: string; // ~30-char placeholder hash
+  variantsAvailable: boolean; // resized variants exist alongside the original
 };
 
 const EMPTY: ProductFormState = {
-  name:'', nameFr:'', description:'', descriptionFr:'',
-  price:'18', category:'black', image:'',
-  featured:false, isOrganic:false, allergens:'',
-  caffeine:'', brewingTemp:'', brewingTime:'', weight:'90',
+  name: '',
+  nameFr: '',
+  description: '',
+  descriptionFr: '',
+  price: '18',
+  category: 'black',
+  image: '',
+  featured: false,
+  isOrganic: false,
+  allergens: '',
+  caffeine: '',
+  brewingTemp: '',
+  brewingTime: '',
+  weight: '90',
   gstApplicable: false,
   servingSuggestions: [],
-  benefits:'', benefitsFr:'',
-  ingredients:'', ingredientsFr:'',
-  antioxidants:'',
-  origin:'', originFr:'',
-  regions:'', regionsFr:'',
+  benefits: '',
+  benefitsFr: '',
+  ingredients: '',
+  ingredientsFr: '',
+  antioxidants: '',
+  origin: '',
+  originFr: '',
+  regions: '',
+  regionsFr: '',
   blurhash: '',
   variantsAvailable: false,
 };
@@ -110,9 +167,9 @@ function ImageUploader({
   onChange,
   onBlurhash,
 }: {
-  value:           string;
-  onChange:        (url: string) => void;
-  onBlurhash?:     (hash: string) => void;
+  value: string;
+  onChange: (url: string) => void;
+  onBlurhash?: (hash: string) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [pct, setPct] = useState(0);
@@ -135,7 +192,8 @@ function ImageUploader({
         // resolution, not the full file. Larger samples just burn
         // CPU for no perceptible quality gain.
         const canvas = document.createElement('canvas');
-        canvas.width = 32; canvas.height = 32;
+        canvas.width = 32;
+        canvas.height = 32;
         const ctx = canvas.getContext('2d');
         if (!ctx) return null;
         ctx.drawImage(img, 0, 0, 32, 32);
@@ -156,8 +214,14 @@ function ImageUploader({
   };
 
   const handleFile = async (file: File) => {
-    if (!file.type.startsWith('image/')) { toast.error('Image files only'); return; }
-    if (file.size > 5 * 1024 * 1024)    { toast.error('Max 5 MB'); return; }
+    if (!file.type.startsWith('image/')) {
+      toast.error('Image files only');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Max 5 MB');
+      return;
+    }
     setBusy(true);
 
     // Kick off both work streams in parallel:
@@ -174,15 +238,23 @@ function ImageUploader({
     // already restrict /teas/ to images via content-type check, but
     // we don't want admin-uploaded files like "passport scan (1).jpg"
     // producing URL-encoded mess in the download URL.
-    const safeName = file.name
-      .replace(/[\s/\\]+/g, '_')         // spaces and path separators -> underscore
-      .replace(/[^a-zA-Z0-9._-]/g, '')   // strip everything else
-      .replace(/_+/g, '_')               // collapse multiple underscores
-      .slice(0, 80) || 'upload';         // cap length, fallback if everything was stripped
-    const task = sm.uploadBytesResumable(sm.ref(sm.storage, `teas/${Date.now()}_${safeName}`), file);
-    task.on('state_changed',
-      s => setPct(Math.round(s.bytesTransferred / s.totalBytes * 100)),
-      () => { toast.error('Upload failed'); setBusy(false); },
+    const safeName =
+      file.name
+        .replace(/[\s/\\]+/g, '_') // spaces and path separators -> underscore
+        .replace(/[^a-zA-Z0-9._-]/g, '') // strip everything else
+        .replace(/_+/g, '_') // collapse multiple underscores
+        .slice(0, 80) || 'upload'; // cap length, fallback if everything was stripped
+    const task = sm.uploadBytesResumable(
+      sm.ref(sm.storage, `teas/${Date.now()}_${safeName}`),
+      file,
+    );
+    task.on(
+      'state_changed',
+      (s) => setPct(Math.round((s.bytesTransferred / s.totalBytes) * 100)),
+      () => {
+        toast.error('Upload failed');
+        setBusy(false);
+      },
       async () => {
         const url = await sm.getDownloadURL(task.snapshot.ref);
         onChange(url);
@@ -194,7 +266,7 @@ function ImageUploader({
         setBusy(false);
         setPct(0);
         toast.success('Image uploaded!');
-      }
+      },
     );
   };
 
@@ -210,15 +282,40 @@ function ImageUploader({
           className="ap-iu-preview"
         />
       )}
-      <Button type="button" variant="outline" size="sm" className="gap-2"
-              onClick={() => fileRef.current?.click()} disabled={busy}>
-        {busy ? <><Loader2 className="h-4 w-4 animate-spin"/>{pct}%</> : <><Upload className="h-4 w-4"/> Upload Image</>}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="gap-2"
+        onClick={() => fileRef.current?.click()}
+        disabled={busy}
+      >
+        {busy ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {pct}%
+          </>
+        ) : (
+          <>
+            <Upload className="h-4 w-4" /> Upload Image
+          </>
+        )}
       </Button>
-      <input ref={fileRef} type="file" accept="image/*" className="hidden"
-             onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+      />
       <div className="flex items-center gap-2">
         <ImageIcon size={16} className="ap-iu-icon" />
-        <Input value={value} onChange={e => onChange(e.target.value)} placeholder="Or paste image URL…" className="text-xs" />
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Or paste image URL…"
+          className="text-xs"
+        />
       </div>
     </div>
   );
@@ -241,18 +338,22 @@ function FormSection({ label, children }: { label: string; children: React.React
   return (
     <div className="ap-form-section">
       <div className="ap-form-section-head">
-        <span className="ap-form-section-label">
-          {label}
-        </span>
+        <span className="ap-form-section-label">{label}</span>
       </div>
-      <div className="ap-form-section-body">
-        {children}
-      </div>
+      <div className="ap-form-section-body">{children}</div>
     </div>
   );
 }
 
-function ProductFormField({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function ProductFormField({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   // Phase 6: renamed local `FormField` → `ProductFormField` to avoid
   // shadowing the new compound `<Field>` primitive when we (eventually)
   // migrate this file's per-input wiring to the shared component.
@@ -260,7 +361,12 @@ function ProductFormField({ label, hint, children }: { label: string; hint?: str
   // association works for screen readers without every callsite
   // having to spell out an id (same pattern as AdminSettingsField).
   const id = useMemo(
-    () => 'pf-' + label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+    () =>
+      'pf-' +
+      label
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, ''),
     [label],
   );
   const wired = isValidElement(children)
@@ -268,9 +374,7 @@ function ProductFormField({ label, hint, children }: { label: string; hint?: str
     : children;
   return (
     <div className="ap-prod-field">
-      <span className="ap-prod-field-label">
-        {label}
-      </span>
+      <span className="ap-prod-field-label">{label}</span>
       {wired}
       {hint && <span className="ap-prod-field-hint">{hint}</span>}
     </div>
@@ -291,33 +395,58 @@ function ProductFormField({ label, hint, children }: { label: string; hint?: str
 // that covers all five French-translatable string fields at once.
 
 interface ProductFormProps {
-  form:                 ProductFormState;
-  setForm:              React.Dispatch<React.SetStateAction<ProductFormState>>;
-  handleTranslate:      () => void;        // legacy: translates name + description only
-  handleTranslateAll:   () => void;        // new: translates ALL fr-able fields
-  translating:          boolean;
+  form: ProductFormState;
+  setForm: React.Dispatch<React.SetStateAction<ProductFormState>>;
+  handleTranslate: () => void; // legacy: translates name + description only
+  handleTranslateAll: () => void; // new: translates ALL fr-able fields
+  translating: boolean;
 }
 
-function ProductForm({ form, setForm, handleTranslate, handleTranslateAll, translating }: ProductFormProps) {
+function ProductForm({
+  form,
+  setForm,
+  handleTranslate,
+  handleTranslateAll,
+  translating,
+}: ProductFormProps) {
   const categories = useCategoriesRealtime();
   return (
     <div className="ap-form-root">
-
       {/* ── Basic info ─────────────────────────────────────────── */}
       <FormSection label="Basic Info">
         <div className="ap-grid-2">
           <ProductFormField label="Name *">
-            <Input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Royal Green"/>
+            <Input
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="Royal Green"
+            />
           </ProductFormField>
           <ProductFormField label="Name (French)">
-            <Input value={form.nameFr} onChange={e=>setForm(f=>({...f,nameFr:e.target.value}))} placeholder="Nom du thé"/>
+            <Input
+              value={form.nameFr}
+              onChange={(e) => setForm((f) => ({ ...f, nameFr: e.target.value }))}
+              placeholder="Nom du thé"
+            />
           </ProductFormField>
         </div>
         <ProductFormField label="Description">
-          <textarea className="field" value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} rows={3} placeholder="Describe this tea…"/>
+          <textarea
+            className="field"
+            value={form.description}
+            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            rows={3}
+            placeholder="Describe this tea…"
+          />
         </ProductFormField>
         <ProductFormField label="Description (French)">
-          <textarea className="field" value={form.descriptionFr} onChange={e=>setForm(f=>({...f,descriptionFr:e.target.value}))} rows={2} placeholder="Description en français"/>
+          <textarea
+            className="field"
+            value={form.descriptionFr}
+            onChange={(e) => setForm((f) => ({ ...f, descriptionFr: e.target.value }))}
+            rows={2}
+            placeholder="Description en français"
+          />
         </ProductFormField>
         {/* Inline translate — quick action right next to the basic
             text fields. Only translates name + description for speed.
@@ -325,11 +454,17 @@ function ProductForm({ form, setForm, handleTranslate, handleTranslateAll, trans
             the very bottom of the form. */}
         <div className="ap-translate-banner">
           <div className="ap-translate-info">
-            <Languages className="h-4 w-4 ap-translate-icon"/>
+            <Languages className="h-4 w-4 ap-translate-icon" />
             <span className="ap-translate-text">Translate name &amp; description only</span>
           </div>
           <Button size="sm" variant="outline" onClick={handleTranslate} disabled={translating}>
-            {translating ? <><Loader2 className="mr-1 h-3 w-3 animate-spin"/>…</> : 'Translate'}
+            {translating ? (
+              <>
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />…
+              </>
+            ) : (
+              'Translate'
+            )}
           </Button>
         </div>
       </FormSection>
@@ -342,19 +477,44 @@ function ProductForm({ form, setForm, handleTranslate, handleTranslateAll, trans
       <FormSection label="Pricing">
         <div className="ap-grid-3">
           <ProductFormField label="Price (CAD) *">
-            <Input type="number" step="0.01" min="0" value={form.price} onChange={e=>setForm(f=>({...f,price:e.target.value}))} placeholder="18.00"/>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.price}
+              onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+              placeholder="18.00"
+            />
           </ProductFormField>
           <ProductFormField label="Weight (g) *">
-            <Input type="number" min="1" step="1" value={form.weight} onChange={e=>setForm(f=>({...f,weight:e.target.value}))} placeholder="90"/>
+            <Input
+              type="number"
+              min="1"
+              step="1"
+              value={form.weight}
+              onChange={(e) => setForm((f) => ({ ...f, weight: e.target.value }))}
+              placeholder="90"
+            />
             <p className="text-xs text-muted-foreground mt-1">
               Used for "price per weight" on the tea card. Defaults to 90g if left blank.
             </p>
           </ProductFormField>
         </div>
         <ProductFormField label="Category *">
-          <Select value={form.category} onValueChange={v=>setForm(f=>({...f,category:v}))}>
-            <SelectTrigger><SelectValue/></SelectTrigger>
-            <SelectContent>{categories.map(c=><SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}</SelectContent>
+          <Select
+            value={form.category}
+            onValueChange={(v) => setForm((f) => ({ ...f, category: v }))}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         </ProductFormField>
       </FormSection>
@@ -371,77 +531,147 @@ function ProductForm({ form, setForm, handleTranslate, handleTranslateAll, trans
                 The onValueChange path always receives a non-empty
                 string (Radix forbids empty-string SelectItem values),
                 so the round-trip stays consistent. */}
-            <Select value={form.caffeine || undefined} onValueChange={v=>setForm(f=>({...f,caffeine:v}))}>
-              <SelectTrigger><SelectValue placeholder="Select…"/></SelectTrigger>
-              <SelectContent>{['None','Low','Medium','High'].map(v=><SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent>
+            <Select
+              value={form.caffeine || undefined}
+              onValueChange={(v) => setForm((f) => ({ ...f, caffeine: v }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select…" />
+              </SelectTrigger>
+              <SelectContent>
+                {['None', 'Low', 'Medium', 'High'].map((v) => (
+                  <SelectItem key={v} value={v}>
+                    {v}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </ProductFormField>
           <ProductFormField label="Brewing Temp">
-            <Input value={form.brewingTemp} onChange={e=>setForm(f=>({...f,brewingTemp:e.target.value}))} placeholder="85–90°C"/>
+            <Input
+              value={form.brewingTemp}
+              onChange={(e) => setForm((f) => ({ ...f, brewingTemp: e.target.value }))}
+              placeholder="85–90°C"
+            />
           </ProductFormField>
           <ProductFormField label="Brew Time">
-            <Input value={form.brewingTime} onChange={e=>setForm(f=>({...f,brewingTime:e.target.value}))} placeholder="3–5 min"/>
+            <Input
+              value={form.brewingTime}
+              onChange={(e) => setForm((f) => ({ ...f, brewingTime: e.target.value }))}
+              placeholder="3–5 min"
+            />
           </ProductFormField>
         </div>
         <ProductFormField label="Allergens" hint="Comma-separated, e.g. almond, coconut">
-          <Input value={form.allergens} onChange={e=>setForm(f=>({...f,allergens:e.target.value}))} placeholder="almond, coconut, dairy"/>
+          <Input
+            value={form.allergens}
+            onChange={(e) => setForm((f) => ({ ...f, allergens: e.target.value }))}
+            placeholder="almond, coconut, dairy"
+          />
         </ProductFormField>
 
         {/* Antioxidants — single-locale (enum value, no translation needed) */}
         <ProductFormField label="Antioxidants">
           {/* See caffeine note above for the `|| undefined` coercion. */}
-          <Select value={form.antioxidants || undefined} onValueChange={v=>setForm(f=>({...f,antioxidants:v}))}>
-            <SelectTrigger><SelectValue placeholder="Select…"/></SelectTrigger>
+          <Select
+            value={form.antioxidants || undefined}
+            onValueChange={(v) => setForm((f) => ({ ...f, antioxidants: v }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select…" />
+            </SelectTrigger>
             {/* "Very High" kept as legacy option so existing Firestore
                 docs with that value continue to display correctly.
                 "Ultra High" is the preferred new option going forward. */}
-            <SelectContent>{['None','Low','Medium','High','Very High','Ultra High'].map(v=><SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent>
+            <SelectContent>
+              {['None', 'Low', 'Medium', 'High', 'Very High', 'Ultra High'].map((v) => (
+                <SelectItem key={v} value={v}>
+                  {v}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         </ProductFormField>
 
         {/* ── Origin (EN / FR pair) ──────────────────────────────────── */}
         <div className="ap-grid-2">
           <ProductFormField label="Origin (country)" hint='e.g. "China", "Japan"'>
-            <Input value={form.origin} onChange={e=>setForm(f=>({...f,origin:e.target.value}))} placeholder="China"/>
+            <Input
+              value={form.origin}
+              onChange={(e) => setForm((f) => ({ ...f, origin: e.target.value }))}
+              placeholder="China"
+            />
           </ProductFormField>
           <ProductFormField label="Origin (French)" hint="Shown when language is FR">
-            <Input value={form.originFr} onChange={e=>setForm(f=>({...f,originFr:e.target.value}))} placeholder="Chine"/>
+            <Input
+              value={form.originFr}
+              onChange={(e) => setForm((f) => ({ ...f, originFr: e.target.value }))}
+              placeholder="Chine"
+            />
           </ProductFormField>
         </div>
 
         {/* ── Regions (EN / FR pair) ─────────────────────────────────── */}
         <div className="ap-grid-2">
           <ProductFormField label="Regions" hint='e.g. "Fujian Province"'>
-            <Input value={form.regions} onChange={e=>setForm(f=>({...f,regions:e.target.value}))} placeholder="Fujian Province"/>
+            <Input
+              value={form.regions}
+              onChange={(e) => setForm((f) => ({ ...f, regions: e.target.value }))}
+              placeholder="Fujian Province"
+            />
           </ProductFormField>
           <ProductFormField label="Regions (French)" hint="Shown when language is FR">
-            <Input value={form.regionsFr} onChange={e=>setForm(f=>({...f,regionsFr:e.target.value}))} placeholder="Province du Fujian"/>
+            <Input
+              value={form.regionsFr}
+              onChange={(e) => setForm((f) => ({ ...f, regionsFr: e.target.value }))}
+              placeholder="Province du Fujian"
+            />
           </ProductFormField>
         </div>
 
         {/* ── Benefits (EN / FR pair) ────────────────────────────────── */}
         <div className="ap-grid-2">
-          <ProductFormField label="Benefits" hint="Used by the Functionality filter — include keywords like 'antioxidant', 'energising', 'relaxing'.">
-            <textarea className="field" rows={3}
+          <ProductFormField
+            label="Benefits"
+            hint="Used by the Functionality filter — include keywords like 'antioxidant', 'energising', 'relaxing'."
+          >
+            <textarea
+              className="field"
+              rows={3}
               value={form.benefits}
-              onChange={e=>setForm(f=>({...f,benefits:e.target.value}))}
-              placeholder="Rich in antioxidants, supports skin health, boosts metabolism…"/>
+              onChange={(e) => setForm((f) => ({ ...f, benefits: e.target.value }))}
+              placeholder="Rich in antioxidants, supports skin health, boosts metabolism…"
+            />
           </ProductFormField>
           <ProductFormField label="Benefits (French)" hint="Shown when language is FR">
-            <textarea className="field" rows={3}
+            <textarea
+              className="field"
+              rows={3}
               value={form.benefitsFr}
-              onChange={e=>setForm(f=>({...f,benefitsFr:e.target.value}))}
-              placeholder="Riche en antioxydants, soutient la peau, stimule le métabolisme…"/>
+              onChange={(e) => setForm((f) => ({ ...f, benefitsFr: e.target.value }))}
+              placeholder="Riche en antioxydants, soutient la peau, stimule le métabolisme…"
+            />
           </ProductFormField>
         </div>
 
         {/* ── Ingredients (EN / FR pair) ─────────────────────────────── */}
         <div className="ap-grid-2">
-          <ProductFormField label="Ingredients" hint="Comma-separated. Used by the Ingredients filter — include common words like 'mint', 'ginger', 'rose'.">
-            <Input value={form.ingredients} onChange={e=>setForm(f=>({...f,ingredients:e.target.value}))} placeholder="White tea leaves, mint, jasmine"/>
+          <ProductFormField
+            label="Ingredients"
+            hint="Comma-separated. Used by the Ingredients filter — include common words like 'mint', 'ginger', 'rose'."
+          >
+            <Input
+              value={form.ingredients}
+              onChange={(e) => setForm((f) => ({ ...f, ingredients: e.target.value }))}
+              placeholder="White tea leaves, mint, jasmine"
+            />
           </ProductFormField>
           <ProductFormField label="Ingredients (French)" hint="Shown when language is FR">
-            <Input value={form.ingredientsFr} onChange={e=>setForm(f=>({...f,ingredientsFr:e.target.value}))} placeholder="Feuilles de thé blanc, menthe, jasmin"/>
+            <Input
+              value={form.ingredientsFr}
+              onChange={(e) => setForm((f) => ({ ...f, ingredientsFr: e.target.value }))}
+              placeholder="Feuilles de thé blanc, menthe, jasmin"
+            />
           </ProductFormField>
         </div>
       </FormSection>
@@ -449,15 +679,22 @@ function ProductForm({ form, setForm, handleTranslate, handleTranslateAll, trans
       {/* ── Flags ──────────────────────────────────────────────── */}
       <FormSection label="Flags">
         <div className="ap-flags-row">
-          {([
-            { key: 'featured',      label: 'Featured',       icon: '⭐' },
-            { key: 'isOrganic',     label: 'Organic',        icon: '🌿' },
-            { key: 'gstApplicable', label: 'GST Applicable', icon: '🏷️' },
-          ] as const).map(({ key, label, icon }) => {
+          {(
+            [
+              { key: 'featured', label: 'Featured', icon: '⭐' },
+              { key: 'isOrganic', label: 'Organic', icon: '🌿' },
+              { key: 'gstApplicable', label: 'GST Applicable', icon: '🏷️' },
+            ] as const
+          ).map(({ key, label, icon }) => {
             const checked = form[key];
             return (
               <label key={key} className="ap-flag-pill" data-checked={checked ? 'true' : 'false'}>
-                <input type="checkbox" checked={checked} onChange={e=>setForm(f=>({...f,[key]:e.target.checked}))} className="ap-flag-cb"/>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))}
+                  className="ap-flag-cb"
+                />
                 <span>{icon}</span> {label}
               </label>
             );
@@ -465,7 +702,8 @@ function ProductForm({ form, setForm, handleTranslate, handleTranslateAll, trans
         </div>
         {form.gstApplicable && (
           <p className="ap-gst-warn">
-            ⚠ GST (5%) will be charged. Only enable for non-food items — tea is zero-rated in Canada.
+            ⚠ GST (5%) will be charged. Only enable for non-food items — tea is zero-rated in
+            Canada.
           </p>
         )}
       </FormSection>
@@ -479,9 +717,12 @@ function ProductForm({ form, setForm, handleTranslate, handleTranslateAll, trans
             onClick={() => {
               const label = prompt('New serving option (e.g. Iced Tea):');
               if (label?.trim()) {
-                setForm(f => ({
+                setForm((f) => ({
                   ...f,
-                  servingSuggestions: [...f.servingSuggestions, { label: label.trim(), enabled: true }],
+                  servingSuggestions: [
+                    ...f.servingSuggestions,
+                    { label: label.trim(), enabled: true },
+                  ],
                 }));
               }
             }}
@@ -491,42 +732,43 @@ function ProductForm({ form, setForm, handleTranslate, handleTranslateAll, trans
           </button>
         </div>
         <p className="ap-serv-hint">
-          Toggle each option on/off to control what appears on the tea profile page. Drag to reorder (coming soon).
+          Toggle each option on/off to control what appears on the tea profile page. Drag to reorder
+          (coming soon).
         </p>
         {form.servingSuggestions.length === 0 ? (
-          <p className="ap-serv-empty">
-            No serving options yet. Click "+ Add Option" to add one.
-          </p>
+          <p className="ap-serv-empty">No serving options yet. Click "+ Add Option" to add one.</p>
         ) : (
           <div className="ap-serv-list">
             {form.servingSuggestions.map((s, i) => (
               <div key={i} className="ap-serv-row" data-on={s.enabled ? 'true' : 'false'}>
                 <button
                   type="button"
-                  onClick={() => setForm(f => ({
-                    ...f,
-                    servingSuggestions: f.servingSuggestions.map((x, j) =>
-                      j === i ? { ...x, enabled: !x.enabled } : x
-                    ),
-                  }))}
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      servingSuggestions: f.servingSuggestions.map((x, j) =>
+                        j === i ? { ...x, enabled: !x.enabled } : x,
+                      ),
+                    }))
+                  }
                   className="ap-serv-toggle"
                   data-on={s.enabled ? 'true' : 'false'}
                   aria-label={s.enabled ? 'Disable' : 'Enable'}
                 >
                   <span className="ap-serv-thumb" />
                 </button>
-                <span className="ap-serv-row-label">
-                  {s.label}
-                </span>
+                <span className="ap-serv-row-label">{s.label}</span>
                 <span className="ap-serv-row-status" data-on={s.enabled ? 'true' : 'false'}>
                   {s.enabled ? 'Visible' : 'Hidden'}
                 </span>
                 <button
                   type="button"
-                  onClick={() => setForm(f => ({
-                    ...f,
-                    servingSuggestions: f.servingSuggestions.filter((_, j) => j !== i),
-                  }))}
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      servingSuggestions: f.servingSuggestions.filter((_, j) => j !== i),
+                    }))
+                  }
                   className="ap-serv-remove"
                   aria-label="Remove"
                 >
@@ -543,8 +785,8 @@ function ProductForm({ form, setForm, handleTranslate, handleTranslateAll, trans
           without them keep rendering normally. */}
       <ImageUploader
         value={form.image}
-        onChange={url => setForm(f => ({ ...f, image: url }))}
-        onBlurhash={hash => setForm(f => ({ ...f, blurhash: hash }))}
+        onChange={(url) => setForm((f) => ({ ...f, image: url }))}
+        onBlurhash={(hash) => setForm((f) => ({ ...f, blurhash: hash }))}
       />
 
       {/* ── "Translate everything to French" — bottom of the form ─────
@@ -559,11 +801,10 @@ function ProductForm({ form, setForm, handleTranslate, handleTranslateAll, trans
             <Languages size={18} className="ap-translate-all-icon-svg" aria-hidden="true" />
           </div>
           <div>
-            <p className="ap-translate-all-eyebrow">
-              Translate everything
-            </p>
+            <p className="ap-translate-all-eyebrow">Translate everything</p>
             <p className="ap-translate-all-desc">
-              Fills all French fields now so you can review them. Blank French fields are also translated automatically when you save.
+              Fills all French fields now so you can review them. Blank French fields are also
+              translated automatically when you save.
             </p>
           </div>
         </div>
@@ -573,10 +814,17 @@ function ProductForm({ form, setForm, handleTranslate, handleTranslateAll, trans
           disabled={translating}
           className="ap-translate-all-btn"
         >
-          {translating
-            ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Translating…</>
-            : <><Languages className="mr-2 h-4 w-4"/>Auto-translate to French</>
-          }
+          {translating ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Translating…
+            </>
+          ) : (
+            <>
+              <Languages className="mr-2 h-4 w-4" />
+              Auto-translate to French
+            </>
+          )}
         </Button>
       </div>
     </div>
@@ -586,17 +834,17 @@ function ProductForm({ form, setForm, handleTranslate, handleTranslateAll, trans
 export function AdminProducts() {
   const categories = useCategoriesRealtime();
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [search, setSearch]     = useState('');
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('all');
-  const [isAddOpen, setIsAddOpen]   = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [deleteSlug, setDeleteSlug] = useState<string | null>(null);
   const [hardDeleteSlug, setHardDeleteSlug] = useState<string | null>(null);
-  const [editing, setEditing]       = useState<Product | null>(null);
-  const [form, setForm]             = useState<ProductFormState>(EMPTY);
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [form, setForm] = useState<ProductFormState>(EMPTY);
   const [translating, setTranslating] = useState(false);
-  const [saving, setSaving]         = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Phase 6: RHF wraps the existing useState. The form's source of
   // truth is still the useState `form` above (the image uploader,
@@ -624,23 +872,23 @@ export function AdminProducts() {
   // tea doc to image:'' → toast. Storage objects aren't deleted here; if
   // you want to free Storage too, do it from the Firebase console.
   const [confirmClearImages, setConfirmClearImages] = useState(false);
-  const [clearingImages, setClearingImages]         = useState(false);
+  const [clearingImages, setClearingImages] = useState(false);
 
   useEffect(() => {
     return onSnapshot(
       query(collection(db, 'teas'), limit(300)),
-      snap => {
-        setProducts(snap.docs.map(d => ({ ...d.data(), id: d.id } as Product)));
+      (snap) => {
+        setProducts(snap.docs.map((d) => ({ ...d.data(), id: d.id }) as Product));
         setLoading(false);
       },
-      err => {
+      (err) => {
         console.error('[AdminProducts] teas subscription failed:', err);
         setLoading(false);
       },
     );
   }, []);
 
-  const filtered = products.filter(p => {
+  const filtered = products.filter((p) => {
     const matchCat = catFilter === 'all' || p.category === catFilter;
     const q = search.toLowerCase();
     return matchCat && (!q || (p.name ?? '').toLowerCase().includes(q));
@@ -654,9 +902,15 @@ export function AdminProducts() {
   // toast.error fallbacks below are belt-and-suspenders; RHF +
   // zodResolver should have already gated them out.
   const handleAdd = async (_data: ProductFormInput) => {
-    if (!form.name || !form.price) { toast.error('Fill in required fields'); return; }
+    if (!form.name || !form.price) {
+      toast.error('Fill in required fields');
+      return;
+    }
     const price = parseFloat(form.price);
-    if (!Number.isFinite(price) || price < 0) { toast.error('Price must be a valid number'); return; }
+    if (!Number.isFinite(price) || price < 0) {
+      toast.error('Price must be a valid number');
+      return;
+    }
     const slug = toSlug(form.name);
 
     // Defence-in-depth: Zod validation against createProductSchema. Catches
@@ -667,41 +921,48 @@ export function AdminProducts() {
     // keeps using null for "explicitly empty".
     const candidate = {
       slug,
-      name:          form.name,
-      nameFr:        form.nameFr || undefined,
-      description:   form.description,
+      name: form.name,
+      nameFr: form.nameFr || undefined,
+      description: form.description,
       descriptionFr: form.descriptionFr || undefined,
       price,
-      category:      form.category,
-      image:         form.image || '',
+      category: form.category,
+      image: form.image || '',
       // Phase 2 image-pipeline fields. blurhash is omitted when empty
       // so legacy products that never had one don't get an empty
       // string written (cleaner Firestore data, smaller doc).
-      blurhash:          form.blurhash || undefined,
+      blurhash: form.blurhash || undefined,
       variantsAvailable: form.variantsAvailable || undefined,
-      featured:      form.featured,
-      isActive:      true,
-      isOrganic:     form.isOrganic,
+      featured: form.featured,
+      isActive: true,
+      isOrganic: form.isOrganic,
       gstApplicable: form.gstApplicable,
-      allergens:     form.allergens ? form.allergens.split(',').map(s => s.trim()).filter(Boolean) : [],
-      caffeine:      (form.caffeine || undefined) as ('None' | 'Low' | 'Medium' | 'High' | undefined),
-      brewingTemp:   form.brewingTemp || undefined,
-      brewingTime:   form.brewingTime || undefined,
-      weight:        form.weight || undefined,
-      weightGrams:   form.weight && Number.isFinite(parseFloat(form.weight)) && parseFloat(form.weight) > 0
-                       ? parseFloat(form.weight)
-                       : 100,
+      allergens: form.allergens
+        ? form.allergens
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [],
+      caffeine: (form.caffeine || undefined) as 'None' | 'Low' | 'Medium' | 'High' | undefined,
+      brewingTemp: form.brewingTemp || undefined,
+      brewingTime: form.brewingTime || undefined,
+      weight: form.weight || undefined,
+      weightGrams:
+        form.weight && Number.isFinite(parseFloat(form.weight)) && parseFloat(form.weight) > 0
+          ? parseFloat(form.weight)
+          : 100,
       servingSuggestions: form.servingSuggestions,
       // Tea profile detail fields
-      benefits:        form.benefits        || undefined,
-      benefitsFr:      form.benefitsFr      || undefined,
-      ingredients:     form.ingredients     || undefined,
-      ingredientsFr:   form.ingredientsFr   || undefined,
-      antioxidants:    (form.antioxidants   || undefined) as ('None' | 'Low' | 'Medium' | 'High' | 'Very High' | 'Ultra High' | undefined),
-      origin:          form.origin          || undefined,
-      originFr:        form.originFr        || undefined,
-      regions:         form.regions         || undefined,
-      regionsFr:       form.regionsFr       || undefined,
+      benefits: form.benefits || undefined,
+      benefitsFr: form.benefitsFr || undefined,
+      ingredients: form.ingredients || undefined,
+      ingredientsFr: form.ingredientsFr || undefined,
+      antioxidants: (form.antioxidants || undefined) as
+        'None' | 'Low' | 'Medium' | 'High' | 'Very High' | 'Ultra High' | undefined,
+      origin: form.origin || undefined,
+      originFr: form.originFr || undefined,
+      regions: form.regions || undefined,
+      regionsFr: form.regionsFr || undefined,
     };
     const parsed = validateCreateProduct(candidate);
     if (!parsed.success) {
@@ -718,7 +979,9 @@ export function AdminProducts() {
       // to update, they should use the Edit button on the product card.
       const existing = await getDoc(doc(db, 'teas', slug));
       if (existing.exists()) {
-        toast.error(`A product named "${form.name}" already exists. Use Edit on the existing product, or pick a different name.`);
+        toast.error(
+          `A product named "${form.name}" already exists. Use Edit on the existing product, or pick a different name.`,
+        );
         setSaving(false);
         return;
       }
@@ -745,9 +1008,14 @@ export function AdminProducts() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
-      toast.success('Product added!'); setIsAddOpen(false); setForm(EMPTY);
-    } catch (err) { toast.error(err instanceof Error ? err.message : 'Failed'); }
-    finally { setSaving(false); }
+      toast.success('Product added!');
+      setIsAddOpen(false);
+      setForm(EMPTY);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const openEdit = (p: Product) => {
@@ -766,33 +1034,34 @@ export function AdminProducts() {
       price: typeof p.price === 'number' ? p.price.toString() : '',
       category: p.category ?? 'black',
       image: p.image ?? '',
-      featured: p.featured ?? false, isOrganic: p.isOrganic ?? false,
+      featured: p.featured ?? false,
+      isOrganic: p.isOrganic ?? false,
       gstApplicable: p.gstApplicable ?? false,
       allergens: (p.allergens ?? []).join(', '),
-      caffeine: p.caffeine || '', brewingTemp: p.brewingTemp || '', brewingTime: p.brewingTime || '',
+      caffeine: p.caffeine || '',
+      brewingTemp: p.brewingTemp || '',
+      brewingTime: p.brewingTime || '',
       // Prefer the numeric canonical field; fall back to the legacy
       // string for products that haven't been migrated yet. Display
       // as a plain number so the type="number" input is happy.
       weight: typeof p.weightGrams === 'number' ? String(p.weightGrams) : (p.weight ?? ''),
       servingSuggestions: Array.isArray(p.servingSuggestions)
-        ? p.servingSuggestions.map(s =>
-            typeof s === 'string' ? { label: s, enabled: true } : s
-          )
+        ? p.servingSuggestions.map((s) => (typeof s === 'string' ? { label: s, enabled: true } : s))
         : [],
       // Tea profile details
-      benefits:        p.benefits        ?? '',
-      benefitsFr:      p.benefitsFr      ?? '',
-      ingredients:     p.ingredients     ?? '',
-      ingredientsFr:   p.ingredientsFr   ?? '',
-      antioxidants:    p.antioxidants    ?? '',
-      origin:          p.origin          ?? '',
-      originFr:        p.originFr        ?? '',
-      regions:         p.regions         ?? '',
-      regionsFr:       p.regionsFr       ?? '',
+      benefits: p.benefits ?? '',
+      benefitsFr: p.benefitsFr ?? '',
+      ingredients: p.ingredients ?? '',
+      ingredientsFr: p.ingredientsFr ?? '',
+      antioxidants: p.antioxidants ?? '',
+      origin: p.origin ?? '',
+      originFr: p.originFr ?? '',
+      regions: p.regions ?? '',
+      regionsFr: p.regionsFr ?? '',
       // Phase 2 image fields. Both default to safe values so legacy
       // products without them still edit/save correctly.
-      blurhash:           p.blurhash           ?? '',
-      variantsAvailable:  p.variantsAvailable  ?? false,
+      blurhash: p.blurhash ?? '',
+      variantsAvailable: p.variantsAvailable ?? false,
     });
     setIsEditOpen(true);
   };
@@ -801,49 +1070,65 @@ export function AdminProducts() {
   const handleUpdate = async (_data: ProductFormInput) => {
     if (!editing) return;
     // Validate BEFORE setting saving state so early-returns don't leak.
-    if (!editing.slug) { toast.error('Missing product slug'); return; }
+    if (!editing.slug) {
+      toast.error('Missing product slug');
+      return;
+    }
     const price = parseFloat(form.price);
-    if (!form.name.trim()) { toast.error('Name is required'); return; }
-    if (!Number.isFinite(price) || price < 0) { toast.error('Price must be a valid number'); return; }
+    if (!form.name.trim()) {
+      toast.error('Name is required');
+      return;
+    }
+    if (!Number.isFinite(price) || price < 0) {
+      toast.error('Price must be a valid number');
+      return;
+    }
 
     // Defence-in-depth: Zod validation against updateProductSchema (partial,
     // requires id). Catches over-length strings and bad enums even though
     // the form constrains them in normal use.
     const candidate = {
-      id:            editing.slug,
-      name:          form.name,
-      nameFr:        form.nameFr || undefined,
-      description:   form.description,
+      id: editing.slug,
+      name: form.name,
+      nameFr: form.nameFr || undefined,
+      description: form.description,
       descriptionFr: form.descriptionFr || undefined,
       price,
-      category:      form.category,
-      image:         form.image || undefined,
+      category: form.category,
+      image: form.image || undefined,
       // Phase 2 image-pipeline fields. Optional in schema; omitted when
       // empty so we don't pollute Firestore with empty strings.
-      blurhash:          form.blurhash          || undefined,
+      blurhash: form.blurhash || undefined,
       variantsAvailable: form.variantsAvailable || undefined,
-      featured:      form.featured,
-      isOrganic:     form.isOrganic,
+      featured: form.featured,
+      isOrganic: form.isOrganic,
       gstApplicable: form.gstApplicable,
-      allergens:     form.allergens ? form.allergens.split(',').map(s => s.trim()).filter(Boolean) : [],
-      caffeine:      (form.caffeine || undefined) as ('None' | 'Low' | 'Medium' | 'High' | undefined),
-      brewingTemp:   form.brewingTemp || undefined,
-      brewingTime:   form.brewingTime || undefined,
-      weight:        form.weight || undefined,
-      weightGrams:   form.weight && Number.isFinite(parseFloat(form.weight)) && parseFloat(form.weight) > 0
-                       ? parseFloat(form.weight)
-                       : 100,
+      allergens: form.allergens
+        ? form.allergens
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [],
+      caffeine: (form.caffeine || undefined) as 'None' | 'Low' | 'Medium' | 'High' | undefined,
+      brewingTemp: form.brewingTemp || undefined,
+      brewingTime: form.brewingTime || undefined,
+      weight: form.weight || undefined,
+      weightGrams:
+        form.weight && Number.isFinite(parseFloat(form.weight)) && parseFloat(form.weight) > 0
+          ? parseFloat(form.weight)
+          : 100,
       servingSuggestions: form.servingSuggestions,
       // Tea profile details
-      benefits:        form.benefits        || undefined,
-      benefitsFr:      form.benefitsFr      || undefined,
-      ingredients:     form.ingredients     || undefined,
-      ingredientsFr:   form.ingredientsFr   || undefined,
-      antioxidants:    (form.antioxidants   || undefined) as ('None' | 'Low' | 'Medium' | 'High' | 'Very High' | 'Ultra High' | undefined),
-      origin:          form.origin          || undefined,
-      originFr:        form.originFr        || undefined,
-      regions:         form.regions         || undefined,
-      regionsFr:       form.regionsFr       || undefined,
+      benefits: form.benefits || undefined,
+      benefitsFr: form.benefitsFr || undefined,
+      ingredients: form.ingredients || undefined,
+      ingredientsFr: form.ingredientsFr || undefined,
+      antioxidants: (form.antioxidants || undefined) as
+        'None' | 'Low' | 'Medium' | 'High' | 'Very High' | 'Ultra High' | undefined,
+      origin: form.origin || undefined,
+      originFr: form.originFr || undefined,
+      regions: form.regions || undefined,
+      regionsFr: form.regionsFr || undefined,
     };
     const parsed = validateUpdateProduct(candidate);
     if (!parsed.success) {
@@ -874,14 +1159,24 @@ export function AdminProducts() {
       }
       writePayload.updatedAt = serverTimestamp();
       await updateDoc(doc(db, 'teas', editing.slug), writePayload);
-      toast.success('Updated!'); setIsEditOpen(false); setEditing(null); setForm(EMPTY);
-    } catch (err) { toast.error(err instanceof Error ? err.message : 'Failed'); }
-    finally { setSaving(false); }
+      toast.success('Updated!');
+      setIsEditOpen(false);
+      setEditing(null);
+      setForm(EMPTY);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDeactivate = async (slug: string) => {
-    try { await updateDoc(doc(db, 'teas', slug), { isActive: false, updatedAt: serverTimestamp() }); toast.success('Deactivated'); }
-    catch (err) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    try {
+      await updateDoc(doc(db, 'teas', slug), { isActive: false, updatedAt: serverTimestamp() });
+      toast.success('Deactivated');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    }
     setDeleteSlug(null);
   };
 
@@ -958,7 +1253,10 @@ export function AdminProducts() {
   };
 
   const handleTranslate = async () => {
-    if (!form.name && !form.description) { toast.error('Enter name/description first'); return; }
+    if (!form.name && !form.description) {
+      toast.error('Enter name/description first');
+      return;
+    }
     setTranslating(true);
     try {
       // Build (sourceText, targetField) pairs so a blank source on one
@@ -969,22 +1267,28 @@ export function AdminProducts() {
       // results = [translatedDescription], which then landed in nameFr
       // (and descriptionFr stayed empty). Mirrors the pair pattern in
       // handleTranslateAll below.
-      const pairs = (
-        [
-          { source: form.name,        target: 'nameFr'        as const },
-          { source: form.description, target: 'descriptionFr' as const },
-        ]
-      ).filter(p => p.source.trim().length > 0);
-      if (pairs.length === 0) { toast.error('Nothing to translate'); return; }
-      const results = await translateMultipleToFrench(pairs.map(p => p.source));
-      setForm(f => {
+      const pairs = [
+        { source: form.name, target: 'nameFr' as const },
+        { source: form.description, target: 'descriptionFr' as const },
+      ].filter((p) => p.source.trim().length > 0);
+      if (pairs.length === 0) {
+        toast.error('Nothing to translate');
+        return;
+      }
+      const results = await translateMultipleToFrench(pairs.map((p) => p.source));
+      setForm((f) => {
         const next = { ...f };
-        pairs.forEach((p, i) => { next[p.target] = results[i] ?? ''; });
+        pairs.forEach((p, i) => {
+          next[p.target] = results[i] ?? '';
+        });
         return next;
       });
       toast.success('Translated!');
-    } catch (err) { toast.error(err instanceof Error ? err.message : 'Failed'); }
-    finally { setTranslating(false); }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setTranslating(false);
+    }
   };
 
   /** Translate all translatable English string fields into their
@@ -997,7 +1301,10 @@ export function AdminProducts() {
    *  ingredientsFr etc. are ever added to the schema, only this
    *  function expands. Keep them separate for that future flexibility. */
   const handleTranslateAll = async () => {
-    if (!form.name && !form.description) { toast.error('Enter the English fields first'); return; }
+    if (!form.name && !form.description) {
+      toast.error('Enter the English fields first');
+      return;
+    }
     setTranslating(true);
     try {
       // Build (sourceText, targetField) pairs so missing source fields
@@ -1007,17 +1314,20 @@ export function AdminProducts() {
       // dropped before the API call so we don't waste quota on blanks.
       const pairs = (
         [
-          { source: form.name,        target: 'nameFr'         },
-          { source: form.description, target: 'descriptionFr'  },
-          { source: form.benefits,    target: 'benefitsFr'     },
-          { source: form.ingredients, target: 'ingredientsFr'  },
-          { source: form.origin,      target: 'originFr'       },
-          { source: form.regions,     target: 'regionsFr'      },
+          { source: form.name, target: 'nameFr' },
+          { source: form.description, target: 'descriptionFr' },
+          { source: form.benefits, target: 'benefitsFr' },
+          { source: form.ingredients, target: 'ingredientsFr' },
+          { source: form.origin, target: 'originFr' },
+          { source: form.regions, target: 'regionsFr' },
         ] as const
-      ).filter(p => p.source.trim().length > 0);
-      if (pairs.length === 0) { toast.error('Nothing to translate'); return; }
-      const results = await translateMultipleToFrench(pairs.map(p => p.source));
-      setForm(f => {
+      ).filter((p) => p.source.trim().length > 0);
+      if (pairs.length === 0) {
+        toast.error('Nothing to translate');
+        return;
+      }
+      const results = await translateMultipleToFrench(pairs.map((p) => p.source));
+      setForm((f) => {
         const next = { ...f };
         pairs.forEach((p, i) => {
           // results[i] is a plain string. Was previously wrapped as
@@ -1028,8 +1338,11 @@ export function AdminProducts() {
         return next;
       });
       toast.success(`Translated ${pairs.length} field${pairs.length === 1 ? '' : 's'} to French`);
-    } catch (err) { toast.error(err instanceof Error ? err.message : 'Failed'); }
-    finally { setTranslating(false); }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setTranslating(false);
+    }
   };
 
   /** Bulk-clear: set every tea's `image` field to '' so the
@@ -1045,7 +1358,9 @@ export function AdminProducts() {
     try {
       // Filter to only teas that currently have an image — don't waste
       // writes on already-blank docs.
-      const withImage = products.filter(p => typeof p.image === 'string' && p.image.trim().length > 0);
+      const withImage = products.filter(
+        (p) => typeof p.image === 'string' && p.image.trim().length > 0,
+      );
       if (withImage.length === 0) {
         toast.success('No tea images to clear');
         return;
@@ -1060,13 +1375,15 @@ export function AdminProducts() {
         for (const tea of slice) {
           if (!tea.slug) continue;
           batch.update(doc(db, 'teas', tea.slug), {
-            image:     '',
+            image: '',
             updatedAt: serverTimestamp(),
           });
         }
         await batch.commit();
       }
-      toast.success(`Cleared images on ${withImage.length} tea${withImage.length === 1 ? '' : 's'}`);
+      toast.success(
+        `Cleared images on ${withImage.length} tea${withImage.length === 1 ? '' : 's'}`,
+      );
     } catch (err) {
       console.error('[AdminProducts] handleClearAllImages failed', err);
       toast.error(err instanceof Error ? err.message : 'Failed to clear images');
@@ -1075,15 +1392,19 @@ export function AdminProducts() {
     }
   };
 
-
   // Stats row
-  const active   = products.filter(p => p.isActive !== false).length;
-  const organic  = products.filter(p => p.isOrganic).length;
-  const featured = products.filter(p => p.featured).length;
+  const active = products.filter((p) => p.isActive !== false).length;
+  const organic = products.filter((p) => p.isOrganic).length;
+  const featured = products.filter((p) => p.featured).length;
 
   return (
     <div className="space-y-6">
-      <SeoHead title="Products | Ele Café Admin" description="Manage tea products, images, availability and descriptions." noIndex={true} />
+      <SeoHead
+        title="Products | Ele Café Admin"
+        description="Manage tea products, images, availability and descriptions."
+        noIndex={true}
+      />
+      <ApprovedDescriptionsBanner />
       {/* ── Luxury page header ─────────────────────────────────────
           Gold-tinted hero banner matches the visual vocabulary of
           the In-Store Pickup card on ShippingPolicyPage and the
@@ -1097,8 +1418,8 @@ export function AdminProducts() {
         meta={
           <div className="ap-page-stats">
             {[
-              { label: 'active',   value: active   },
-              { label: 'organic',  value: organic  },
+              { label: 'active', value: active },
+              { label: 'organic', value: organic },
               { label: 'featured', value: featured },
             ].map(({ label, value }) => (
               <div key={label} className="ap-page-stat">
@@ -1117,13 +1438,26 @@ export function AdminProducts() {
               disabled={clearingImages}
               title="Reset every tea card to the SVG placeholder. Storage files are not deleted."
             >
-              {clearingImages
-                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Clearing…</>
-                : <><ImageOff className="mr-2 h-4 w-4"/>Clear all photos</>
-              }
+              {clearingImages ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Clearing…
+                </>
+              ) : (
+                <>
+                  <ImageOff className="mr-2 h-4 w-4" />
+                  Clear all photos
+                </>
+              )}
             </Button>
-            <Button onClick={() => { setForm(EMPTY); setIsAddOpen(true); }}>
-              <Plus className="mr-2 h-4 w-4"/>Add tea
+            <Button
+              onClick={() => {
+                setForm(EMPTY);
+                setIsAddOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add tea
             </Button>
           </>
         }
@@ -1132,142 +1466,201 @@ export function AdminProducts() {
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
         <div className="flex-1 max-w-xs">
-          <SearchBar
-            size="sm"
-            value={search}
-            onChange={setSearch}
-            placeholder="Search…"
-          />
+          <SearchBar size="sm" value={search} onChange={setSearch} placeholder="Search…" />
         </div>
         <Select value={catFilter} onValueChange={setCatFilter}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Category"/></SelectTrigger>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
-            {categories.map(c=><SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}
+            {categories.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
       {loading ? (
-        <Card><CardContent className="p-4 space-y-3">
-          {[1,2,3,4].map(i=>(
-            <div key={i} className="flex items-center gap-4">
-              <Skeleton className="h-12 w-12 rounded"/>
-              <div className="flex-1 space-y-2"><Skeleton className="h-4 w-48"/><Skeleton className="h-3 w-32"/></div>
-            </div>
-          ))}
-        </CardContent></Card>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-4">
+                <Skeleton className="h-12 w-12 rounded" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       ) : (
-        <Card><CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full ap-products-table">
-              <caption className="sr-only">Product catalog — list of teas with category, price, availability, and flags. Use Tab to navigate to action buttons within each row.</caption>
-              <thead className="border-b bg-muted/50">
-                <tr>
-                  <th className="text-left p-4 font-medium">Tea</th>
-                  <th className="text-left p-4 font-medium">Category</th>
-                  <th className="text-left p-4 font-medium">Price</th>
-                  <th className="text-left p-4 font-medium">Availability</th>
-                  <th className="text-left p-4 font-medium">Flags</th>
-                  <th className="text-right p-4 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(p => (
-                  <tr key={p.id} className={`border-b hover:bg-muted/50 ${!p.isActive?'opacity-50':''}`}>
-                    <td className="p-4" data-label="Tea">
-                      <div className="flex items-center gap-3">
-                        <LazyImage
-                          src={p.image ?? ''}
-                          alt={p.name ?? ''}
-                          aspectRatio="1/1"
-                          borderRadius="0.25rem"
-                          className="ap-row-thumb"
-                        />
-                        <p className="font-medium text-sm">{p.name}</p>
-                      </div>
-                    </td>
-                    <td className="p-4 text-sm" data-label="Category">{categories.find(c=>c.id===p.category)?.label ?? p.category}</td>
-                    <td className="p-4 font-semibold" data-label="Price">${typeof p.price === 'number' ? p.price.toFixed(2) : '0.00'}</td>
-                    <td className="p-4" data-label="Availability">
-                      {/* Turn 6: was a stock count. Now shows the inventory
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full ap-products-table">
+                <caption className="sr-only">
+                  Product catalog — list of teas with category, price, availability, and flags. Use
+                  Tab to navigate to action buttons within each row.
+                </caption>
+                <thead className="border-b bg-muted/50">
+                  <tr>
+                    <th className="text-left p-4 font-medium">Tea</th>
+                    <th className="text-left p-4 font-medium">Category</th>
+                    <th className="text-left p-4 font-medium">Price</th>
+                    <th className="text-left p-4 font-medium">Availability</th>
+                    <th className="text-left p-4 font-medium">Flags</th>
+                    <th className="text-right p-4 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((p) => (
+                    <tr
+                      key={p.id}
+                      className={`border-b hover:bg-muted/50 ${!p.isActive ? 'opacity-50' : ''}`}
+                    >
+                      <td className="p-4" data-label="Tea">
+                        <div className="flex items-center gap-3">
+                          <LazyImage
+                            src={p.image ?? ''}
+                            alt={p.name ?? ''}
+                            aspectRatio="1/1"
+                            borderRadius="0.25rem"
+                            className="ap-row-thumb"
+                          />
+                          <p className="font-medium text-sm">{p.name}</p>
+                        </div>
+                      </td>
+                      <td className="p-4 text-sm" data-label="Category">
+                        {categories.find((c) => c.id === p.category)?.label ?? p.category}
+                      </td>
+                      <td className="p-4 font-semibold" data-label="Price">
+                        ${typeof p.price === 'number' ? p.price.toFixed(2) : '0.00'}
+                      </td>
+                      <td className="p-4" data-label="Availability">
+                        {/* Turn 6: was a stock count. Now shows the inventory
                           projection. getAvailabilityStatus returns null when
                           the projection hasn't fired yet (very rare post-Turn-1,
                           but safe to render an em-dash placeholder). The
                           .ial-status-badge palette (Turn 5) keeps this visually
                           consistent with the audit log on /admin/inventory/logs. */}
-                      {(() => {
-                        const status = getAvailabilityStatus(p);
-                        if (!status) return <span className="text-muted-foreground">—</span>;
-                        return (
-                          <span className="ial-status-badge" data-status={status}>
-                            {getAvailabilityLabel(p)}
-                          </span>
-                        );
-                      })()}
-                    </td>
-                    <td className="p-4" data-label="Flags">
-                      <div className="flex gap-1 flex-wrap">
-                        {p.isOrganic && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium flag-organic">Organic</span>}
-                        {p.featured  && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium flag-featured">Featured</span>}
-                        {p.gstApplicable && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium ap-flag-gst">GST</span>}
-                        {p.allergens?.length ? <span className="text-xs px-1.5 py-0.5 rounded-full font-medium flag-allergen">Alert</span> : null}
-                        {!p.isActive && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium flag-inactive">Inactive</span>}
-                      </div>
-                    </td>
-                    <td className="p-4" data-label="Actions">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(p)} title="Edit"><Pencil className="h-4 w-4"/></Button>
-                        {/* Active teas: Deactivate (soft-delete) — Phase 14 + earlier */}
-                        {p.isActive && (
-                          <Button variant="ghost" size="sm" onClick={() => setDeleteSlug(p.slug ?? null)} title="Deactivate (hides from store)">
-                            <Trash2 className="h-4 w-4 text-destructive"/>
+                        {(() => {
+                          const status = getAvailabilityStatus(p);
+                          if (!status) return <span className="text-muted-foreground">—</span>;
+                          return (
+                            <span className="ial-status-badge" data-status={status}>
+                              {getAvailabilityLabel(p)}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      <td className="p-4" data-label="Flags">
+                        <div className="flex gap-1 flex-wrap">
+                          {p.isOrganic && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium flag-organic">
+                              Organic
+                            </span>
+                          )}
+                          {p.featured && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium flag-featured">
+                              Featured
+                            </span>
+                          )}
+                          {p.gstApplicable && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium ap-flag-gst">
+                              GST
+                            </span>
+                          )}
+                          {p.allergens?.length ? (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium flag-allergen">
+                              Alert
+                            </span>
+                          ) : null}
+                          {!p.isActive && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium flag-inactive">
+                              Inactive
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4" data-label="Actions">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEdit(p)}
+                            title="Edit"
+                          >
+                            <Pencil className="h-4 w-4" />
                           </Button>
-                        )}
-                        {/* Inactive teas: Reactivate + Permanent Delete (Phase 15)
+                          {/* Active teas: Deactivate (soft-delete) — Phase 14 + earlier */}
+                          {p.isActive && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteSlug(p.slug ?? null)}
+                              title="Deactivate (hides from store)"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                          {/* Inactive teas: Reactivate + Permanent Delete (Phase 15)
                             Before Phase 15 inactive teas had no row affordances,
                             so they were stuck unless an admin edited Firestore by
                             hand. These two buttons give the admin a way out. */}
-                        {!p.isActive && p.slug && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => void handleReactivate(p.slug as string)}
-                              title="Reactivate (show in store again)"
-                            >
-                              <Power className="h-4 w-4 text-emerald-700"/>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setHardDeleteSlug(p.slug ?? null)}
-                              title="Delete permanently — irreversible"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive ap-trash-strong"/>
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {filtered.length === 0 && <div className="ap-list-empty">No teas found</div>}
-          </div>
-        </CardContent></Card>
+                          {!p.isActive && p.slug && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => void handleReactivate(p.slug as string)}
+                                title="Reactivate (show in store again)"
+                              >
+                                <Power className="h-4 w-4 text-emerald-700" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setHardDeleteSlug(p.slug ?? null)}
+                                title="Delete permanently — irreversible"
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive ap-trash-strong" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filtered.length === 0 && <div className="ap-list-empty">No teas found</div>}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Add Tea Modal */}
-      <Modal open={isAddOpen} onClose={() => setIsAddOpen(false)}
-        title="Add New Tea" subtitle="Add a new tea to the catalog" size="lg"
+      <Modal
+        open={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+        title="Add New Tea"
+        subtitle="Add a new tea to the catalog"
+        size="lg"
         footer={
           <>
-            <ModalBtn variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</ModalBtn>
-            <ModalBtn onClick={rhfForm.handleSubmit(handleAdd)} loading={saving}>Add Tea</ModalBtn>
+            <ModalBtn variant="outline" onClick={() => setIsAddOpen(false)}>
+              Cancel
+            </ModalBtn>
+            <ModalBtn onClick={rhfForm.handleSubmit(handleAdd)} loading={saving}>
+              Add Tea
+            </ModalBtn>
           </>
-        }>
+        }
+      >
         <ProductForm
           form={form}
           setForm={setForm}
@@ -1278,16 +1671,23 @@ export function AdminProducts() {
       </Modal>
 
       {/* Edit Tea Modal */}
-      <Modal open={isEditOpen} onClose={() => setIsEditOpen(false)}
+      <Modal
+        open={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
         title={`Edit — ${editing?.name ?? 'Tea'}`}
         subtitle="Update tea information"
         size="lg"
         footer={
           <>
-            <ModalBtn variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</ModalBtn>
-            <ModalBtn onClick={rhfForm.handleSubmit(handleUpdate)} loading={saving}>Save Changes</ModalBtn>
+            <ModalBtn variant="outline" onClick={() => setIsEditOpen(false)}>
+              Cancel
+            </ModalBtn>
+            <ModalBtn onClick={rhfForm.handleSubmit(handleUpdate)} loading={saving}>
+              Save Changes
+            </ModalBtn>
           </>
-        }>
+        }
+      >
         <ProductForm
           form={form}
           setForm={setForm}
