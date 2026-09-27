@@ -1912,4 +1912,66 @@ export const STRINGS: Record<string, { fr: string }> = {
   'Caffeine calculator': { fr: 'Calculateur de caféine' },
   Press: { fr: 'Presse' },
   'Combo · with tea or Americano': { fr: 'Combo · avec thé ou Americano' },
+  // ── Terms of Service (/terms) ──────────────────────────────
+  'Last updated: September 2026': { fr: 'Dernière mise à jour : septembre 2026' },
+  'These terms apply when you use elecafe.ca, create an account, or place an order with Ele Café in Vancouver, British Columbia. By using the site or ordering, you agree to them.':
+    {
+      fr: 'Les présentes conditions s’appliquent lorsque vous utilisez elecafe.ca, créez un compte ou passez une commande auprès d’Ele Café, à Vancouver (Colombie-Britannique). En utilisant le site ou en commandant, vous les acceptez.',
+    },
+  'Your Account': { fr: 'Votre compte' },
+  'You can sign in with your email and password or with Google. Please keep your sign-in details private and give us accurate contact and delivery information. You are responsible for activity on your account; tell us right away if you think someone else has used it.':
+    {
+      fr: 'Vous pouvez vous connecter avec votre courriel et votre mot de passe ou avec Google. Gardez vos identifiants confidentiels et fournissez-nous des coordonnées et une adresse de livraison exactes. Vous êtes responsable de l’activité de votre compte; avisez-nous sans délai si vous croyez qu’une autre personne l’a utilisé.',
+    },
+  'Orders and Prices': { fr: 'Commandes et prix' },
+  'All prices are in Canadian dollars, and applicable taxes are added at checkout. Placing an order is an offer to buy; it is accepted once we confirm that your teas are in stock. We may decline or cancel an order — for example if an item is unavailable or a price was shown in error — and if we do, you are not charged.':
+    {
+      fr: 'Tous les prix sont en dollars canadiens et les taxes applicables sont ajoutées au paiement. Passer une commande constitue une offre d’achat; elle est acceptée lorsque nous confirmons que vos thés sont en stock. Nous pouvons refuser ou annuler une commande — par exemple si un article n’est plus offert ou si un prix a été affiché par erreur — et, le cas échéant, vous n’êtes pas débité.',
+    },
+  'Card payments are processed securely by Clover. When you order, we place a temporary hold for the total; your card is charged only once the order is confirmed. If we cannot fill it, the hold is released.':
+    {
+      fr: 'Les paiements par carte sont traités de façon sécurisée par Clover. Lorsque vous commandez, nous réservons temporairement le montant total; votre carte n’est débitée qu’une fois la commande confirmée. Si nous ne pouvons pas la remplir, la réservation est libérée.',
+    },
+  'Shipping, Pickup and Refunds': { fr: 'Livraison, cueillette et remboursements' },
+  'Rewards, Promotions and Gift Offers': { fr: 'Récompenses, promotions et offres cadeaux' },
+  'Reward points, store credit and promotional codes have no cash value, cannot be transferred or exchanged for money, and may expire as shown in your account or in the offer. Each promotion applies only under its stated conditions and cannot be combined unless it says so. We may change or end a program or offer, and we may cancel points or credits obtained through misuse.':
+    {
+      fr: 'Les points de récompense, les crédits en magasin et les codes promotionnels n’ont aucune valeur monétaire, ne peuvent être transférés ni échangés contre de l’argent et peuvent expirer selon ce qui est indiqué dans votre compte ou dans l’offre. Chaque promotion s’applique uniquement selon ses conditions et ne peut être combinée à une autre, sauf mention contraire. Nous pouvons modifier ou mettre fin à un programme ou à une offre, et annuler des points ou crédits obtenus de façon abusive.',
+    },
+  'Our Teas and Health Information': { fr: 'Nos thés et l’information santé' },
+  'Tea is a natural product, so colour, aroma and flavour can vary from batch to batch and from the photos. Brewing tips, caffeine figures and our caffeine calculator give typical values for general information only — they are not medical advice. If you are pregnant, have allergies or a health condition, please check ingredients and ask your doctor.':
+    {
+      fr: 'Le thé est un produit naturel : sa couleur, son arôme et sa saveur peuvent varier d’un lot à l’autre et différer des photos. Les conseils d’infusion, les teneurs en caféine et notre calculateur de caféine donnent des valeurs typiques à titre informatif seulement — ils ne constituent pas un avis médical. Si vous êtes enceinte, avez des allergies ou un problème de santé, vérifiez les ingrédients et consultez votre médecin.',
+    },
+  'Reviews and Content You Share': { fr: 'Avis et contenu que vous partagez' },
+  'Reviews and photos you post must be honest and your own, and must not be offensive or unlawful. By posting them you allow us to display them on our site and social channels. We may remove content that breaks these rules.':
+    {
+      fr: 'Les avis et photos que vous publiez doivent être honnêtes et vous appartenir, et ne doivent pas être offensants ni illégaux. En les publiant, vous nous permettez de les afficher sur notre site et nos réseaux sociaux. Nous pouvons retirer tout contenu qui enfreint ces règles.',
+    },
+  'Using the Site': { fr: 'Utilisation du site' },
+  'The Ele Café name, logo, photos and text belong to Ele Café. Please do not copy them for commercial use, interfere with the site, or use bots to place orders or collect data. You are welcome to link to our pages.':
+    {
+      fr: 'Le nom, le logo, les photos et les textes d’Ele Café appartiennent à Ele Café. Veuillez ne pas les copier à des fins commerciales, perturber le site ou utiliser des robots pour passer des commandes ou recueillir des données. Vous pouvez toutefois créer des liens vers nos pages.',
+    },
+  Liability: { fr: 'Responsabilité' },
+  'We work to keep the site accurate and available, but it is provided as is. To the extent the law allows, Ele Café is not liable for indirect or consequential losses, and our total liability for an order is limited to the amount you paid for it. Nothing in these terms limits your rights under consumer protection law.':
+    {
+      fr: 'Nous veillons à ce que le site soit exact et accessible, mais il est fourni tel quel. Dans la mesure permise par la loi, Ele Café n’est pas responsable des pertes indirectes ou consécutives, et notre responsabilité totale pour une commande se limite au montant payé pour celle-ci. Rien dans les présentes conditions ne limite vos droits en vertu des lois sur la protection du consommateur.',
+    },
+  'Changes and Governing Law': { fr: 'Modifications et droit applicable' },
+  'Questions?': { fr: 'Des questions?' },
+  'We are happy to help': { fr: 'Nous sommes là pour vous aider' },
+  'If anything in these terms is unclear, or you have a concern about an order, get in touch and we will sort it out.':
+    {
+      fr: 'Si un point de ces conditions n’est pas clair, ou si vous avez une préoccupation au sujet d’une commande, écrivez-nous et nous trouverons une solution.',
+    },
+  'Delivery times and in-store pickup are described in our {shipping}. For food-safety reasons tea sales are final, but our quality guarantee covers anything that arrives spoiled or damaged — see our {refund}.':
+    {
+      fr: 'Les délais de livraison et la cueillette en boutique sont décrits dans notre {shipping}. Pour des raisons de salubrité alimentaire, les ventes de thé sont finales, mais notre garantie de qualité couvre tout produit arrivé abîmé ou endommagé — consultez notre {refund}.',
+    },
+  'We may update these terms; the date at the top shows the latest version, and orders follow the terms in place when they were placed. These terms are governed by the laws of British Columbia and of Canada. How we handle your personal information is explained in our {privacy}.':
+    {
+      fr: 'Nous pouvons mettre à jour ces conditions; la date en haut de la page indique la version en vigueur, et chaque commande est régie par les conditions en place au moment où elle a été passée. Les présentes conditions sont régies par les lois de la Colombie-Britannique et du Canada. La façon dont nous traitons vos renseignements personnels est expliquée dans notre {privacy}.',
+    },
+  'Terms of Service': { fr: 'Conditions d’utilisation' },
 };

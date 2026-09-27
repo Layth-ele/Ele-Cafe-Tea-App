@@ -23,6 +23,7 @@ const INFO_LINKS = [
   { to: ROUTES.SHIPPING_POLICY, label: 'Shipping Policy' },
   { to: ROUTES.REFUND_POLICY, label: 'Refund Policy' },
   { to: ROUTES.PRIVACY_POLICY, label: 'Privacy Policy' },
+  { to: ROUTES.TERMS, label: 'Terms of Service' },
   { to: ROUTES.CONTACT, label: 'Contact Us' },
 ];
 /**

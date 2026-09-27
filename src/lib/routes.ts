@@ -38,6 +38,7 @@ export const ROUTES = {
   SHIPPING_POLICY: '/shipping-policy',
   REFUND_POLICY: '/refund-policy',
   PRIVACY_POLICY: '/privacy-policy',
+  TERMS: '/terms',
   CONTACT: '/contact',
   ADMIN: '/admin',
   ADMIN_PRODUCTS: '/admin/products',

@@ -26,6 +26,7 @@
  *   /shipping-policy            → ShippingPolicyPage
  *   /refund-policy              → RefundPolicyPage
  *   /privacy-policy             → PrivacyPolicyPage
+ *   /terms                      → TermsPage
  *   /contact                    → ContactPage
  *   /gifts          [public]    → GiftsPage
  *   /orders         [auth]      → OrdersPage
@@ -115,6 +116,7 @@ const AboutPage = lazy_(() => import('./pages/info/AboutPage'));
 const ShippingPolicyPage = lazy_(() => import('./pages/info/ShippingPolicyPage'));
 const RefundPolicyPage = lazy_(() => import('./pages/info/RefundPolicyPage'));
 const PrivacyPolicyPage = lazy_(() => import('./pages/info/PrivacyPolicyPage'));
+const TermsPage = lazy_(() => import('./pages/info/TermsPage'));
 const ContactPage = lazy_(() => import('./pages/info/ContactPage'));
 
 // Protected
@@ -305,6 +307,16 @@ function AppShell() {
                   <Route path={ROUTES.SHIPPING_POLICY} element={<ShippingPolicyPage />} />
                   <Route path={ROUTES.REFUND_POLICY} element={<RefundPolicyPage />} />
                   <Route path={ROUTES.PRIVACY_POLICY} element={<PrivacyPolicyPage />} />
+                  <Route path={ROUTES.TERMS} element={<TermsPage />} />
+                  {/* Common spellings (e.g. the Google sign-in consent screen link). */}
+                  <Route
+                    path="/terms-of-service"
+                    element={<Navigate to={ROUTES.TERMS} replace />}
+                  />
+                  <Route
+                    path="/terms-and-conditions"
+                    element={<Navigate to={ROUTES.TERMS} replace />}
+                  />
                   <Route path={ROUTES.CONTACT} element={<ContactPage />} />
 
                   {/* ── Gift builder — public landing (Day 16) ───────── */}
