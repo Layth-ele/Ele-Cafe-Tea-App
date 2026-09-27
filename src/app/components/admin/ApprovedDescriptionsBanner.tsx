@@ -24,13 +24,13 @@ export function ApprovedDescriptionsBanner() {
     setBusy(true);
     try {
       const { functions, httpsCallable } = await getFunctionsLazy();
-      const run = httpsCallable<unknown, { updated: number; already: number; skipped: string[] }>(
-        functions,
-        'applyApprovedTeaDescriptions',
-      );
+      const run = httpsCallable<
+        unknown,
+        { updated: number; already: number; skipped: string[]; frCleared: number }
+      >(functions, 'applyApprovedTeaDescriptions');
       const { data } = await run({});
       toast.success(
-        `Descriptions updated: ${data.updated} changed${data.already ? `, ${data.already} already up to date` : ''}. French versions update in a minute.`,
+        `Descriptions updated: ${data.updated} changed${data.already ? `, ${data.already} already up to date` : ''}${data.frCleared ? `, ${data.frCleared} French versions being retranslated` : ''}. French updates in a minute or two.`,
       );
       if (data.skipped.length) {
         toast.message(`Left unchanged (edited since the draft): ${data.skipped.join(', ')}`);
