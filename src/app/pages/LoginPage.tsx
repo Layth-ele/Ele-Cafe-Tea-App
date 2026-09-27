@@ -31,7 +31,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { SeoHead } from '@/app/components/SeoHead';
 import { useRecaptcha } from '@/hooks/useRecaptcha';
-import { useSettingsQuery } from '@/hooks/useSettings';
 import { authErrorMessage } from '@/lib/authErrors';
 import { safeReturnUrlOr } from '@/lib/safeReturnUrl';
 import { Field } from '@/app/components/ui/Field';
@@ -104,7 +103,6 @@ export function LoginPage() {
 
   const { login, loginWithGoogle, resetPassword, currentUser, loading: authLoading } = useAuth();
   const { executeAndVerify } = useRecaptcha();
-  const { data: settings } = useSettingsQuery();
   const navigate = useNavigate();
   const location = useLocation();
   const returnUrl = safeReturnUrlOr(location.search, ROUTES.HOME);
@@ -127,13 +125,6 @@ export function LoginPage() {
     reValidateMode: 'onChange',
     defaultValues: { email: '' },
   });
-
-  // Pick the most-appropriate brand mark.
-  const brandLogoUrl: string =
-    (settings as { logoUrlNoBg?: string })?.logoUrlNoBg ||
-    (settings as { logoUrlWhiteBg?: string })?.logoUrlWhiteBg ||
-    settings?.logoUrl ||
-    '';
 
   // If the user lands on /login while already authenticated, send
   // them straight to their post-login destination. Two scenarios:
@@ -282,7 +273,6 @@ export function LoginPage() {
     <div className="lp-panel">
       <div className="lp-card">
         <div className="lp-head">
-          {brandLogoUrl && <img src={brandLogoUrl} alt="Ele Café" className="lp-logo" />}
           <span className="overline lp-overline">{t('Ele Café · Vancouver')}</span>
           <h2>{t('Welcome back')}</h2>
           <p className="text-sm text-muted lp-subtitle">{t('Sign in to your account')}</p>
