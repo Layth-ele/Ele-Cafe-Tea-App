@@ -202,8 +202,12 @@ function CaffeineCalculatorPage() {
             <thead>
               <tr>
                 <th scope="col">{L('Drink', 'Boisson')}</th>
-                <th scope="col">{L('Serving', 'Portion')}</th>
-                <th scope="col">{L('Caffeine', 'Caféine')}</th>
+                <th scope="col" className="cc-col-serving">
+                  {L('Serving', 'Portion')}
+                </th>
+                <th scope="col" className="cc-col-mg">
+                  {L('Caffeine', 'Caféine')}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -217,9 +221,15 @@ function CaffeineCalculatorPage() {
                     ) : (
                       d.name
                     )}
+                    {/* Phones: serving sits under the name (column hidden). */}
+                    <span className="cc-row-serving" aria-hidden="true">
+                      {fr ? d.servingFr : d.serving}
+                    </span>
                   </th>
-                  <td>{fr ? d.servingFr : d.serving}</td>
-                  <td>{d.max === 0 ? L('None', 'Aucune') : `${d.min}–${d.max} mg`}</td>
+                  <td className="cc-col-serving">{fr ? d.servingFr : d.serving}</td>
+                  <td className="cc-col-mg" data-none={d.max === 0 ? 'true' : undefined}>
+                    {d.max === 0 ? L('None', 'Aucune') : `${d.min}–${d.max} mg`}
+                  </td>
                 </tr>
               ))}
             </tbody>

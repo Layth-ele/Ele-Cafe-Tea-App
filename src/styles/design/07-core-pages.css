@@ -2860,6 +2860,21 @@
 .cc-table thead th { font-size: var(--text-2xs); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 .cc-table td { font-variant-numeric: tabular-nums; }
 .cc-table a { color: var(--gold-deep); }
+.cc-table tbody th { font-weight: 600; }
+.cc-table a { text-decoration: none; }
+.cc-table a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.cc-table .cc-col-serving { white-space: nowrap; }
+.cc-table tbody .cc-col-serving { color: var(--text-2); }
+.cc-table .cc-col-mg { text-align: right; white-space: nowrap; }
+.cc-table tbody .cc-col-mg { font-weight: 600; color: var(--midnight); }
+.cc-table tbody .cc-col-mg[data-none='true'] { font-weight: 500; color: var(--muted); }
+.cc-row-serving { display: none; }
+/* Phones: two columns — drink (with serving underneath) and caffeine. */
+@media (max-width: 599px) {
+  .cc-table .cc-col-serving { display: none; }
+  .cc-table th, .cc-table td { padding: 12px 4px; vertical-align: middle; }
+  .cc-row-serving { display: block; margin-top: 2px; font-size: var(--text-xs); font-weight: 400; color: var(--muted); }
+}
 .cc-note { font-size: var(--text-xs); color: var(--muted); margin: 10px 0 0; }
 .cc-tip-list { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; color: var(--text-2); }
 .cc-tip-list a { color: var(--gold-deep); font-weight: 600; }
