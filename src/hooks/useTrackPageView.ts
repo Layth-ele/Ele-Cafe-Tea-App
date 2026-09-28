@@ -9,6 +9,9 @@
  *     metrics).
  *   • Admin routes (/admin/*) — admin browsing isn't customer
  *     analytics signal and would skew visitor counts.
+ *   • Owner / staff / admin accounts (lib/internalAccounts), and any
+ *     device one of them has signed in on — the Visits report is for
+ *     real customers.
  *   • Repeat fires of the SAME pathname within a short window
  *     (defends against React StrictMode double-effects + any
  *     future router re-render that fires useLocation without a
@@ -20,29 +23,30 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router';
 import { logPageView } from '@/lib/pageViews';
-
-// Don't double-log if useLocation re-fires within this window for
-// the same path. 500ms is comfortable — real navigations are far
-// apart, accidental re-renders are clustered.
-const DEDUP_MS = 500;
+import { useAuth } from '@/contexts/AuthContext';
+import { isInternalDevice, isInternalEmail, markInternalDevice } from '@/lib/internalAccounts';
 
 export function useTrackPageView() {
-  const { pathname }    = useLocation();
-  const lastPathRef     = useRef<string>('');
-  const lastPathTimeRef = useRef<number>(0);
+  const { pathname } = useLocation();
+  const { currentUser, isAdmin, loading } = useAuth();
+  // Last path logged. Logging once per path change also absorbs React
+  // StrictMode double-effects and the re-run when auth resolves or the
+  // user signs in on the same page.
+  const lastPathRef = useRef<string>('');
+
+  const internal = isAdmin || isInternalEmail(currentUser?.email);
 
   useEffect(() => {
-    // Skip admin routes — admin browsing isn't customer signal.
-    if (pathname.startsWith('/admin')) return;
-    // Dedup against React StrictMode double-effect / route remounts.
-    const now = Date.now();
-    if (lastPathRef.current === pathname && (now - lastPathTimeRef.current) < DEDUP_MS) {
-      return;
-    }
+    // Wait until we know who's signed in, so owner/staff visits on the
+    // first page aren't logged before their account is recognised.
+    if (loading) return;
+    if (internal) markInternalDevice();
+    // Skip admin routes and owner/staff browsing — customers only.
+    if (pathname.startsWith('/admin') || internal || isInternalDevice()) return;
+    if (lastPathRef.current === pathname) return;
     lastPathRef.current = pathname;
-    lastPathTimeRef.current = now;
 
     // Fire-and-forget — never await.
     logPageView(pathname, null);
-  }, [pathname]);
+  }, [pathname, loading, internal]);
 }
