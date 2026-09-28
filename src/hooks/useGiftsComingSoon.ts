@@ -1,14 +1,14 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
 import { useSettingsQuery } from '@/hooks/useSettings';
 import { tNow } from '@/i18n/useT';
 
 /**
  * Gift Builder links stay visible everywhere (menu, footer, home page,
  * search). While Admin → Settings → Gift Builder is off, a click shows
- * a "coming soon" toast instead of opening /gifts. Admins still go
- * through so they can preview the page.
+ * a "coming soon" toast instead of opening /gifts — for everyone, admins
+ * included, so the owner sees what customers see. Admins can still
+ * preview by typing /gifts (GiftsPage unlocks for them).
  *
  * Usage: `const giftsClick = useGiftsComingSoon();` then
  * `<Link to="/gifts" onClick={giftsClick}>` — or call `giftsClick()`
@@ -16,8 +16,7 @@ import { tNow } from '@/i18n/useT';
  */
 export function useGiftsComingSoon() {
   const { data: settings } = useSettingsQuery();
-  const { isAdmin } = useAuth();
-  const comingSoon = settings?.giftBuilderEnabled !== true && !isAdmin;
+  const comingSoon = settings?.giftBuilderEnabled !== true;
   return useCallback(
     (e?: { preventDefault: () => void }): boolean => {
       if (!comingSoon) return false;
