@@ -7,6 +7,7 @@ import { ArrowRight, Package, ShieldCheck, Truck } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchFeaturedTeas, fetchActiveTeaCount, queryKeys } from '@/lib/firebaseQueries';
 import { useSettingsQuery, formatFreeShippingSubline } from '@/hooks/useSettings';
+import { useGiftsComingSoon } from '@/hooks/useGiftsComingSoon';
 import { useCartStore as useCart } from '@/store/cartStore';
 import { useCartFly } from '@/hooks/useCartFly';
 import { categories } from '@/data/categories';
@@ -249,6 +250,7 @@ function CardSkeleton() {
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 export function HomePage() {
+  const giftsClick = useGiftsComingSoon();
   const t = useT();
   const { data: settings } = useSettingsQuery();
   // Phase 5 polish: wire StaleIndicator. When the cache is stale AND
@@ -413,9 +415,9 @@ export function HomePage() {
         <HomeHero
           lang={lang}
           teaCount={teaCount}
-          giftOn={store.giftBuilderEnabled}
           street={addressLines(store.address)[0] ?? ''}
           mapsUrl={store.mapsUrl}
+          onGiftClick={giftsClick}
         />
 
         {/* ══ PILLARS ═══════════════════════════════════════════════════════ */}
@@ -501,7 +503,7 @@ export function HomePage() {
         </section>
 
         {/* ══ SHOP BY MOOD — benefit / occasion entry points ════════════════ */}
-        <ShopByMood giftBuilderEnabled={store.giftBuilderEnabled} />
+        <ShopByMood />
 
         {/* ══ EIGHT COLLECTIONS ═════════════════════════════════════════════ */}
         <section className="section-sm hp-collections-section">
@@ -535,15 +537,13 @@ export function HomePage() {
         <TeaGuide />
 
         {/* ══ GIFT CTA ══════════════════════════════════════════════════════ */}
-        {store.giftBuilderEnabled && (
-          <section className="hp-gift-cta">
-            <span className="overline hp-gift-eyebrow">{t('For someone special')}</span>
-            <h2 className="hp-gift-h2">{t('Build a Bespoke Tea Gift Box')}</h2>
-            <Link to={ROUTES.GIFTS} className="btn btn-lg hp-gift-btn">
-              {t('Start Building')} <ArrowRight size={15} />
-            </Link>
-          </section>
-        )}
+        <section className="hp-gift-cta">
+          <span className="overline hp-gift-eyebrow">{t('For someone special')}</span>
+          <h2 className="hp-gift-h2">{t('Build a Bespoke Tea Gift Box')}</h2>
+          <Link to={ROUTES.GIFTS} className="btn btn-lg hp-gift-btn" onClick={giftsClick}>
+            {t('Start Building')} <ArrowRight size={15} />
+          </Link>
+        </section>
 
         {/* ══ WHY ELE CAFÉ + FAQ (FAQPage JSON-LD via SeoHead) ═══════════════ */}
         <WhyEleCafe store={store} />

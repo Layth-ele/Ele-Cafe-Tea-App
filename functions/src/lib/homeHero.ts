@@ -59,7 +59,6 @@ const esc = (s: string) =>
 export interface HomeHeroOptions {
   lang: HeroLang;
   teaCount: number;
-  giftOn: boolean;
   /** First line of the café address ('' hides the café line). */
   street: string;
   mapsUrl: string;
@@ -84,9 +83,8 @@ export function homeHeroHtml(o: HomeHeroOptions): string {
     `<p class="hero-sub">${esc(c.sub(o.teaCount))}</p>` +
     `<div class="hero-btns fade-up fade-up-d3">` +
     `<a class="btn btn-dark btn-lg" href="${href('/products')}" data-discover="true">${esc(c.shop)}</a>` +
-    (o.giftOn
-      ? `<a class="btn btn-outline btn-lg" href="${href('/gifts')}" data-discover="true">${esc(c.gift)}</a>`
-      : '') +
+    // Always shown; while gifts are off the app answers a click with "coming soon".
+    `<a class="btn btn-outline btn-lg" href="${href('/gifts')}" data-discover="true">${esc(c.gift)}</a>` +
     `<a class="btn btn-gold btn-lg" href="${href('/pairings')}" data-discover="true">${esc(c.pairings)}</a>` +
     `</div>${trust}</div></section>`
   );

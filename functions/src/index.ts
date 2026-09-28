@@ -6871,7 +6871,6 @@ function patchHeadForHome(template: string, teas: TeaSummary[], criticalCss = ''
   const hero = homeHeroHtml({
     lang: SEO_LANG,
     teaCount: teas.length,
-    giftOn: store.giftBuilderEnabled,
     street: addressLines(store.address)[0] ?? '',
     mapsUrl: store.mapsUrl,
     base: seoFr() ? '/fr' : '',

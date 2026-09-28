@@ -9,6 +9,7 @@
  * for the server-rendered homepage, so the page and Google always agree.
  */
 import { Link } from 'react-router';
+import { useGiftsComingSoon } from '@/hooks/useGiftsComingSoon';
 import { ArrowRight } from 'lucide-react';
 import { ROUTES } from '@/lib/routes';
 import { categories } from '@/data/categories';
@@ -27,9 +28,9 @@ function Header({ overline, title, intro }: { overline: string; title: string; i
   );
 }
 
-export function ShopByMood({ giftBuilderEnabled }: { giftBuilderEnabled: boolean }) {
+export function ShopByMood() {
   const t = useT();
-  const moods = MOODS.filter((m) => giftBuilderEnabled || m.to !== '/gifts');
+  const giftsClick = useGiftsComingSoon();
   return (
     <section className="section-sm hg-mood-section" aria-labelledby="hg-mood-title">
       <div className="container">
@@ -40,8 +41,13 @@ export function ShopByMood({ giftBuilderEnabled }: { giftBuilderEnabled: boolean
           </h2>
         </div>
         <div className="hg-mood-grid">
-          {moods.map((m) => (
-            <Link key={m.title} to={m.to} className="hg-mood-card">
+          {MOODS.map((m) => (
+            <Link
+              key={m.title}
+              to={m.to}
+              className="hg-mood-card"
+              onClick={m.to === '/gifts' ? giftsClick : undefined}
+            >
               <span className="hg-mood-title">{t(m.title)}</span>
               <span className="hg-mood-sub">{t(m.sub)}</span>
               <ArrowRight size={15} className="hg-mood-arrow" aria-hidden="true" />

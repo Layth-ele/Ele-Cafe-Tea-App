@@ -12,15 +12,16 @@ import { HOME_HERO_COPY, type HeroLang } from '../../../../functions/src/lib/hom
 export function HomeHero({
   lang,
   teaCount,
-  giftOn,
   street,
   mapsUrl,
+  onGiftClick,
 }: {
   lang: HeroLang;
   teaCount: number;
-  giftOn: boolean;
   street: string;
   mapsUrl: string;
+  /** Gift Builder click — shows "coming soon" while gifts are off. */
+  onGiftClick?: React.MouseEventHandler<HTMLAnchorElement>;
 }) {
   const c = HOME_HERO_COPY[lang];
   return (
@@ -41,11 +42,9 @@ export function HomeHero({
           <Link to={ROUTES.PRODUCTS} className="btn btn-dark btn-lg">
             {c.shop}
           </Link>
-          {giftOn && (
-            <Link to={ROUTES.GIFTS} className="btn btn-outline btn-lg">
-              {c.gift}
-            </Link>
-          )}
+          <Link to={ROUTES.GIFTS} className="btn btn-outline btn-lg" onClick={onGiftClick}>
+            {c.gift}
+          </Link>
           <Link to={ROUTES.PAIRINGS} className="btn btn-gold btn-lg">
             {c.pairings}
           </Link>

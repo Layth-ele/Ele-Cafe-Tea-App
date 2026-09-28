@@ -43,7 +43,7 @@
 import { Command } from 'cmdk';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { useSettingsQuery } from '@/hooks/useSettings';
+import { useGiftsComingSoon } from '@/hooks/useGiftsComingSoon';
 import { collection, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
 import {
   Home,
@@ -148,8 +148,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     return () => unsub();
   }, [open]);
 
-  const { data: paletteSettings } = useSettingsQuery();
-  const giftOn = paletteSettings?.giftBuilderEnabled === true;
+  const giftsClick = useGiftsComingSoon();
   const go = (to: string) => {
     onOpenChange(false);
     navigate(to);
@@ -229,13 +228,14 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             label={tr('Cart')}
             onSelect={() => go(ROUTES.CART)}
           />
-          {giftOn && (
-            <PaletteItem
-              icon={<Gift size={14} />}
-              label={tr('Gifts')}
-              onSelect={() => go(ROUTES.GIFTS)}
-            />
-          )}
+          <PaletteItem
+            icon={<Gift size={14} />}
+            label={tr('Gifts')}
+            onSelect={() => {
+              if (giftsClick()) onOpenChange(false);
+              else go(ROUTES.GIFTS);
+            }}
+          />
           <PaletteItem
             icon={<MapPin size={14} />}
             label={tr('Visit Us')}

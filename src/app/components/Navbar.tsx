@@ -6,6 +6,7 @@ import { TransitionLink } from './TransitionLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { ensureAuth } from '@/contexts/AuthContext';
 import { useSettingsQuery } from '@/hooks/useSettings';
+import { useGiftsComingSoon } from '@/hooks/useGiftsComingSoon';
 import { filterActiveAnnouncements } from '@/schemas/announcement.schema';
 import { useThemeStore } from '@/store/themeStore';
 import { useCartStore as useCart } from '@/store/cartStore';
@@ -23,8 +24,9 @@ import { toast } from 'sonner';
 import { useT, tNow, useLang } from '@/i18n/useT';
 
 // ── NAV_LINKS factory ─────────────────────────────────────────────────────────
-// giftOn: Admin → Settings → Gift Builder. Off = no Gift Builder link anywhere.
-const getNavLinks = (t: (key: string) => string, giftOn: boolean) => [
+// Gift Builder always shows; while it's switched off in Admin → Settings a
+// click says "coming soon" (useGiftsComingSoon) instead of opening it.
+const getNavLinks = (t: (key: string) => string) => [
   { to: ROUTES.HOME, label: t('Home'), chevron: false },
   { to: ROUTES.PRODUCTS, label: t('Teas'), chevron: true },
   // Phase 18 — replaces the removed "Discover" entry. Points to the
@@ -34,7 +36,7 @@ const getNavLinks = (t: (key: string) => string, giftOn: boolean) => [
   // without being overly literal. French: "Accords gourmands".
   { to: ROUTES.CAFE, label: t('Café Menu'), chevron: false },
   { to: ROUTES.PAIRINGS, label: t('Tea pairings'), chevron: false },
-  ...(giftOn ? [{ to: ROUTES.GIFTS, label: t('Gift Builder'), chevron: false }] : []),
+  { to: ROUTES.GIFTS, label: t('Gift Builder'), chevron: false },
   // Side menu only — keeps the desktop top bar uncluttered.
   { to: ROUTES.REWARDS, label: t('Ele Rewards'), chevron: false, drawerOnly: true },
 ];
@@ -58,8 +60,7 @@ function Drawer({
   isInventoryAccount: boolean;
 }) {
   const t = useT();
-  const { data: drawerSettings } = useSettingsQuery();
-  const giftOn = drawerSettings?.giftBuilderEnabled === true;
+  const giftsClick = useGiftsComingSoon();
   useEffect(() => {
     if (!open) return;
     return lockBodyScroll();
@@ -78,7 +79,7 @@ function Drawer({
   if (!open) return null;
 
   const isActive = (to: string) => (to === '/' ? pathname === '/' : pathname.startsWith(to));
-  const navLinks = getNavLinks(t, giftOn);
+  const navLinks = getNavLinks(t);
   const allLinks = [
     ...(isInventoryAccount
       ? [{ to: ROUTES.INVENTORY, label: t('Inventory'), chevron: false }]
@@ -124,7 +125,10 @@ function Drawer({
               key={to}
               to={to}
               className={`drawer-link${isActive(to) ? ' active' : ''}`}
-              onClick={onClose}
+              onClick={(e) => {
+                if (to === ROUTES.GIFTS && giftsClick(e)) return;
+                onClose();
+              }}
               style={{ animationDelay: `${STAGGER_BASE + i * STAGGER_STEP}ms` }}
             >
               <span className="nav-drawer-link-inner">
@@ -373,7 +377,8 @@ export function Navbar() {
         ''
       : (settings as { logoUrlNoBg?: string })?.logoUrlNoBg || settings?.logoUrl || '';
 
-  const navLinks = getNavLinks(t, settings?.giftBuilderEnabled === true);
+  const navLinks = getNavLinks(t);
+  const giftsClick = useGiftsComingSoon();
   const isInventoryAccount = isInventoryEmail(currentUser?.email);
   const showCustomerControls = !isInventoryAccount;
   const brandLinkTo = isInventoryAccount ? ROUTES.INVENTORY : ROUTES.HOME;
@@ -653,6 +658,7 @@ export function Navbar() {
                           key={to}
                           to={to}
                           className={isActive(to) ? 'active' : ''}
+                          onClick={to === ROUTES.GIFTS ? giftsClick : undefined}
                           {...prefetchHandlersForPath(to)}
                         >
                           {label}

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { TransitionLink } from './TransitionLink';
 import { useSettingsQuery, formatFreeShippingSubline } from '@/hooks/useSettings';
+import { useGiftsComingSoon } from '@/hooks/useGiftsComingSoon';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStoreContent } from '@/hooks/useStoreContent';
 import { ROUTES, TEA_CATEGORIES } from '@/lib/routes';
@@ -223,6 +224,7 @@ function buildSocialList(
 // ── Component ─────────────────────────────────────────────────────────────────
 export function Footer() {
   const t = useT();
+  const giftsClick = useGiftsComingSoon();
   const lang = useLang();
   const { data: settings } = useSettingsQuery();
   const { isAdmin } = useAuth();
@@ -355,10 +357,13 @@ export function Footer() {
           {/* ── Account ────────────────────────────────────── */}
           <div>
             <span className="footer-col-title">{t('Account')}</span>
-            {ACCOUNT_LINKS.filter(
-              (l) => l.to !== ROUTES.GIFTS || settings?.giftBuilderEnabled === true,
-            ).map(({ to, label }) => (
-              <TransitionLink key={to} to={to} className="footer-link">
+            {ACCOUNT_LINKS.map(({ to, label }) => (
+              <TransitionLink
+                key={to}
+                to={to}
+                className="footer-link"
+                onClick={to === ROUTES.GIFTS ? giftsClick : undefined}
+              >
                 {t(label)}
               </TransitionLink>
             ))}

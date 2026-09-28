@@ -205,7 +205,7 @@ export function GiftsPage() {
         {!enabled && !isAdmin && (
           <div className="gp-unavailable-notice" role="status">
             <Lock size={14} />
-            <span>{t('Not available currently')}</span>
+            <span>{t('Coming soon')}</span>
           </div>
         )}
 

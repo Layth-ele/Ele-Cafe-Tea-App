@@ -1974,4 +1974,10 @@ export const STRINGS: Record<string, { fr: string }> = {
       fr: 'Nous pouvons mettre à jour ces conditions; la date en haut de la page indique la version en vigueur, et chaque commande est régie par les conditions en place au moment où elle a été passée. Les présentes conditions sont régies par les lois de la Colombie-Britannique et du Canada. La façon dont nous traitons vos renseignements personnels est expliquée dans notre {privacy}.',
     },
   'Terms of Service': { fr: 'Conditions d’utilisation' },
+  // ── Gift Builder "coming soon" (useGiftsComingSoon) ─────────
+  'Coming soon': { fr: 'Bientôt disponible' },
+  'Gift Builder — coming soon': { fr: 'Créateur de coffrets — bientôt disponible' },
+  'We’re putting the finishing touches on our tea gift boxes. Check back soon!': {
+    fr: 'Nous peaufinons nos coffrets-cadeaux de thé. Revenez bientôt!',
+  },
 };
