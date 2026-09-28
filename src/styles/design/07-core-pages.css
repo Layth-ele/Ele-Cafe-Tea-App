@@ -1930,56 +1930,8 @@
   border-radius: 12px;
 }
 
-/* Mobile — the 4-column desktop grid crushes the fields column on
-   narrow viewports (fields can end up ≤ 80px, clipping inputs to
-   illegible snippets like "Sp" / "S pi"). Restructure to 2 rows:
-     Row 1: drag-handle controls  ·  action buttons (right-aligned)
-     Row 2: thumbnail (80px)  ·  form fields (fills remaining width)
-   Uses named grid-areas so the DOM order is irrelevant. */
-@media (max-width: 640px) {
-  .cga-row {
-    grid-template-columns: auto 80px 1fr;
-    grid-template-rows: auto auto;
-    grid-template-areas:
-      "handle  thumb   fields"
-      ".       actions actions";
-    gap: 10px;
-    padding: 12px;
-    align-items: start;
-  }
-  .cga-row-handle-col {
-    grid-area: handle;
-    flex-direction: column;   /* grip on top, arrows below — keeps col narrow */
-    align-items: center;
-    padding-top: 0;
-    gap: 2px;
-  }
-  .cga-row-thumb-wrap {
-    grid-area: thumb;
-    width: 80px;
-  }
-  .cga-row-thumb {
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .cga-row-fields {
-    grid-area: fields;   /* 1fr — fills all remaining width */
-    min-width: 0;
-  }
-  .cga-row-actions {
-    grid-area: actions;
-    flex-direction: row;     /* Visible + Delete side by side in full-width row */
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-  }
-  /* Compact action pills on mobile so they fit in the top-right corner */
-  .cga-pill-btn,
-  .cga-danger-btn {
-    padding: 5px 10px;
-    font-size: var(--text-xs);
-  }
-}
+/* Phone layout: see "Combo gallery admin — phone layout" further down
+   (it must come after the base .cga-* rules to win the cascade). */
 .cga-row-handle {
   align-self: center;
   cursor: grab;
@@ -2763,6 +2715,106 @@
 }
 .cga-diet-chip[aria-pressed='true'] { background: #e7f0e4; border-color: #9cbf92; color: #2f5a2a; }
 .cga-diet-chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* Combo gallery admin — phone layout. The 4-column desktop row (handle ·
+   photo · fields · actions) doesn't fit a phone: the photo spilled over
+   the text fields. Stack it instead:
+     1. reorder controls (left) · Visible / Delete (right)
+     2. photo with "Change photo" beside it
+     3. every field full width, labels in a fixed column
+   Kept after the base .cga-* rules so it wins the cascade. */
+@media (max-width: 640px) {
+  .cga-row {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "handle  actions"
+      "thumb   thumb"
+      "fields  fields";
+    gap: 12px;
+    padding: 14px;
+    align-items: center;
+  }
+  .cga-row-handle-col {
+    grid-area: handle;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding-top: 0;
+  }
+  .cga-row-actions {
+    grid-area: actions;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+  .cga-pill-btn,
+  .cga-danger-btn {
+    padding: 6px 12px;
+    font-size: var(--text-xs);
+  }
+  .cga-row-thumb-wrap {
+    grid-area: thumb;
+    width: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+  .cga-row-thumb {
+    width: 96px;
+    height: 96px;
+    object-fit: cover;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+  .cga-row-photo-btn {
+    min-height: 40px;
+    padding: 8px 16px;
+  }
+  .cga-row-fields {
+    grid-area: fields;
+    gap: 10px;
+    min-width: 0;
+  }
+  .cga-row-fields .cga-field {
+    font-size: 16px; /* 16px stops iOS zooming into the field on focus */
+  }
+  .cga-row-line {
+    gap: 10px;
+  }
+  .cga-row-line-label {
+    min-width: 64px;
+  }
+  .cga-row-line .cga-field-price {
+    width: auto;
+    flex: 1;
+    min-width: 0;
+  }
+  /* URL: prefix and slug on one line, slug takes the rest. */
+  .cga-row-line-wrap:has(.cga-field-slug) {
+    flex-wrap: nowrap;
+  }
+  .cga-row-line-wrap .cga-field-slug {
+    flex: 1;
+    min-width: 0;
+  }
+  /* Paired teas: chips on their own line, picker full width. */
+  .cga-paired-select {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  /* Diet chips wrap under the label as a compact group. */
+  .cga-diet-row {
+    flex-wrap: wrap;
+    gap: 6px 8px;
+  }
+  .cga-diet-row .cga-row-line-label {
+    flex-basis: 100%;
+  }
+  .cga-diet-chip {
+    min-height: 34px;
+    padding: 4px 12px;
+  }
+}
 
 /* Dietary tags — solid chips with white text so they read on any card
    (light, glass or photo). One colour per tag. */
